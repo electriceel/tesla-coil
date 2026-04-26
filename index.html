@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#050a0f">
+<link rel="manifest" href="manifest.json">
+<title>Tesla Square Wave</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--t:#00ffcc;--t2:#00ffcc44;--t3:#00ffcc18;--t4:#00ffcc0a;--bg:#050a0f;--bg2:#070f14;--bg3:#030810;--red:#ff4455;--amb:#ffaa00;--grn:#44ff88}
+html{height:100%;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--t);font-family:'Share Tech Mono',monospace;min-height:100%;padding:16px 12px 48px;overscroll-behavior:none}
+
+.hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.hdr-icon{font-size:26px}
+.hdr h1{font-family:'Orbitron',sans-serif;font-size:17px;letter-spacing:4px;text-transform:uppercase}
+.hdr .sub{font-size:8px;color:#005f50;letter-spacing:2px;margin-top:2px}
+
+.card{background:var(--bg2);border:1px solid #00ffcc1a;border-radius:12px;padding:14px;margin-bottom:10px}
+.card-label{font-size:8px;letter-spacing:3px;color:#00ffcc44;text-transform:uppercase;margin-bottom:10px}
+
+.btn{width:100%;font-family:'Share Tech Mono',monospace;font-size:14px;letter-spacing:2px;padding:17px;border:1.5px solid var(--t2);background:var(--t3);color:var(--t);border-radius:10px;cursor:pointer;text-transform:uppercase;margin-bottom:8px;display:block;touch-action:manipulation;-webkit-user-select:none;user-select:none;transition:background .12s,transform .1s}
+.btn:active{background:#00ffcc28;transform:scale(0.98)}
+.btn.on{border-color:var(--t);background:#00ffcc22}
+.btn.red{border-color:var(--red);color:var(--red);background:#ff445510}
+.btn.red:active{background:#ff445525}
+.btn:disabled{opacity:0.3;pointer-events:none}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.btn-row .btn{margin-bottom:0}
+
+.diag{border-radius:8px;padding:11px 13px;font-size:10px;line-height:1.7;margin-bottom:6px;border:1px solid;white-space:pre-wrap;word-break:break-word}
+.diag.idle{background:#070f14;border-color:#00ffcc15;color:#00ffcc55}
+.diag.ok{background:#061208;border-color:#44ff8833;color:var(--grn)}
+.diag.warn{background:#120e00;border-color:#ffaa0033;color:var(--amb)}
+.diag.err{background:#120408;border-color:#ff445533;color:var(--red)}
+
+/* Mode tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
+.tab{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:12px;border:1px solid var(--t2);background:transparent;color:#00ffcc88;border-radius:8px;cursor:pointer;text-transform:uppercase;touch-action:manipulation;transition:all .12s}
+.tab.active{border-color:var(--t);background:var(--t3);color:var(--t)}
+.tab:active{transform:scale(0.97)}
+
+/* Big note / freq display */
+.big-display{text-align:center;padding:8px 0 4px}
+.big-val{font-family:'Orbitron',sans-serif;font-size:72px;font-weight:700;line-height:1;color:var(--t);transition:color .1s;letter-spacing:2px}
+.big-val.silent{color:#00ffcc18}
+.big-sub{font-size:11px;color:#00ffcc55;margin-top:5px;letter-spacing:1px}
+
+/* Arc ring */
+.arc-ring{width:100px;height:100px;border-radius:50%;border:3px solid var(--t2);margin:10px auto;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.arc-ring.active{border-color:var(--t);box-shadow:0 0 22px #00ffcc55,inset 0 0 16px #00ffcc22;animation:pr .6s infinite alternate}
+@keyframes pr{from{box-shadow:0 0 10px #00ffcc33}to{box-shadow:0 0 32px #00ffcc99}}
+.arc-lbl{font-size:8px;letter-spacing:2px;color:#00ffcc44;text-align:center;padding:0 6px}
+.arc-ring.active .arc-lbl{color:var(--t)}
+
+/* Piano */
+.piano-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:3px 0 5px}
+.piano{display:flex;height:54px;min-width:520px;gap:2px}
+.key{flex:1;border-radius:0 0 4px 4px;border:1px solid #00ffcc15;background:#0a1a14;min-width:12px;transition:background .08s}
+.key.black{background:var(--bg3);height:56%;margin:0 -4px;z-index:2;flex:0 0 9px}
+.key.lit{background:var(--t)!important;box-shadow:0 0 8px #00ffcc88}
+
+canvas{display:block;width:100%;border-radius:6px;background:var(--bg3)}
+#waveOut{height:56px}
+#waveIn{height:44px}
+
+/* Sliders */
+.knob{margin-bottom:12px}
+.knob-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.knob-lbl{font-size:9px;letter-spacing:2px;color:#00ffcc77}
+.knob-val{font-size:13px;font-weight:700;color:var(--t);font-family:'Orbitron',sans-serif}
+input[type=range]{width:100%;height:34px;accent-color:var(--t);cursor:pointer;touch-action:manipulation}
+
+.tog-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #00ffcc08;margin-top:6px}
+.tog-lbl{font-size:9px;letter-spacing:2px;color:#00ffcc77}
+.tog{position:relative;width:44px;height:24px;display:inline-block;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0}
+.tog-track{position:absolute;inset:0;background:#0a1a14;border:1px solid var(--t2);border-radius:12px;transition:background .2s}
+.tog input:checked+.tog-track{background:#00ffcc33;border-color:var(--t)}
+.tog-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#00ffcc55;transition:transform .2s,background .2s;pointer-events:none}
+.tog input:checked~.tog-thumb{transform:translateX(20px);background:var(--t)}
+
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{background:var(--bg3);border:1px solid var(--t4);border-radius:8px;padding:9px 10px;text-align:center}
+.stat-val{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:var(--t)}
+.stat-lbl{font-size:7px;color:#00ffcc44;letter-spacing:2px;margin-top:3px}
+
+.info{font-size:9px;color:#00ffcc44;line-height:1.7;margin-top:8px}
+
+#installBanner{display:none;background:#0a1a10;border:1px solid #44ff8833;border-radius:10px;padding:13px;margin-bottom:10px;font-size:10px;color:var(--grn);line-height:1.7}
+#installBanner .btn{margin-top:8px;margin-bottom:0}
+</style>
+</head>
+<body>
+
+<div id="installBanner">
+  &#9889; Tap below to install as an app on your home screen!
+  <button class="btn on" onclick="installPWA()">&#43; Add to Home Screen</button>
+</div>
+
+<div class="hdr">
+  <div class="hdr-icon">&#9889;</div>
+  <div>
+    <h1>Tesla Square Wave</h1>
+    <div class="sub">mic / manual &rarr; square wave &rarr; bluetooth coil</div>
+  </div>
+</div>
+
+<!-- System check -->
+<div class="card">
+  <div class="card-label">System Check</div>
+  <div id="dProto" class="diag idle">Checking...</div>
+  <div id="dBT"    class="diag idle">Bluetooth audio: connect your coil in Android Bluetooth settings</div>
+  <div id="dMic"   class="diag idle">Mic: not started</div>
+</div>
+
+<!-- Mode select -->
+<div class="card">
+  <div class="card-label">Mode</div>
+  <div class="tabs">
+    <button class="tab active" id="tabMic"    onclick="setMode('mic')">&#127908; Mic Input</button>
+    <button class="tab"        id="tabManual" onclick="setMode('manual')">&#127918; Manual</button>
+  </div>
+  <div id="paneMic">
+    <button class="btn" id="btnMic" onclick="toggleMic()">&#9654; Start Listening</button>
+    <div class="info">Mic detects pitch and plays a matching square wave to the coil in real time.</div>
+  </div>
+  <div id="paneManual" style="display:none">
+    <div class="knob">
+      <div class="knob-hdr"><span class="knob-lbl">FREQUENCY</span><span class="knob-val" id="vManFreq">220 Hz</span></div>
+      <input type="range" id="manFreq" min="20" max="2000" value="220" step="1" oninput="updateManFreq()">
+    </div>
+    <button class="btn" id="btnManual" onclick="toggleManual()">&#9654; Fire Arc</button>
+    <div class="info">Manually set frequency and fire. Good for testing your coil connection.</div>
+  </div>
+</div>
+
+<!-- Stop -->
+<button class="btn red" id="btnStop" onclick="stopAll()" disabled>&#9632; Stop Everything</button>
+
+<!-- Live display -->
+<div class="card">
+  <div class="card-label">Output</div>
+  <div class="big-display">
+    <div class="big-val silent" id="bigVal">--</div>
+    <div class="big-sub" id="bigSub">-- Hz square wave</div>
+  </div>
+  <div class="arc-ring" id="arcRing"><div class="arc-lbl" id="arcLbl">STANDBY</div></div>
+  <div class="piano-scroll"><div class="piano" id="piano"></div></div>
+</div>
+
+<!-- Output waveform -->
+<div class="card">
+  <div class="card-label">Square Wave Output</div>
+  <canvas id="waveOut"></canvas>
+</div>
+
+<!-- Input waveform (mic mode) -->
+<div class="card" id="cardWaveIn">
+  <div class="card-label">Mic Input</div>
+  <canvas id="waveIn"></canvas>
+</div>
+
+<!-- Settings -->
+<div class="card">
+  <div class="card-label">Settings</div>
+  <div class="knob">
+    <div class="knob-hdr"><span class="knob-lbl">OUTPUT VOLUME</span><span class="knob-val" id="vVol">80%</span></div>
+    <input type="range" id="vol" min="1" max="100" value="80" step="1" oninput="updateVol()">
+  </div>
+  <div class="knob">
+    <div class="knob-hdr"><span class="knob-lbl">DUTY CYCLE</span><span class="knob-val" id="vDuty">50%</span></div>
+    <input type="range" id="duty" min="5" max="95" value="50" step="1" oninput="updateDuty()">
+  </div>
+  <div class="knob" id="knobGain">
+    <div class="knob-hdr"><span class="knob-lbl">MIC GAIN</span><span class="knob-val" id="vGain">4x</span></div>
+    <input type="range" id="gain" min="1" max="20" value="4" step="1" oninput="updateGain()">
+  </div>
+  <div class="knob" id="knobConf">
+    <div class="knob-hdr"><span class="knob-lbl">PITCH SENSITIVITY</span><span class="knob-val" id="vConf">15%</span></div>
+    <input type="range" id="confidence" min="5" max="50" value="15" step="1" oninput="updateConf()">
+  </div>
+  <div class="tog-row">
+    <span class="tog-lbl">GLIDE (smooth pitch changes)</span>
+    <label class="tog"><input type="checkbox" id="glide" checked><div class="tog-track"></div><div class="tog-thumb"></div></label>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="card">
+  <div class="stats">
+    <div class="stat"><div class="stat-val" id="sNote">--</div><div class="stat-lbl">Note</div></div>
+    <div class="stat"><div class="stat-val" id="sFreq">--</div><div class="stat-lbl">Output Hz</div></div>
+    <div class="stat"><div class="stat-val" id="sDuty">50</div><div class="stat-lbl">Duty %</div></div>
+    <div class="stat"><div class="stat-val" id="sDb">--</div><div class="stat-lbl">Mic dBFS</div></div>
+  </div>
+</div>
+
+<script>
+// ── PWA ────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall=e; document.getElementById('installBanner').style.display='block'; });
+async function installPWA() { if(!deferredInstall)return; deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall=null; document.getElementById('installBanner').style.display='none'; }
+
+// ── Environment check ──────────────────────────────────────────────────────
+function checkEnv() {
+  const secure = location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  const hasMic = !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+  const hasAudio = !!(window.AudioContext||window.webkitAudioContext);
+  if (!secure) {
+    diag('dProto','err','NOT on HTTPS!\nProtocol: '+location.protocol+'//'+location.hostname+'\n\nAudio output and mic require HTTPS.\nHost on GitHub Pages — see README instructions.');
+    document.getElementById('btnMic').disabled=true;
+    document.getElementById('btnManual').disabled=false; // manual still works partially
+    return;
+  }
+  let msg='HTTPS OK ✓\n';
+  msg+=hasAudio?'Web Audio: available ✓\n':'Web Audio: NOT available\n';
+  msg+=hasMic?'Microphone API: available ✓':'Microphone API: NOT available';
+  diag('dProto',hasAudio?'ok':'err',msg);
+  if(!hasMic){document.getElementById('btnMic').disabled=true;}
+  diag('dBT','warn','Bluetooth audio: make sure your tesla coil is connected\nas a Bluetooth audio device in Android Settings \u2192 Bluetooth.\nOnce connected, audio output will route to it automatically.');
+}
+
+// ── Audio context & square wave output ────────────────────────────────────
+let outCtx = null;       // output audio context (plays to BT speaker = coil)
+let oscNode = null;      // OscillatorNode (square wave)
+let gainOut = null;      // output gain
+let dutyProc = null;     // ScriptProcessor for duty cycle shaping
+let currentFreq = 0;     // currently playing frequency
+let targetFreq = 0;      // target for glide
+let outputActive = false;
+
+function ensureOutCtx() {
+  if (outCtx) return;
+  outCtx = new (window.AudioContext||window.webkitAudioContext)();
+}
+
+function startSquareWave(freq) {
+  ensureOutCtx();
+  if (outCtx.state==='suspended') outCtx.resume();
+  stopSquareWave();
+
+  const duty = +document.getElementById('duty').value / 100;
+  const vol  = +document.getElementById('vol').value / 100;
+
+  // Use a ScriptProcessor to generate a true variable-duty square wave
+  // (OscillatorNode type='square' is always 50% duty)
+  const bufSize = 2048;
+  const sr = outCtx.sampleRate;
+  dutyProc = outCtx.createScriptProcessor(bufSize, 0, 1);
+  gainOut  = outCtx.createGain();
+  gainOut.gain.value = vol;
+
+  let phase = 0;
+  dutyProc.onaudioprocess = (e) => {
+    const out = e.outputBuffer.getChannelData(0);
+    const f = currentFreq > 0 ? currentFreq : freq;
+    const d = +document.getElementById('duty').value / 100;
+    const phaseStep = f / sr;
+    for (let i = 0; i < bufSize; i++) {
+      out[i] = phase < d ? 1.0 : -1.0;
+      phase += phaseStep;
+      if (phase >= 1.0) phase -= 1.0;
+    }
+  };
+
+  dutyProc.connect(gainOut);
+  gainOut.connect(outCtx.destination);
+  currentFreq = freq;
+  outputActive = true;
+  drawOutputWave();
+}
+
+function stopSquareWave() {
+  if (dutyProc) { try{dutyProc.disconnect();}catch(e){} dutyProc=null; }
+  if (gainOut)  { try{gainOut.disconnect();}catch(e){} gainOut=null; }
+  outputActive = false;
+  currentFreq = 0;
+}
+
+function setFrequency(freq) {
+  if (!outputActive) return;
+  if (document.getElementById('glide').checked) {
+    targetFreq = freq;
+  } else {
+    currentFreq = freq;
+  }
+}
+
+// Glide interpolation
+setInterval(() => {
+  if (!outputActive || targetFreq === 0) return;
+  const diff = targetFreq - currentFreq;
+  if (Math.abs(diff) < 0.5) { currentFreq = targetFreq; return; }
+  currentFreq += diff * 0.25;
+}, 16);
+
+// ── Manual mode ────────────────────────────────────────────────────────────
+let manualOn = false;
+function toggleManual() {
+  if (manualOn) {
+    stopSquareWave();
+    manualOn = false;
+    document.getElementById('btnManual').textContent = '▶ Fire Arc';
+    document.getElementById('btnManual').classList.remove('on');
+    document.getElementById('btnStop').disabled = true;
+    setArc(false);
+    setBigDisplay('--','-- Hz square wave',true);
+    diag('dBT','warn','Stopped. Make sure coil is connected as Bluetooth audio device.');
+  } else {
+    const freq = +document.getElementById('manFreq').value;
+    startSquareWave(freq);
+    targetFreq = freq;
+    manualOn = true;
+    document.getElementById('btnManual').textContent = '⏸ Stop Arc';
+    document.getElementById('btnManual').classList.add('on');
+    document.getElementById('btnStop').disabled = false;
+    setArc(true);
+    const note = freqToNote(freq);
+    setBigDisplay(note.name, Math.round(freq)+' Hz square wave', false);
+    document.getElementById('sFreq').textContent = Math.round(freq);
+    document.getElementById('sNote').textContent = note.name;
+    diag('dBT','ok','Square wave active: '+Math.round(freq)+' Hz → Bluetooth audio out\nIf coil is not arcing, check Bluetooth connection in Android Settings.');
+  }
+}
+
+function updateManFreq() {
+  const freq = +document.getElementById('manFreq').value;
+  document.getElementById('vManFreq').textContent = freq + ' Hz';
+  if (manualOn) {
+    setFrequency(freq);
+    const note = freqToNote(freq);
+    setBigDisplay(note.name, freq+' Hz square wave', false);
+    document.getElementById('sFreq').textContent = Math.round(freq);
+    document.getElementById('sNote').textContent = note.name;
+    litKey(note.midi);
+  }
+}
+
+// ── Mic mode ───────────────────────────────────────────────────────────────
+let inCtx = null, analyser = null, gainIn = null, micStream = null;
+let micOn = false, rafId = null, tbuf = null;
+let silenceCount = 0;
+const NOTES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+async function toggleMic() {
+  if (micOn) { stopMic(); return; }
+  diag('dMic','warn','Requesting microphone permission...');
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
+    inCtx = new (window.AudioContext||window.webkitAudioContext)({sampleRate:44100});
+    if(inCtx.state==='suspended') await inCtx.resume();
+    const src = inCtx.createMediaStreamSource(micStream);
+    gainIn = inCtx.createGain(); gainIn.gain.value = +document.getElementById('gain').value;
+    analyser = inCtx.createAnalyser(); analyser.fftSize=4096; analyser.smoothingTimeConstant=0.3;
+    src.connect(gainIn); gainIn.connect(analyser);
+    tbuf = new Float32Array(analyser.fftSize);
+    micOn = true; silenceCount = 0;
+    document.getElementById('btnMic').textContent = '⏸ Pause Mic';
+    document.getElementById('btnMic').classList.add('on');
+    document.getElementById('btnStop').disabled = false;
+    diag('dMic','ok','Mic active — sing or play an instrument');
+    micLoop();
+  } catch(e) {
+    let msg='Mic failed: '+(e.name||'')+': '+(e.message||e);
+    if(e.name==='NotAllowedError') msg+='\n\nTap Allow when Chrome asks for microphone.\nIf blocked: Chrome \u2192 Settings \u2192 Site Settings \u2192 Microphone \u2192 allow this site.';
+    diag('dMic','err',msg);
+  }
+}
+
+function stopMic() {
+  micOn = false;
+  if (rafId){cancelAnimationFrame(rafId);rafId=null;}
+  stopSquareWave();
+  if (micStream) micStream.getTracks().forEach(t=>t.stop());
+  if (inCtx){inCtx.close();inCtx=null;}
+  micStream=analyser=gainIn=null;
+  document.getElementById('btnMic').textContent='▶ Start Listening';
+  document.getElementById('btnMic').classList.remove('on');
+  document.getElementById('btnStop').disabled=true;
+  setArc(false); clearKeys();
+  setBigDisplay('--','-- Hz square wave',true);
+  diag('dMic','idle','Mic stopped.');
+}
+
+function micLoop() {
+  if (!micOn) return;
+  rafId = requestAnimationFrame(micLoop);
+  analyser.getFloatTimeDomainData(tbuf);
+  drawInputWave();
+  let rms=0; for(let i=0;i<tbuf.length;i++) rms+=tbuf[i]*tbuf[i]; rms=Math.sqrt(rms/tbuf.length);
+  document.getElementById('sDb').textContent = rms>0.00001?Math.round(20*Math.log10(rms)):-80;
+
+  const {f, c} = detectPitch(tbuf, inCtx.sampleRate);
+
+  if (f > 0) {
+    silenceCount = 0;
+    const note = freqToNote(f);
+    setBigDisplay(note.name, f.toFixed(1)+' Hz | '+Math.round(c*100)+'% clear', false);
+    document.getElementById('sNote').textContent = note.name;
+    document.getElementById('sFreq').textContent = Math.round(f);
+    if (!outputActive) startSquareWave(f);
+    else setFrequency(f);
+    setArc(true);
+    litKey(note.midi);
+    diag('dBT','ok','Square wave: '+Math.round(f)+' Hz \u2192 Bluetooth audio out');
+  } else {
+    silenceCount++;
+    if (silenceCount > 8) {
+      stopSquareWave();
+      setArc(false); clearKeys();
+      setBigDisplay('--','-- Hz square wave',true);
+      document.getElementById('sNote').textContent='--';
+      document.getElementById('sFreq').textContent='--';
+      if(silenceCount===9) diag('dBT','warn','Silence detected — waiting for input');
+    }
+  }
+}
+
+// ── Pitch detection ────────────────────────────────────────────────────────
+function detectPitch(buf, sr) {
+  const N=buf.length,H=N>>1,thr=+document.getElementById('confidence').value/100;
+  let rms=0; for(let i=0;i<N;i++) rms+=buf[i]*buf[i]; rms=Math.sqrt(rms/N);
+  if(rms<0.005) return {f:-1,c:0};
+  const ac=new Float32Array(H);
+  for(let lag=0;lag<H;lag++){let s=0;for(let i=0;i<H;i++)s+=buf[i]*buf[i+lag];ac[lag]=s;}
+  let d=0; while(d<H-1&&ac[d]>ac[d+1])d++;
+  let mv=-Infinity,mp=-1; for(let i=d;i<H;i++){if(ac[i]>mv){mv=ac[i];mp=i;}}
+  if(mp<1)return{f:-1,c:0};
+  const cl=ac[0]>0?ac[mp]/ac[0]:0;
+  if(cl<thr)return{f:-1,c:cl};
+  const a=ac[mp-1],b=ac[mp],c2=mp<H-1?ac[mp+1]:b;
+  const dn=2*(2*b-c2-a);const sh=dn?(c2-a)/dn:0;
+  const freq=sr/(mp+sh);
+  if(freq<27||freq>4200)return{f:-1,c:cl};
+  return{f:freq,c:cl};
+}
+
+function freqToNote(f) {
+  const m = Math.round(69+12*Math.log2(f/440));
+  return { midi: m, name: NOTES[m%12]+(Math.floor(m/12)-1) };
+}
+
+// ── Stop all ───────────────────────────────────────────────────────────────
+function stopAll() {
+  stopMic();
+  stopSquareWave();
+  manualOn=false;
+  document.getElementById('btnManual').textContent='▶ Fire Arc';
+  document.getElementById('btnManual').classList.remove('on');
+  document.getElementById('btnStop').disabled=true;
+  setArc(false); clearKeys();
+  setBigDisplay('--','-- Hz square wave',true);
+  diag('dBT','idle','Stopped.');
+}
+
+// ── Mode switch ────────────────────────────────────────────────────────────
+let mode = 'mic';
+function setMode(m) {
+  mode = m;
+  stopAll();
+  document.getElementById('tabMic').className    = 'tab'+(m==='mic'?' active':'');
+  document.getElementById('tabManual').className = 'tab'+(m==='manual'?' active':'');
+  document.getElementById('paneMic').style.display    = m==='mic'?'':'none';
+  document.getElementById('paneManual').style.display = m==='manual'?'':'none';
+  document.getElementById('cardWaveIn').style.display = m==='mic'?'':'none';
+  document.getElementById('knobGain').style.display   = m==='mic'?'':'none';
+  document.getElementById('knobConf').style.display   = m==='mic'?'':'none';
+}
+
+// ── Controls ───────────────────────────────────────────────────────────────
+function updateVol()  { const v=+document.getElementById('vol').value; document.getElementById('vVol').textContent=v+'%'; if(gainOut)gainOut.gain.value=v/100; }
+function updateDuty() { document.getElementById('vDuty').textContent=document.getElementById('duty').value+'%'; document.getElementById('sDuty').textContent=document.getElementById('duty').value; drawOutputWave(); }
+function updateGain() { const v=+document.getElementById('gain').value; document.getElementById('vGain').textContent=v+'x'; if(gainIn)gainIn.gain.value=v; }
+function updateConf() { document.getElementById('vConf').textContent=document.getElementById('confidence').value+'%'; }
+
+// ── Canvas drawing ─────────────────────────────────────────────────────────
+function sc(id){const c=document.getElementById(id),r=c.getBoundingClientRect();c.width=Math.round(r.width||300);c.height=Math.round(r.height||56);}
+
+function drawOutputWave() {
+  const c=document.getElementById('waveOut'),ctx=c.getContext('2d'),W=c.width,H=c.height;
+  ctx.fillStyle='#030810'; ctx.fillRect(0,0,W,H);
+  if (!outputActive && !manualOn) {
+    ctx.strokeStyle='#00ffcc18';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+    return;
+  }
+  const duty=+document.getElementById('duty').value/100;
+  const cycles=4;
+  ctx.strokeStyle='#00ffcc';ctx.lineWidth=1.8;ctx.beginPath();
+  const cw=W/cycles;
+  for(let i=0;i<cycles;i++){
+    const x0=i*cw,x1=x0+cw*duty,x2=x0+cw;
+    const yH=H*0.15,yL=H*0.82;
+    if(i===0)ctx.moveTo(x0,yH);
+    else ctx.lineTo(x0,yH);
+    ctx.lineTo(x1,yH);
+    ctx.lineTo(x1,yL);
+    ctx.lineTo(x2,yL);
+    if(i<cycles-1)ctx.lineTo(x2,yH);
+  }
+  ctx.stroke();
+}
+
+function drawInputWave() {
+  const c=document.getElementById('waveIn'),ctx=c.getContext('2d'),W=c.width,H=c.height;
+  ctx.fillStyle='#030810';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#00ffcc18';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+  ctx.strokeStyle='#00ffcc';ctx.lineWidth=1.4;ctx.beginPath();
+  const step=tbuf.length/W;
+  for(let i=0;i<W;i++){const v=tbuf[Math.floor(i*step)];const y=H/2+v*H*0.44;i===0?ctx.moveTo(i,y):ctx.lineTo(i,y);}
+  ctx.stroke();
+}
+
+// ── Piano ──────────────────────────────────────────────────────────────────
+const BK=new Set([1,3,6,8,10]);
+function buildPiano(){const p=document.getElementById('piano');p.innerHTML='';for(let m=36;m<=84;m++){const k=document.createElement('div');k.className='key'+(BK.has(m%12)?' black':'');k.id='k'+m;p.appendChild(k);}}
+function litKey(m){clearKeys();const k=document.getElementById('k'+m);if(k)k.classList.add('lit');}
+function clearKeys(){document.querySelectorAll('.key.lit').forEach(k=>k.classList.remove('lit'));}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────
+function setArc(on){document.getElementById('arcRing').className='arc-ring'+(on?' active':'');document.getElementById('arcLbl').textContent=on?'ARC FIRING':'STANDBY';}
+function setBigDisplay(val,sub,silent){document.getElementById('bigVal').textContent=val;document.getElementById('bigVal').className='big-val'+(silent?' silent':'');document.getElementById('bigSub').textContent=sub;}
+function diag(id,state,msg){const el=document.getElementById(id);el.className='diag '+state;el.textContent=msg;}
+
+// ── Output wave animation ──────────────────────────────────────────────────
+setInterval(()=>{if(outputActive||manualOn)drawOutputWave();},100);
+
+// ── Init ───────────────────────────────────────────────────────────────────
+buildPiano();
+['waveOut','waveIn'].forEach(id=>{sc(id);const c=document.getElementById(id),x=c.getContext('2d');x.fillStyle='#030810';x.fillRect(0,0,c.width,c.height);});
+window.addEventListener('resize',()=>['waveOut','waveIn'].forEach(sc));
+updateVol();updateDuty();updateGain();updateConf();updateManFreq();
+checkEnv();
+</script>
+</body>
+</html>
