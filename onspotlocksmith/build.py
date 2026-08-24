@@ -10,6 +10,7 @@ legal page bodies live in ./data/.
 """
 import json
 import os
+import re
 import shutil
 from datetime import date
 
@@ -109,7 +110,7 @@ CITIES = [
                 "Because we're mobile, you never have to find us — we come to you, whether you're locked out downtown on a Friday night, need an apartment rekeyed between tenants, or lost your only car key in a parking structure. Most SLO jobs are done the same day you call."]),
     dict(slug="paso-robles", name="Paso Robles", region="North County", eta="30–45 minutes",
          old=["service-areas-paso-robles.html"],
-         nearby=["templeton", "san-miguel", "adelaide", "creston"],
+         nearby=["templeton", "san-miguel", "adelaida", "creston"],
          intro=["Paso Robles is wine country — and busy event weekends around the Downtown City Park, hotels, and tasting rooms mean lockouts happen at the least convenient times. OnSpot Locksmith 24/7 serves all of Paso Robles, from Spring Street businesses to ranch properties east of the Salinas River, with fully mobile service.",
                 "We cut and program car keys on site in Paso Robles — including smart keys and fobs for luxury and touring vehicles — so you don't have to tow your car to a dealership in another town. Homeowners and vacation-rental hosts also count on us for rekeys, smart locks, and emergency entries."]),
     dict(slug="atascadero", name="Atascadero", region="North County", eta="25–40 minutes",
@@ -119,7 +120,7 @@ CITIES = [
                 "Our van carries the equipment to cut and program keys for 95% of vehicles right in your driveway — plus everything needed for residential rekeys, smart lock installs, and emergency lockouts, day or night."]),
     dict(slug="templeton", name="Templeton", region="North County", eta="30–45 minutes",
          old=["service-areas-templeton.html"],
-         nearby=["paso-robles", "atascadero", "creston", "adelaide"],
+         nearby=["paso-robles", "atascadero", "creston", "adelaida"],
          intro=["Templeton's Main Street charm comes with ranch properties, wineries, and family homes spread across the countryside — and OnSpot Locksmith 24/7 covers all of it with fully mobile locksmith service. No shop to visit; we bring the shop to you.",
                 "Whether it's a car lockout at Templeton Community Park, a gate lock for an ag property, or new keys for a home off Vineyard Drive, we arrive equipped to finish the job in one visit."]),
     dict(slug="san-miguel", name="San Miguel", region="North County", eta="40–55 minutes",
@@ -142,10 +143,12 @@ CITIES = [
          nearby=["paso-robles", "creston", "san-miguel", "templeton"],
          intro=["Out at the junction of Highway 46 East, Shandon is surrounded by vineyards and wide-open ranch land — and very few services. OnSpot Locksmith 24/7 covers Shandon around the clock, so a lockout on a back road doesn't strand you for hours.",
                 "Travelers on the 46 corridor between the Central Coast and Central Valley call us for car lockouts and lost keys; locals count on us for home rekeys, mailbox locks, and gate hardware."]),
-    dict(slug="adelaide", name="Adelaide", region="North County", eta="45–60 minutes",
-         old=["adelaide-ca.html"],
+    dict(slug="adelaida", name="Adelaida", region="North County", eta="45–60 minutes",
+         # locksmith-adelaide-ca.html was this page's own URL until the city was
+         # respelled Adelaida; Google had it indexed, so it must 301, not 404.
+         old=["adelaide-ca.html", "locksmith-adelaide-ca.html", "service-areas-adelaide.html"],
          nearby=["paso-robles", "templeton", "lake-nacimiento", "cambria"],
-         intro=["The Adelaide area west of Paso Robles is winding ranch roads, vineyards, and remote properties where a lockout can mean a very long wait — unless your locksmith is mobile. OnSpot Locksmith 24/7 serves Adelaide with on-site car key cutting, lockout response, and residential lock work.",
+         intro=["The Adelaida area west of Paso Robles is winding ranch roads, vineyards, and remote properties where a lockout can mean a very long wait — unless your locksmith is mobile. OnSpot Locksmith 24/7 serves Adelaida with on-site car key cutting, lockout response, and residential lock work.",
                 "We're used to the terrain: locked farm vehicles, ranch gates, older home hardware, and safes are all in a day's work out here."]),
     dict(slug="asuncion", name="Asuncion", region="North County", eta="30–45 minutes",
          old=["asuncion-ca-locksmith-services.html"],
@@ -154,12 +157,12 @@ CITIES = [
                 "Car lockouts, lost keys, home rekeys, and lock repairs are all handled on site from our mobile workshop, 24 hours a day."]),
     dict(slug="lake-nacimiento", name="Lake Nacimiento", region="North County", eta="50–70 minutes",
          old=["your-trusted-locksmith-partner-in-lake-nacimiento-ca.html"],
-         nearby=["paso-robles", "san-miguel", "adelaide", "templeton"],
+         nearby=["paso-robles", "san-miguel", "adelaida", "templeton"],
          intro=["Between Oak Shores, Heritage Ranch, and the marinas, Lake Nacimiento sees a steady stream of boaters and vacationers — and locked cars with the keys (or the fun) inside. OnSpot Locksmith 24/7 makes the drive out to the lake 24/7, something few locksmiths will commit to.",
                 "We open locked vehicles and boats' tow rigs, replace keys lost in the water, and service vacation homes: rekeys between guests, smart locks for remote check-in, and repairs on weathered hardware."]),
     dict(slug="cambria", name="Cambria", region="North Coast", eta="40–55 minutes",
          old=["premier-locksmith-services-in-cambria-ca.html"],
-         nearby=["cayucos", "morro-bay", "adelaide", "san-luis-obispo"],
+         nearby=["cayucos", "morro-bay", "adelaida", "san-luis-obispo"],
          intro=["Between Moonstone Beach, the East Village, and the crowds headed to Hearst Castle, Cambria hosts thousands of visitors a week — and visitor lockouts are our specialty. OnSpot Locksmith 24/7 serves Cambria and the Highway 1 corridor with fully mobile, 24/7 response.",
                 "Locals rely on us too: inn and vacation-rental rekeys, smart lock installs for self-check-in, salt-air-corroded lock repairs, and on-site car key replacement that saves a 40-mile tow."]),
     dict(slug="cayucos", name="Cayucos", region="North Coast", eta="30–45 minutes",
@@ -221,6 +224,14 @@ CITIES = [
 
 CITY_BY_SLUG = {c["slug"]: c for c in CITIES}
 
+# The old WordPress site also exposed a service-areas-<city>.html URL for every
+# community — the imported blog posts still link to them — so every city gets
+# that alias redirected whether or not it was its primary legacy URL.
+for _c in CITIES:
+    _alias = f"service-areas-{_c['slug']}.html"
+    if _alias not in _c["old"]:
+        _c["old"].append(_alias)
+
 # old URL -> new URL redirects (category pages fold into the blog)
 EXTRA_REDIRECTS = {
     "category-car-locksmith-services.html": "blog.html",
@@ -237,6 +248,49 @@ def esc(s):
 
 def city_url(slug):
     return f"locksmith-{slug}-ca.html"
+
+
+def legacy_link_map():
+    """old page filename -> current root-relative URL, for imported content."""
+    m = {}
+    for c in CITIES:
+        for old in c["old"]:
+            m[old] = "/" + city_url(c["slug"])
+        m[city_url(c["slug"])] = "/" + city_url(c["slug"])
+    for old, new in EXTRA_REDIRECTS.items():
+        m[old] = "/" + new
+    for pg, _ in NAV:
+        m[pg] = "/" + pg
+    for pg in ("privacy-policy.html", "terms-of-service.html", "index.html"):
+        m[pg] = "/" if pg == "index.html" else "/" + pg
+    return m
+
+
+_HREF_RE = re.compile(r'(href=")([^"]+)(")')
+
+
+def rewrite_legacy_links(html):
+    """Point links inside imported blog/legal copy at their current URLs.
+
+    The carried-over WordPress copy still links to retired URLs such as
+    service-areas-morro-bay.html. Those 301 server-side, but a page that
+    links straight to the canonical URL never depends on a redirect — and
+    never 404s if one is missed.
+    """
+    mapping = legacy_link_map()
+
+    def repl(m):
+        url = m.group(2)
+        if url.startswith(("tel:", "mailto:", "sms:", "#")):
+            return m.group(0)
+        name = url[len(BASE):] if url.startswith(BASE) else url
+        if "://" in name:
+            return m.group(0)
+        name = name.split("#")[0].split("?")[0].lstrip("/")
+        new = mapping.get(name)
+        return f"{m.group(1)}{new}{m.group(3)}" if new else m.group(0)
+
+    return _HREF_RE.sub(repl, html)
 
 
 def jsonld_business():
@@ -369,8 +423,10 @@ def footer():
 <a class="callbar" href="tel:{PHONE_TEL}">☎ Locked out? Call {PHONE_DISPLAY} — Open 24/7</a>"""
 
 
-def page(fname, title, desc, body, extra_nodes=None, active="", og_type="website"):
+def page(fname, title, desc, body, extra_nodes=None, active="", og_type="website", noindex=False):
     canonical = f"{BASE}/" if fname == "index.html" else f"{BASE}/{fname}"
+    robots = ("noindex, follow" if noindex else
+              "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1")
     ld = jsonld_graph(extra_nodes or [])
     html = f"""<!DOCTYPE html>
 <html lang="en-US">
@@ -380,7 +436,7 @@ def page(fname, title, desc, body, extra_nodes=None, active="", og_type="website
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(desc)}">
 <link rel="canonical" href="{canonical}">
-<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+<meta name="robots" content="{robots}">
 <meta property="og:type" content="{og_type}">
 <meta property="og:url" content="{canonical}">
 <meta property="og:site_name" content="{BIZ}">
@@ -883,6 +939,7 @@ def build_blog():
 
     for slug, m in posts:
         content = open(os.path.join(DATA, "blog", f"{slug}.html"), encoding="utf-8").read()
+        content = rewrite_legacy_links(content)
         body = f"""
 <section class="hero hero-city"><div class="wrap">
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <a href="/blog.html">Blog</a> › <span>{esc(m['title'][:48])}…</span></nav>
@@ -920,6 +977,7 @@ def build_legal():
          "The terms governing use of the OnSpot Locksmith website and our mobile locksmith services in San Luis Obispo County, California."),
     ]:
         content = open(os.path.join(DATA, f"{slug}.html"), encoding="utf-8").read()
+        content = rewrite_legacy_links(content)
         h1 = "Privacy Policy" if slug == "privacy-policy" else "Terms of Service"
         body = f"""
 <section class="hero hero-city"><div class="wrap">
@@ -930,6 +988,36 @@ def build_legal():
 """
         page(f"{slug}.html", title, desc, body,
              extra_nodes=[breadcrumbs([("Home", ""), (h1, f"{slug}.html")])])
+
+
+def build_404():
+    """Branded 404 so a stale link lands on something useful, not a bare error."""
+    body = f"""
+<section class="hero hero-city"><div class="wrap">
+<h1>Page Not Found</h1>
+<p class="sub">That page has moved or no longer exists. If you're locked out right now, don't hunt for it — call and we'll be on the way.</p>
+<div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="/">Go to the Homepage</a></div>
+</div></section>
+
+<section><div class="wrap">
+<h2>Our Services</h2>
+<ul class="city-links">
+<li><a href="/automotive.html">Automotive Locksmith</a></li>
+<li><a href="/residential.html">Residential Locksmith</a></li>
+<li><a href="/commercial.html">Commercial Locksmith</a></li>
+<li><a href="/emergency-24-7.html">24/7 Emergency Service</a></li>
+<li><a href="/service-areas.html">Service Areas</a></li>
+<li><a href="/contact-us.html">Contact Us</a></li>
+</ul>
+<h2 style="margin-top:26px">Areas We Serve</h2>
+{city_links_grid()}
+</div></section>
+{cta_band()}
+"""
+    page("404.html",
+         "Page Not Found | OnSpot Locksmith 24/7",
+         "That page has moved or no longer exists. Call OnSpot Locksmith 24/7 at (805) 550-3666 — mobile locksmith service across San Luis Obispo County.",
+         body, noindex=True)
 
 
 def build_meta_files():
@@ -987,6 +1075,9 @@ def build_meta_files():
         "# Canonical hygiene",
         "Redirect 301 /index.html /",
         "",
+        "# Branded 404 instead of the bare server error page",
+        "ErrorDocument 404 /404.html",
+        "",
         "# Caching & compression",
         "<IfModule mod_expires.c>",
         "ExpiresActive On",
@@ -1013,6 +1104,7 @@ def main():
     build_contact()
     build_blog()
     build_legal()
+    build_404()
     build_meta_files()
     n = len([f for f in os.listdir(OUT) if f.endswith(".html")])
     print(f"Built {n} pages into {OUT}")

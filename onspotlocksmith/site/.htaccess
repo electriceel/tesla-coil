@@ -11,28 +11,45 @@ RewriteRule ^(about|blog|automotive|residential|commercial|emergency-24-7|servic
 
 # Consolidated city page URLs (old inconsistent patterns -> locksmith-<city>-ca.html)
 Redirect 301 /san-luis-obispo-ca-locksmith-services.html /locksmith-san-luis-obispo-ca.html
+Redirect 301 /service-areas-san-luis-obispo.html /locksmith-san-luis-obispo-ca.html
 Redirect 301 /service-areas-paso-robles.html /locksmith-paso-robles-ca.html
 Redirect 301 /premier-locksmith-services-in-atascadero-ca.html /locksmith-atascadero-ca.html
+Redirect 301 /service-areas-atascadero.html /locksmith-atascadero-ca.html
 Redirect 301 /service-areas-templeton.html /locksmith-templeton-ca.html
 Redirect 301 /service-areas-san-miguel.html /locksmith-san-miguel-ca.html
 Redirect 301 /service-areas-santa-margarita.html /locksmith-santa-margarita-ca.html
 Redirect 301 /your-trusted-locksmith-partner-in-creston-ca.html /locksmith-creston-ca.html
+Redirect 301 /service-areas-creston.html /locksmith-creston-ca.html
 Redirect 301 /service-areas-shandon.html /locksmith-shandon-ca.html
-Redirect 301 /adelaide-ca.html /locksmith-adelaide-ca.html
+Redirect 301 /adelaide-ca.html /locksmith-adelaida-ca.html
+Redirect 301 /locksmith-adelaide-ca.html /locksmith-adelaida-ca.html
+Redirect 301 /service-areas-adelaide.html /locksmith-adelaida-ca.html
+Redirect 301 /service-areas-adelaida.html /locksmith-adelaida-ca.html
 Redirect 301 /asuncion-ca-locksmith-services.html /locksmith-asuncion-ca.html
+Redirect 301 /service-areas-asuncion.html /locksmith-asuncion-ca.html
 Redirect 301 /your-trusted-locksmith-partner-in-lake-nacimiento-ca.html /locksmith-lake-nacimiento-ca.html
+Redirect 301 /service-areas-lake-nacimiento.html /locksmith-lake-nacimiento-ca.html
 Redirect 301 /premier-locksmith-services-in-cambria-ca.html /locksmith-cambria-ca.html
+Redirect 301 /service-areas-cambria.html /locksmith-cambria-ca.html
 Redirect 301 /premier-locksmith-services-in-cayucos-ca.html /locksmith-cayucos-ca.html
+Redirect 301 /service-areas-cayucos.html /locksmith-cayucos-ca.html
 Redirect 301 /trusted-locksmith-services-in-morro-bay-ca.html /locksmith-morro-bay-ca.html
+Redirect 301 /service-areas-morro-bay.html /locksmith-morro-bay-ca.html
 Redirect 301 /premier-locksmith-services-in-los-osos-ca.html /locksmith-los-osos-ca.html
+Redirect 301 /service-areas-los-osos.html /locksmith-los-osos-ca.html
 Redirect 301 /your-trusted-locksmith-partner-in-avila-beach-ca.html /locksmith-avila-beach-ca.html
+Redirect 301 /service-areas-avila-beach.html /locksmith-avila-beach-ca.html
 Redirect 301 /service-areas-pismo-beach.html /locksmith-pismo-beach-ca.html
 Redirect 301 /your-trusted-locksmith-partner-in-grover-beach-ca.html /locksmith-grover-beach-ca.html
+Redirect 301 /service-areas-grover-beach.html /locksmith-grover-beach-ca.html
 Redirect 301 /service-areas-oceano.html /locksmith-oceano-ca.html
 Redirect 301 /arroyo-grande-ca-locksmith-services.html /locksmith-arroyo-grande-ca.html
+Redirect 301 /service-areas-arroyo-grande.html /locksmith-arroyo-grande-ca.html
 Redirect 301 /service-areas-nipomo.html /locksmith-nipomo-ca.html
 Redirect 301 /comprehensive-locksmith-services-in-callender-ca.html /locksmith-callender-ca.html
+Redirect 301 /service-areas-callender.html /locksmith-callender-ca.html
 Redirect 301 /premier-locksmith-services-in-edna-ca.html /locksmith-edna-ca.html
+Redirect 301 /service-areas-edna.html /locksmith-edna-ca.html
 
 # Thin category archives -> blog
 Redirect 301 /category-car-locksmith-services.html /blog.html
@@ -43,6 +60,9 @@ Redirect 301 /category-motorcycle-key-replacement.html /blog.html
 
 # Canonical hygiene
 Redirect 301 /index.html /
+
+# Branded 404 instead of the bare server error page
+ErrorDocument 404 /404.html
 
 # Caching & compression
 <IfModule mod_expires.c>

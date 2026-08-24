@@ -74,6 +74,36 @@ quote form (same formsubmit.co backend as before, plus a honeypot spam trap).
 - All 7 blog posts kept at their original URLs (they target good long-tail
   keywords) with cleaned-up markup.
 
+## Never let a live URL start 404ing
+
+Every URL that has been live is a URL Google has indexed and other sites may
+link to. Renaming or deleting a page without a 301 turns it into a
+`Not found (404)` in Search Console and throws away its rankings.
+
+That is what happened to `/locksmith-adelaide-ca.html` when the city was
+respelled Adelaida: the legacy WordPress URLs were repointed at the new file,
+but the page's own previous URL was left to 404. It now 301s to
+`/locksmith-adelaida-ca.html`.
+
+So whenever a page's filename changes:
+
+1. Add the **old filename** to that city's `old=[...]` list in `build.py`
+   (or to `EXTRA_REDIRECTS` for non-city pages) — that is what generates the
+   `Redirect 301` line in `.htaccess`.
+2. Rebuild and confirm the old URL 301s to a page that returns 200:
+
+   ```
+   curl -sI https://onspotlocksmith.com/<old-url> | head -1
+   ```
+
+3. Check nothing still links to the old URL. `build.py` rewrites legacy links
+   inside imported blog and legal copy automatically (`rewrite_legacy_links`),
+   so imported content points straight at current URLs rather than relying on
+   a redirect.
+
+Unknown URLs fall through to `/404.html` (`noindex, follow`, with links back
+into the site) via `ErrorDocument 404`.
+
 ## Deploying
 
 1. Upload the **contents** of `site/` (including the hidden `.htaccess`) to
@@ -85,6 +115,14 @@ quote form (same formsubmit.co backend as before, plus a honeypot spam trap).
    of the homepage.
 4. Spot-check a few old URLs (e.g. `/service-areas-nipomo.html`) to confirm
    they 301 to the new pages.
+
+> **Check before you overwrite.** The live site has been edited outside this
+> repo — as of August 2026 it serves content-hashed asset filenames
+> (`style.<hash>.css`) and a hero image that `build.py` here does not
+> generate. Diff the live pages against a fresh `site/` build before
+> uploading everything, or change only what you need to — a missing redirect
+> is fixed by adding its one `Redirect 301` line to the live `.htaccess`,
+> without replacing the rest of the file.
 
 ## Beyond the website
 
