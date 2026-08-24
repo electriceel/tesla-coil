@@ -164,6 +164,51 @@ Anything else that shows up is drift: someone edited the live site directly,
 and that edit needs to come back into `build.py` (or `data/`) before the next
 deploy overwrites it.
 
+## Retiring lockmyth.com into this site
+
+`lockmyth.com` still resolves, but its DNS points at a Thryv/Duda account with
+nothing published, so every URL on it returns a "SITE NOT FOUND" page. The old
+brand is still in circulation (the Facebook page is `facebook.com/LockMyth`),
+so that traffic is being thrown away.
+
+`build.py` generates `redirects/lockmyth.com/` — a `.htaccess` that 301s the
+whole domain here, plus a meta-refresh `index.html` for the case where the
+rewrite rules never run. The rules have to live in **that domain's own
+document root**, not in the main site's `.htaccess`, because the main vhost
+never sees requests for a domain pointed somewhere else.
+
+Routing, in order: a path that exists here keeps its page
+(`lockmyth.com/automotive.html` → `onspotlocksmith.com/automotive.html`); a
+handful of extensionless paths the old site plausibly used are mapped to their
+nearest equivalent (`/contact` → `/contact-us.html`); everything else lands on
+the home page. The old URL structure could not be recovered — archive.org has
+no usable listing for it — so that catch-all is doing most of the work.
+
+To put it in place:
+
+1. **DNS** — at the registrar for `lockmyth.com`, point the domain at the same
+   host as this site (the nameservers or A record cPanel shows for
+   `onspotlocksmith.com`). This is the step that takes it away from Thryv.
+2. **cPanel → Domains → Create A New Domain** — add `lockmyth.com` with its own
+   document root, e.g. `public_html/lockmyth.com`. Do **not** point it at the
+   main `public_html`; the redirect rules would then apply to the live site.
+3. **Upload** the contents of `redirects/lockmyth.com/` (both files — turn on
+   "Show Hidden Files" so `.htaccess` is visible) into that document root.
+4. **SSL** — run cPanel's AutoSSL for the new domain. Without a certificate,
+   `https://lockmyth.com` throws a browser warning *before* the redirect can
+   fire, which defeats the point.
+5. **Verify**:
+
+   ```
+   curl -sI https://lockmyth.com/            | head -2   # 301 -> onspotlocksmith.com/
+   curl -sI https://lockmyth.com/automotive.html | head -2   # 301 -> /automotive.html
+   curl -sI https://www.lockmyth.com/contact | head -2   # 301 -> /contact-us.html
+   ```
+
+Optionally, verify `lockmyth.com` in Search Console afterwards and use **Change
+of Address** to tell Google the move is permanent — it needs both properties
+verified and the 301s already live.
+
 ## Beyond the website
 
 The site is now technically solid, but for map-pack rankings in a local
