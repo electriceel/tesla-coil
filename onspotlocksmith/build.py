@@ -73,6 +73,10 @@ AUTO_SERVICES = [
     ("Broken Key Extraction", "Snapped a key in the door or ignition? We safely extract the broken piece without damaging the lock."),
     ("Car Key Repair", "Damaged or worn keys repaired promptly so they work smoothly in your ignition and doors."),
     ("Motorcycle Keys", "One of the few locksmiths on the Central Coast who cuts motorcycle keys — including from a lost-key situation."),
+    ("European All Keys Lost", "BMW, Mercedes-Benz, Audi, VW, Volvo, Porsche, Land Rover, Jaguar, and MINI — smart keys included — originated and programmed at your car, not at a dealer."),
+    ("Vintage & Classic Car Keys", "Flat steel and bit keys for pre-war and mid-century vehicles, duplicated or originated from the lock when no key survives."),
+    ("Semi & Fleet Truck Keys", "Class 8 tractors, box trucks, and trailers keyed on site at the yard or the roadside, so a lost key doesn't strand a load."),
+    ("Heavy Equipment & Aircraft Keys", "Excavators, loaders, tractors, forklifts, skid steers, and light aircraft — keys cut where the machine sits."),
 ]
 RES_SERVICES = [
     ("Home Lockouts", "Locked out of the house? Quick, non-destructive entry that gets you back inside without damage."),
@@ -107,7 +111,33 @@ EMERG_SERVICES = [
 
 CAR_BRANDS = ("Acura, Audi, BMW, Buick, Cadillac, Chevrolet, Chrysler, Dodge, Ford, GMC, Honda, "
               "Hyundai, Infiniti, Jaguar, Jeep, Kia, Land Rover, Lexus, Lincoln, Mazda, Mercedes-Benz, "
-              "Mercury, MINI, Mitsubishi, Nissan, Subaru, Toyota, Volkswagen, Volvo")
+              "Mercury, MINI, Mitsubishi, Nissan, Porsche, Subaru, Toyota, Volkswagen, Volvo")
+
+# ------------------------------------------------------------ specialties --
+# Origination — cutting a working key when there is no key left to copy — is
+# what separates us from shops that can only duplicate. These are the jobs
+# other locksmiths in the county refer out.
+SPECIALTIES = [
+    ("🔑", "European all keys lost",
+     "BMW, Mercedes-Benz, Audi, Volkswagen, Volvo, Porsche, Land Rover, Jaguar, and MINI — "
+     "including push-button smart keys. When every key is gone we originate and program a new "
+     "one at the car, instead of it going to a dealer on a flatbed."),
+    ("🗝", "Vintage and classic vehicles",
+     "Flat steel keys and bit keys, duplicated or originated from the lock itself when there is "
+     "nothing left to copy. It is slow, hands-on work that most shops have no way to do."),
+    ("🏍", "Motorcycles",
+     "Lost every key to the bike? We originate motorcycle keys on site — one of the very few "
+     "locksmiths on the Central Coast who will take the job at all."),
+    ("🚛", "Semis and fleet trucks",
+     "Class 8 tractors, box trucks, and trailers. Keys originated at the yard, the truck stop, "
+     "or the roadside, so a lost key does not hold up a load overnight."),
+    ("🚜", "Heavy equipment",
+     "Excavators, loaders, tractors, forklifts, and skid steers — keys cut on the job site so "
+     "the machine is not parked for a week waiting on a dealer."),
+    ("✈️", "Aircraft",
+     "Ignition, cabin, and baggage locks on light aircraft, with keys originated at the hangar "
+     "or the tie-down."),
+]
 
 # ----------------------------------------------------------------- cities --
 # eta = realistic arrival window from the San Luis Obispo base.
@@ -434,6 +464,15 @@ def jsonld_business():
             "opens": "00:00",
             "closes": "23:59",
         },
+        "knowsAbout": [
+            "All keys lost replacement for European vehicles",
+            "Automotive key origination and programming",
+            "Vintage and classic vehicle keys, including flat steel and bit keys",
+            "Motorcycle key replacement",
+            "Semi truck and fleet vehicle keys",
+            "Heavy equipment keys",
+            "Light aircraft keys",
+        ],
         "areaServed": [{"@type": "AdministrativeArea", "name": "San Luis Obispo County, CA"}]
         + [{"@type": "City", "name": f"{c['name']}, CA"} for c in CITIES],
         "sameAs": [GOOGLE, YELP, FACEBOOK, BBB],
@@ -658,6 +697,29 @@ def city_links_grid():
     ) + "</ul>"
 
 
+def specialty_cards():
+    return '<div class="grid grid-3" style="margin-top:26px">' + "".join(
+        f'<div class="card"><div class="icon">{icon}</div><h3>{esc(title)}</h3><p>{esc(text)}</p></div>'
+        for icon, title, text in SPECIALTIES
+    ) + "</div>"
+
+
+SPECIALTY_LEAD = ("Almost any locksmith can copy a key you already have. Originating one — cutting "
+                  "and programming a working key when there is no key left to copy — takes different "
+                  "tools, factory key data, and a lot more experience. It is the work we are known for, "
+                  "and it is why other locksmiths in the county send these jobs to us.")
+
+
+def specialty_section(heading="Jobs Other Locksmiths Turn Down", eyebrow="Specialty work"):
+    return f"""<section style="padding-top:0"><div class="wrap">
+<p class="eyebrow">{esc(eyebrow)}</p>
+<h2>{esc(heading)}</h2>
+<p class="lead" style="max-width:70ch">{esc(SPECIALTY_LEAD)}</p>
+{specialty_cards()}
+<p style="margin-top:18px;color:var(--muted)">If your vehicle, machine, or lock is not on this list, call anyway — {PHONE_DISPLAY}. We would rather tell you honestly that a job is outside what we do than have you pay someone to find that out for you.</p>
+</div></section>"""
+
+
 def cta_band(h="Locked out right now?", p="We're open 24/7 and we come to you — anywhere in San Luis Obispo County."):
     return f"""<section><div class="wrap"><div class="cta-band"><div><h2>{esc(h)}</h2><p>{esc(p)}</p></div><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a></div></div></section>"""
 
@@ -716,6 +778,8 @@ def build_home():
 </div>
 </div></section>
 
+{specialty_section()}
+
 <section style="padding-top:0"><div class="wrap">
 <p class="eyebrow">Why OnSpot</p>
 <h2>Why San Luis Obispo County Chooses OnSpot Locksmith</h2>
@@ -724,6 +788,7 @@ def build_home():
 <li>Locally owned and owner-operated — you deal with the locksmith, not a call center</li>
 <li>Over 5 years of experience across automotive, residential, and commercial work</li>
 <li>Fully mobile workshop — keys cut and programmed on site</li>
+<li>Key origination for the vehicles other locksmiths refer out — European all-keys-lost, vintage, motorcycles, semis, heavy equipment, and aircraft</li>
 <li>Original car keys at well below dealership pricing</li>
 <li>True 24/7 emergency availability, every day of the year</li>
 <li>Upfront, honest pricing — no bait-and-switch quotes</li>
@@ -767,7 +832,8 @@ def build_home():
          active="")
 
 
-def service_page(fname, active, eyebrow, h1, sub, intro2_h, intro2_p, items, svc_name, faqs, title, desc, extra_html=""):
+def service_page(fname, active, eyebrow, h1, sub, intro2_h, intro2_p, items, svc_name, faqs, title, desc,
+                 extra_html="", after_intro=""):
     body = f"""
 <section class="hero hero-city"><div class="wrap">
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <span>{esc(eyebrow)}</span></nav>
@@ -782,7 +848,7 @@ def service_page(fname, active, eyebrow, h1, sub, intro2_h, intro2_p, items, svc
 <p class="lead">{intro2_p}</p>
 {extra_html}
 </div></section>
-
+{after_intro}
 <section style="padding-top:0"><div class="wrap">
 <p class="eyebrow">Services</p>
 <h2>Our {esc(svc_name)} Services</h2>
@@ -819,7 +885,7 @@ def build_services():
         "Automotive Locksmith in San Luis Obispo County",
         f"Locked out, broken key, or all keys lost? We cut and program keys for 95% of vehicles — smart keys, transponders, and fobs — at your location, 24/7. Call <a href=\"tel:{PHONE_TEL}\" style=\"color:#fff;font-weight:700\">{PHONE_DISPLAY}</a> for same-day service.",
         "Skip the Dealership — We Come to You",
-        f"From all-keys-lost replacements to fob programming and rekeyed cylinders, we carry nearly every smart key, transponder key, and fob in stock (or by the next business day) and program original keys at your location for well below dealership cost. We unlock vehicles swiftly — typically within 30 minutes to an hour — and resolve most automotive jobs the same day you call. We service {CAR_BRANDS}.",
+        f"From all-keys-lost replacements to fob programming and rekeyed cylinders, we carry nearly every smart key, transponder key, and fob in stock (or by the next business day) and program original keys at your location for well below dealership cost. We unlock vehicles swiftly — typically within 30 minutes to an hour — and resolve most automotive jobs the same day you call. That includes the work most shops send away: European all keys lost, vintage flat steel and bit keys, motorcycles, semis, heavy equipment, and light aircraft. We service {CAR_BRANDS}.",
         AUTO_SERVICES, "Automotive Locksmith",
         [
             ('Can you replace my car key if I lost all of them?',
@@ -840,9 +906,18 @@ def build_services():
              "Yes — photo ID plus something tying you to the vehicle, like the registration or insurance card. It's a minute of your time and it's what separates a licensed locksmith from someone who will open any car for anyone."),
             ('Can you make a key with no key at all, just the VIN?',
              "For most vehicles, yes. We generate the key from the vehicle's code and program it to the car on site, which is the whole point of all-keys-lost service — no tow, no dealership appointment."),
+            ('Can you do all keys lost on a European car?',
+             "Yes — BMW, Mercedes-Benz, Audi, Volkswagen, Volvo, Porsche, Land Rover, Jaguar, and MINI, push-button smart keys included. We originate and program the new key at your vehicle, which is the part most locksmiths send to the dealer. No flatbed, no dealer appointment, and well below dealer pricing."),
+            ('What does it mean to "originate" a key?',
+             "Duplicating is copying a key you still have. Originating is making a working key when every key is gone — cut from the vehicle's code or read directly from the lock, then programmed to the vehicle. It needs different equipment and factory key data, and it's the reason all-keys-lost jobs get referred to us."),
+            ('Can you make keys for something other than a car?',
+             "Usually, yes. We originate keys for motorcycles, Class 8 semis and box trucks, heavy equipment like excavators, loaders, tractors, forklifts and skid steers, and light aircraft — cut on site, wherever the machine is parked."),
+            ('My classic car takes an old flat steel or bit key. Can you help?',
+             "That's work we specifically take on. We duplicate and originate vintage keys — flat steel and bit keys alike — and can cut one from the lock itself when no original survives. Bring us a car other shops have turned away and there's a good chance we can key it."),
         ],
         "Auto Locksmith SLO County | Car Keys On Site | OnSpot Locksmith",
-        "Mobile auto locksmith in San Luis Obispo County. Car lockouts, all keys lost, smart key & fob programming for 95% of vehicles — on site 24/7. (805) 550-3666.")
+        "Mobile auto locksmith in San Luis Obispo County. All keys lost on European, vintage, motorcycle, semi & heavy equipment — keys originated on site 24/7. (805) 550-3666.",
+        after_intro=specialty_section("Vehicles Most Locksmiths Turn Down"))
 
     service_page(
         "residential.html", "residential.html", "Residential Locksmith",
@@ -969,7 +1044,7 @@ def build_city_pages():
 <section style="padding-top:0"><div class="wrap">
 <h2>Locksmith Services We Bring to {esc(name)}</h2>
 <div class="grid grid-4" style="margin-top:26px">
-<div class="card"><div class="icon">🚗</div><h3>Automotive</h3><p>Lockouts, all keys lost, smart keys &amp; fobs programmed on site in {esc(name)} — for 95% of vehicles.</p><a class="more" href="/automotive.html" aria-label="Learn more about automotive locksmith services in {esc(name)}">Learn more →</a></div>
+<div class="card"><div class="icon">🚗</div><h3>Automotive</h3><p>Lockouts, all keys lost, smart keys &amp; fobs programmed on site in {esc(name)} — for 95% of vehicles, European and vintage included.</p><a class="more" href="/automotive.html" aria-label="Learn more about automotive locksmith services in {esc(name)}">Learn more →</a></div>
 <div class="card"><div class="icon">🏠</div><h3>Residential</h3><p>Rekeys, lock installation, smart locks, and home lockout service across {esc(name)}.</p><a class="more" href="/residential.html" aria-label="Learn more about residential locksmith services in {esc(name)}">Learn more →</a></div>
 <div class="card"><div class="icon">🏢</div><h3>Commercial</h3><p>Master keys, access control, high-security locks, and fast rekeys for {esc(name)} businesses.</p><a class="more" href="/commercial.html" aria-label="Learn more about commercial locksmith services in {esc(name)}">Learn more →</a></div>
 <div class="card"><div class="icon">🚨</div><h3>Emergency 24/7</h3><p>Locked out in {esc(name)} at any hour? We answer around the clock, every day.</p><a class="more" href="/emergency-24-7.html" aria-label="Learn more about emergency 24/7 locksmith services in {esc(name)}">Learn more →</a></div>
