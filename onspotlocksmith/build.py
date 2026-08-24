@@ -8,6 +8,7 @@ Everything is deliberately dependency-free (stdlib only) so it can be
 rebuilt anywhere. Page copy lives in the data structures below; blog and
 legal page bodies live in ./data/.
 """
+import hashlib
 import json
 import os
 import re
@@ -22,21 +23,29 @@ BASE = "https://onspotlocksmith.com"
 BIZ = "OnSpot Locksmith 24/7"
 PHONE_DISPLAY = "(805) 550-3666"
 PHONE_TEL = "805-550-3666"
-PHONE_E164 = "+18055503666"
-EMAIL = "info@onspotlocksmith.com"
-STREET = "1000 Railroad Avenue"
+PHONE_E164 = "+1-805-550-3666"
+EMAIL = "ryan@onspotlocksmith.com"
+STREET = "1014 Railroad Avenue"
 CITY_LOC = "San Luis Obispo"
 STATE = "CA"
 ZIP = "93401"
 GEO = (35.2761, -120.6555)
 YELP = "https://www.yelp.com/biz/onspot-locksmith-24-7-san-luis-obispo"
-GOOGLE = "https://www.google.com/localservices/prolist?spp=Cg0vZy8xMXN0ZmwxOGh2&src=2&slp=UhUIARIREg8iDS9nLzExc3RmbDE4aHY#ts=3"
+GOOGLE = "https://maps.google.com/?cid=11799351915183618978"
+FACEBOOK = "https://www.facebook.com/LockMyth"
+BBB = "https://www.bbb.org/us/ca/atascadero/profile/locksmith/onspot-locksmith-247-inc-1236-92089493"
+SMS = "sms:+18055503666"
+LICENSE = "LCO7813"
+OWNER = "Ryan Nunley"
+SHOP_HOURS = "Mon–Fri 8:00–11:30 AM"
+REVIEW_SCORE = "5.0 out of 5"
+REVIEW_COUNT = 88
 WHATSAPP = "https://wa.me/18055503666"
 YEAR = date.today().year
 
 GA_SNIPPET = """<script async src="https://www.googletagmanager.com/gtag/js?id=G-SNPZ3P1GWT"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-SNPZ3P1GWT');gtag('config','AW-441351166');</script>
-<script>document.addEventListener("DOMContentLoaded",function(){function oslConv(){gtag("event","conversion",{send_to:"AW-441351166/h7PbCLbhzcUcEP73udIB"});}document.querySelectorAll('a[href^="tel:"]').forEach(function(a){a.addEventListener("click",oslConv);});document.querySelectorAll("form").forEach(function(f){if(f.querySelector('input[type="search"]')||f.getAttribute("role")==="search")return;f.addEventListener("submit",oslConv);});});</script>"""
+<script>document.addEventListener("DOMContentLoaded",function(){function oslConv(){gtag("event","conversion",{send_to:"AW-441351166/h7PbCLbhzcUcEP73udIB"});}document.querySelectorAll('a[href^="tel:"]').forEach(function(a){a.addEventListener("click",oslConv);});});</script>"""
 
 # ---------------------------------------------------------------- reviews --
 REVIEWS = [
@@ -111,11 +120,31 @@ CITIES = [
     dict(slug="paso-robles", name="Paso Robles", region="North County", eta="30–45 minutes",
          old=["service-areas-paso-robles.html"],
          nearby=["templeton", "san-miguel", "adelaida", "creston"],
+         local=[
+             "Paso Robles spreads a long way past downtown, and drive time changes with it. West of Highway 101 we cover the blocks around the Downtown City Park, the Victorian streets off Vine Street, and the hillside homes running out toward Adelaida Road. East of the Salinas River we're regularly on Creston Road, Union Road, and Golden Hill, out to the ranch and vineyard properties along Highway 46 East.",
+             "Event weekends are our busiest. The Mid-State Fair in July, harvest crush in the fall, and tasting weekends year-round put a lot of visitors in unfamiliar rental cars, and hotel parking lots are where keys get shut inside them. If you're locked out downtown or at a tasting room out on 46 West, we come to the car rather than have it towed.",
+         ],
+         faqs=[
+             ('Do you cover the wineries out on Highway 46?',
+              'Yes — both the 46 West corridor toward Adelaida and the 46 East vineyards are inside our normal Paso Robles route. Tasting rooms call us for visitor lockouts, and for rekeys and master key systems when seasonal staff change over.'),
+             ('Can you make keys for trucks, RVs, and farm equipment?',
+              "Usually. Alongside cars we handle pickup and RV keys, and we cut and rekey the gate, utility, and equipment locks common on Paso Robles ranch and vineyard properties. Give us the year, make, and model when you call and we'll confirm before we drive out."),
+         ],
          intro=["Paso Robles is wine country — and busy event weekends around the Downtown City Park, hotels, and tasting rooms mean lockouts happen at the least convenient times. OnSpot Locksmith 24/7 serves all of Paso Robles, from Spring Street businesses to ranch properties east of the Salinas River, with fully mobile service.",
                 "We cut and program car keys on site in Paso Robles — including smart keys and fobs for luxury and touring vehicles — so you don't have to tow your car to a dealership in another town. Homeowners and vacation-rental hosts also count on us for rekeys, smart locks, and emergency entries."]),
     dict(slug="atascadero", name="Atascadero", region="North County", eta="25–40 minutes",
          old=["premier-locksmith-services-in-atascadero-ca.html"],
          nearby=["templeton", "santa-margarita", "asuncion", "creston"],
+         local=[
+             'Atascadero runs long and narrow along Highway 101, and we cover the whole length of it: the Colony District and the Sunken Gardens at the center, the neighborhoods off Traffic Way and Santa Rosa Road, the homes tucked into the oak hills along Morro Road, and the newer streets out toward Del Rio Road.',
+             'A good share of our Atascadero work comes from the commute — cars locked at the park-and-ride and along El Camino Real, usually at the worst possible hour. Summer brings the other version, around Atascadero Lake Park and the zoo: keys shut in the car with the windows up and a family standing in the parking lot.',
+         ],
+         faqs=[
+             ('How long does it take you to reach Atascadero?',
+              'Typically 25–40 minutes from our San Luis Obispo base, over the Cuesta Grade. The Colony District and the El Camino Real corridor are our quickest stops; homes up in the west-side hills can add a few minutes.'),
+             ('Can you rekey a house right after closing escrow?',
+              'Yes, and it is one of the most common calls we get in Atascadero. We rekey every exterior lock to one new key on site, usually in a single visit, so every key handed around during the sale stops working.'),
+         ],
          intro=["From the Colony District to homes tucked into the oak-covered hills west of Highway 101, Atascadero residents rely on OnSpot Locksmith 24/7 for fast mobile service. We regularly help commuters locked out along El Camino Real and families needing locks rekeyed or upgraded.",
                 "Our van carries the equipment to cut and program keys for 95% of vehicles right in your driveway — plus everything needed for residential rekeys, smart lock installs, and emergency lockouts, day or night."]),
     dict(slug="templeton", name="Templeton", region="North County", eta="30–45 minutes",
@@ -173,6 +202,16 @@ CITIES = [
     dict(slug="morro-bay", name="Morro Bay", region="North Coast", eta="25–40 minutes",
          old=["trusted-locksmith-services-in-morro-bay-ca.html"],
          nearby=["los-osos", "cayucos", "cambria", "san-luis-obispo"],
+         local=[
+             'We cover Morro Bay from the Embarcadero and the harbor up through the neighborhoods off Main Street and Quintana Road, out to the Cloisters and North Point near the beach. Morro Bay State Park, the marina, and the campgrounds are on the regular route as well.',
+             'The waterfront generates its own kind of call. Commercial fishermen and boat owners lock keys in trucks parked at the harbor, visitors lose them in the sand near Morro Rock, and RV travelers get shut out of a rig at the state park campground. All of it is on-site work — we come to the boat ramp or the campsite.',
+         ],
+         faqs=[
+             ('Do you replace keys for boats and RVs?',
+              'We handle the locks people actually get shut out of: RV entry doors and storage compartments, tow-vehicle keys, and cabin and hatch locks on boats. Ignition and marine electronics are a job for a marine mechanic, and we will tell you so rather than take the call.'),
+             ('Can you fix a lock that has seized up from the salt air?',
+              'Usually. Coastal hardware in Morro Bay corrodes from the inside, and a lock that has started grinding can often be serviced instead of replaced. If the cylinder is too far gone we replace just the cylinder and match it to your existing key where the hardware allows.'),
+         ],
          intro=["From the Embarcadero to the working waterfront under Morro Rock, Morro Bay mixes tourism, fishing, and quiet neighborhoods — all of which lock themselves out occasionally. OnSpot Locksmith 24/7 provides mobile lockout response, key replacement, and lock service throughout Morro Bay.",
                 "Boat owners, RV travelers, and hotel guests call us for vehicle and cabin lockouts; homeowners call for rekeys, deadbolt upgrades, and smart locks. We come to you, 24/7."]),
     dict(slug="los-osos", name="Los Osos", region="North Coast", eta="20–35 minutes",
@@ -188,6 +227,16 @@ CITIES = [
     dict(slug="pismo-beach", name="Pismo Beach", region="South County / Coast", eta="20–35 minutes",
          old=["service-areas-pismo-beach.html"],
          nearby=["grover-beach", "arroyo-grande", "avila-beach", "oceano"],
+         local=[
+             'Pismo Beach is really three areas and we cover all of them: the downtown blocks around the pier, the hotels and restaurants strung along Price Street, and the clifftop neighborhoods of Shell Beach and Pismo Heights. Dinosaur Caves Park, the Pismo Preserve trailhead, and the Monarch Butterfly Grove are all on the route.',
+             'Most Pismo calls come from visitors. A key goes into the ocean, a rental car locks itself with the fob still inside, or someone comes back from the beach without the room key or the car key. Because we are mobile and roughly twenty minutes away over the grade, it usually gets solved in the parking lot instead of ending the weekend.',
+         ],
+         faqs=[
+             ('Can you replace a car key that went into the ocean?',
+              'Yes — it is close to a weekly call here. Salt water kills the electronics in a fob, so it needs a new key programmed to the car rather than a repair. We cut and program the replacement on site, and the lost key stops working once we do.'),
+             ('Do you cover Shell Beach and Pismo Heights?',
+              'Both, at the same hours and the same rates as downtown Pismo. The clifftop streets off Shell Beach Road and the neighborhoods above Price Street are only a few minutes further along the same route.'),
+         ],
          intro=["Between the pier, the hotels along Price Street, and classic-car weekends, Pismo Beach stays busy — and so do we. OnSpot Locksmith 24/7 provides 24/7 mobile lockout and key service throughout Pismo Beach, Shell Beach, and Pismo Heights.",
                 "Visitors get back into locked cars and hotel-parking mishaps fast; locals get rekeys, smart locks, and on-site car key replacement without a trip over the grade."]),
     dict(slug="grover-beach", name="Grover Beach", region="South County", eta="20–35 minutes",
@@ -203,8 +252,18 @@ CITIES = [
     dict(slug="arroyo-grande", name="Arroyo Grande", region="South County", eta="20–35 minutes",
          old=["arroyo-grande-ca-locksmith-services.html"],
          nearby=["grover-beach", "pismo-beach", "oceano", "nipomo"],
+         local=[
+             'Our Arroyo Grande route takes in the historic Village and Branch Street, the neighborhoods off Traffic Way and Halcyon Road, the Grand Avenue corridor, and the subdivisions up in Rancho Grande and Berry Gardens. The farmland and rural properties out along Lopez Drive toward Lopez Lake are inside our area too.',
+             'The Village keeps us busy with older door hardware — mortise locks and original strikes that an off-the-shelf replacement simply will not fit. We repair and rekey those where we can rather than talk anyone into a new door. The rest of town is more ordinary work: rekeys after a move, smart lock installs, and cars opened in the Grand Avenue parking lots.',
+         ],
+         faqs=[
+             ('Do you work on the older locks in the Village?',
+              'Yes. Many Branch Street buildings and Village-area homes still run original mortise hardware that modern replacements do not fit. We service and rekey what is already there where it can be made secure again, and only recommend replacing when it cannot.'),
+             ('Can you open a car in a Grand Avenue parking lot?',
+              'That is one of our most common Arroyo Grande calls. We open the car where it sits, without drilling the lock. If the keys are locked inside with the engine running or a child or pet in the car, say so when you call and we treat it as an emergency.'),
+         ],
          intro=["From the historic Village to the neighborhoods off Traffic Way, Arroyo Grande trusts OnSpot Locksmith 24/7 for fast mobile lock and key service. We're regularly in South County, so response times stay short.",
-                "We handle family homes (rekeys, smart locks, spare keys), Village businesses (master keys, high-security cylinders), and every flavor of car lockout and lost-key emergency — on site, at nearly half of what a dealership charges for keys."]),
+                "We handle family homes (rekeys, smart locks, spare keys), Village businesses (master keys, high-security cylinders), and every flavor of car lockout and lost-key emergency — on site, at well below dealership pricing for keys."]),
     dict(slug="nipomo", name="Nipomo", region="South County", eta="30–45 minutes",
          old=["service-areas-nipomo.html"],
          nearby=["arroyo-grande", "oceano", "callender", "grover-beach"],
@@ -244,6 +303,35 @@ EXTRA_REDIRECTS = {
 # ------------------------------------------------------------------ helpers --
 def esc(s):
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
+
+ASSETS = {}  # "css/style.css" -> "/assets/css/style.<hash>.css"
+
+
+def copy_assets():
+    """Copy static/assets into site/assets under content-hashed filenames.
+
+    A hashed name lets the server cache an asset forever and still pick up
+    the next edit instantly. The unhashed name is written too, so anything
+    still pointing at the old path keeps working.
+    """
+    src = os.path.join(ROOT, "static", "assets")
+    for dirpath, _dirs, files in os.walk(src):
+        for name in sorted(files):
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, src).replace(os.sep, "/")
+            digest = hashlib.sha256(open(full, "rb").read()).hexdigest()[:10]
+            stem, ext = os.path.splitext(rel)
+            hashed = f"{stem}.{digest}{ext}"
+            out_dir = os.path.join(OUT, "assets", os.path.dirname(rel))
+            os.makedirs(out_dir, exist_ok=True)
+            shutil.copy2(full, os.path.join(OUT, "assets", hashed))
+            shutil.copy2(full, os.path.join(OUT, "assets", rel))
+            ASSETS[rel] = f"/assets/{hashed}"
+
+
+def asset(rel):
+    return ASSETS.get(rel, f"/assets/{rel}")
 
 
 def city_url(slug):
@@ -304,12 +392,33 @@ def jsonld_business():
         "url": f"{BASE}/",
         "telephone": PHONE_E164,
         "email": EMAIL,
-        "image": f"{BASE}/assets/img/onspot-logo.png",
-        "logo": f"{BASE}/assets/img/onspot-logo.png",
+        "image": f"{BASE}{asset('img/onspot-logo.png')}",
+        "logo": f"{BASE}{asset('img/onspot-logo.png')}",
         "priceRange": "$$",
         "currenciesAccepted": "USD",
         "paymentAccepted": "Cash, Check, Visa, Mastercard, Discover, Venmo",
-        "founder": {"@type": "Person", "name": "Ryan Nunley"},
+        "founder": {
+            "@type": "Person",
+            "@id": f"{BASE}/#ryan",
+            "name": OWNER,
+            "jobTitle": "Owner and licensed locksmith",
+            "worksFor": {"@id": f"{BASE}/#business"},
+        },
+        "identifier": {
+            "@type": "PropertyValue",
+            "name": "California BSIS Locksmith Company License",
+            "value": LICENSE,
+        },
+        "hasCredential": {
+            "@type": "EducationalOccupationalCredential",
+            "credentialCategory": "license",
+            "name": f"California Locksmith Company License {LICENSE}",
+            "recognizedBy": {
+                "@type": "GovernmentOrganization",
+                "name": "California Bureau of Security and Investigative Services",
+                "url": "https://www.bsis.ca.gov/",
+            },
+        },
         "address": {
             "@type": "PostalAddress",
             "streetAddress": STREET,
@@ -327,32 +436,40 @@ def jsonld_business():
         },
         "areaServed": [{"@type": "AdministrativeArea", "name": "San Luis Obispo County, CA"}]
         + [{"@type": "City", "name": f"{c['name']}, CA"} for c in CITIES],
-        "sameAs": [YELP, GOOGLE],
+        "sameAs": [GOOGLE, YELP, FACEBOOK, BBB],
     }
 
 
-def jsonld_graph(extra_nodes):
-    graph = [
-        jsonld_business(),
+def jsonld_graph(nodes):
+    return json.dumps(
         {
-            "@type": "WebSite",
-            "@id": f"{BASE}/#website",
-            "url": f"{BASE}/",
-            "name": BIZ,
-            "publisher": {"@id": f"{BASE}/#business"},
+            "@context": "https://schema.org",
+            "@graph": [
+                jsonld_business(),
+                {
+                    "@type": "WebSite",
+                    "@id": f"{BASE}/#website",
+                    "url": f"{BASE}/",
+                    "name": BIZ,
+                    "publisher": {"@id": f"{BASE}/#business"},
+                },
+            ]
+            + nodes,
         },
-    ] + extra_nodes
-    return json.dumps({"@context": "https://schema.org", "@graph": graph}, ensure_ascii=False)
+        ensure_ascii=False,
+    )
 
 
 def breadcrumbs(items):
-    return {
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-            {"@type": "ListItem", "position": i + 1, "name": name, "item": f"{BASE}/{url}" if url else None}
-            for i, (name, url) in enumerate(items)
-        ],
-    }
+    """The final crumb is the page itself, so it carries no item URL."""
+    last = len(items) - 1
+    element = []
+    for i, (name, url) in enumerate(items):
+        crumb = {"@type": "ListItem", "position": i + 1, "name": name}
+        if i != last:
+            crumb["item"] = f"{BASE}/{url}"
+        element.append(crumb)
+    return {"@type": "BreadcrumbList", "itemListElement": element}
 
 
 def faq_node(faqs):
@@ -382,10 +499,15 @@ def header(active=""):
     links = "".join(
         f'<li><a href="/{u}"{cur if u == active else ""}>{t}</a></li>' for u, t in NAV
     )
-    return f"""<div class="topbar"><div class="wrap"><span>📍 {STREET}, {CITY_LOC}, {STATE} {ZIP}</span><span>Open 24/7 · <a href="tel:{PHONE_TEL}">{PHONE_DISPLAY}</a></span></div></div>
+    return f"""<div class="topbar"><div class="wrap"><span class="tb-addr">📍 {STREET}, {CITY_LOC}, {STATE} {ZIP}</span><span class="tb-hours"><span class="tb-shop"><b>Shop:</b> {SHOP_HOURS}</span><span class="tb-dot">·</span><b>Mobile service 24/7</b><span class="tb-tel"> · <a href="tel:{PHONE_TEL}">{PHONE_DISPLAY}</a></span></span></div></div>
+<a class="skip" href="#main">Skip to main content</a>
 <header class="site"><nav class="nav wrap" aria-label="Main">
-<a class="brand" href="/"><img src="/assets/img/onspot-logo.png" alt="OnSpot Locksmith 24/7 — mobile locksmith in San Luis Obispo County" height="46"></a>
-<input type="checkbox" id="menu-toggle" aria-hidden="true"><label class="hamburger" for="menu-toggle" aria-label="Menu"><span></span><span></span><span></span></label>
+<div class="brand-group">
+<a class="brand" href="/"><span class="brand-mark"><img src="{asset('img/onspot-logo.png')}" alt="{BIZ} Incorporated — mobile locksmith in San Luis Obispo County" height="46" width="143"><span class="brand-inc">Inc.</span></span></a>
+<span class="brand-divider" aria-hidden="true"></span>
+<span class="brand-alt"><img src="{asset('img/slo-car-key-banner.jpg')}" alt="SLO Car &amp; Key — also {BIZ}" height="40" width="123"></span>
+</div>
+<input type="checkbox" id="menu-toggle" aria-label="Menu"><label class="hamburger" for="menu-toggle" aria-hidden="true"><span></span><span></span><span></span></label>
 <ul class="menu">{links}</ul>
 <a class="btn btn-call" href="tel:{PHONE_TEL}">☎ {PHONE_DISPLAY}</a>
 </nav></header>"""
@@ -399,7 +521,7 @@ def footer():
 <div>
 <h3>{BIZ}</h3>
 <p>Locally owned, owner-operated mobile locksmith serving all of San Luis Obispo County — cars, homes, and businesses, 24 hours a day.</p>
-<p style="margin-top:12px">📍 {STREET}, {CITY_LOC}, {STATE} {ZIP}<br>☎ <a href="tel:{PHONE_TEL}">{PHONE_DISPLAY}</a><br>✉ <a href="mailto:{EMAIL}">{EMAIL}</a></p>
+<p style="margin-top:12px">📍 {STREET}, {CITY_LOC}, {STATE} {ZIP}<br>☎ <a href="tel:{PHONE_TEL}">{PHONE_DISPLAY}</a> · <a href="{SMS}">text us</a><br>✉ <a href="mailto:{EMAIL}">{EMAIL}</a></p>
 <p style="margin-top:12px"><a href="{YELP}" rel="noopener">Yelp</a> · <a href="{GOOGLE}" rel="noopener">Google</a> · <a href="{WHATSAPP}" rel="noopener">WhatsApp</a></p>
 </div>
 <div><h3>Services</h3><ul>
@@ -418,16 +540,65 @@ def footer():
 </ul></div>
 <div><h3>Popular Areas</h3><ul>{city_lis}</ul></div>
 </div>
-<div class="foot-bottom"><span>© {YEAR} {BIZ}. All rights reserved.</span><span>Visa · Mastercard · Discover · Venmo · Cash &amp; Check accepted</span></div>
+<div class="foot-bottom"><span>© {YEAR} {BIZ}. All rights reserved. · {OWNER} · California Locksmith Lic. <strong>{LICENSE}</strong></span><span>Visa · Mastercard · Discover · Venmo · Cash &amp; Check accepted</span></div>
 </div></footer>
 <a class="callbar" href="tel:{PHONE_TEL}">☎ Locked out? Call {PHONE_DISPLAY} — Open 24/7</a>"""
 
 
-def page(fname, title, desc, body, extra_nodes=None, active="", og_type="website", noindex=False):
+def page_nodes(canonical, title, desc, extra_nodes):
+    """Assemble the page's own schema nodes, all hung off its canonical URL.
+
+    Every page is a WebPage that is part of the site and about the business.
+    FAQs fold into it as mainEntity (which is what makes it an FAQPage) and
+    the breadcrumb, service, and article nodes get stable @ids so the graph
+    is one connected object rather than a pile of anonymous blobs.
+    """
+    webpage = {
+        "@type": "WebPage",
+        "@id": f"{canonical}#webpage",
+        "url": canonical,
+        "name": title,
+        "description": desc,
+        "inLanguage": "en-US",
+        "dateModified": date.today().isoformat(),
+        "isPartOf": {"@id": f"{BASE}/#website"},
+        "about": {"@id": f"{BASE}/#business"},
+    }
+    rest = []
+    for node in extra_nodes:
+        kind = node.get("@type")
+        if kind == "FAQPage":
+            webpage["@type"] = ["WebPage", "FAQPage"]
+            webpage["mainEntity"] = [
+                anchored_question(q, f"{canonical}#faq-{i}")
+                for i, q in enumerate(node["mainEntity"], 1)
+            ]
+            continue
+        node = dict(node)
+        if kind == "BreadcrumbList":
+            node["@id"] = f"{canonical}#breadcrumb"
+            webpage["breadcrumb"] = {"@id": node["@id"]}
+        elif kind == "Service":
+            node["url"] = canonical
+            node["@id"] = f"{canonical}#service"
+        rest.append(node)
+    return [webpage] + rest
+
+
+def anchored_question(question, url):
+    """A Question addressable on its own, so an answer can be cited directly."""
+    answer = dict(question["acceptedAnswer"], url=url)
+    return dict(question, acceptedAnswer=answer, **{"@id": url})
+
+
+def page(fname, title, desc, body, extra_nodes=None, active="", og_type="website", noindex=False,
+         after_body=""):
     canonical = f"{BASE}/" if fname == "index.html" else f"{BASE}/{fname}"
     robots = ("noindex, follow" if noindex else
               "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1")
-    ld = jsonld_graph(extra_nodes or [])
+    canonical_tag = "" if noindex else f'<link rel="canonical" href="{canonical}">\n'
+    nodes = page_nodes(canonical, title, desc, extra_nodes or [])
+    ld = jsonld_graph(nodes)
     html = f"""<!DOCTYPE html>
 <html lang="en-US">
 <head>
@@ -435,24 +606,23 @@ def page(fname, title, desc, body, extra_nodes=None, active="", og_type="website
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{esc(title)}</title>
 <meta name="description" content="{esc(desc)}">
-<link rel="canonical" href="{canonical}">
-<meta name="robots" content="{robots}">
+{canonical_tag}<meta name="robots" content="{robots}">
 <meta property="og:type" content="{og_type}">
 <meta property="og:url" content="{canonical}">
 <meta property="og:site_name" content="{BIZ}">
 <meta property="og:title" content="{esc(title)}">
 <meta property="og:description" content="{esc(desc)}">
-<meta property="og:image" content="{BASE}/assets/img/onspot-logo.png">
+<meta property="og:image" content="{BASE}{asset('img/onspot-logo.png')}">
 <meta name="twitter:card" content="summary">
-<link rel="icon" type="image/png" href="/assets/img/onspot-logo.png">
-<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="icon" type="image/png" href="{asset('img/onspot-logo.png')}">
+<link rel="stylesheet" href="{asset('css/style.css')}">
 <script type="application/ld+json">{ld}</script>
 {GA_SNIPPET}
 </head>
 <body>
 {header(active)}
-<main>
-{body}
+<main id="main">
+{body}{after_body}
 </main>
 {footer()}
 </body>
@@ -475,8 +645,10 @@ def svc_items(items):
 
 
 def faq_html(faqs):
+    """ids match the #faq-N anchors the FAQPage schema points at."""
     return '<div class="faq">' + "".join(
-        f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs
+        f'<details id="faq-{i}"><summary>{esc(q)}</summary><p>{esc(a)}</p></details>'
+        for i, (q, a) in enumerate(faqs, 1)
     ) + "</div>"
 
 
@@ -496,18 +668,33 @@ def areas_section(title="Locksmith Services Across San Luis Obispo County"):
 <h2>{esc(title)}</h2>
 <p class="lead">Fully mobile and locally based in San Luis Obispo — we cover every community in the county, 24 hours a day.</p>
 {city_links_grid()}
-<div class="map-card"><img src="/assets/img/slo-county-service-areas.png" alt="Map of OnSpot Locksmith service areas across San Luis Obispo County" loading="lazy" width="640" height="400" style="width:100%"></div>
+<div class="map-card"><img src="{asset('img/slo-county-service-areas.png')}" alt="Map of OnSpot Locksmith service areas across San Luis Obispo County" loading="lazy" width="640" height="400" style="width:100%"></div>
 </div></section>"""
 
 
 # ----------------------------------------------------------------- pages --
 def build_home():
     home_faqs = [
-        ("How fast can you get to me?", "We're based in San Luis Obispo and fully mobile. Most calls in and around SLO see us in 15–30 minutes; North County and coastal towns are typically 30–60 minutes, 24 hours a day."),
-        ("Can you make a car key if I lost all of mine?", "Yes. We cut and program keys — including smart keys, transponder keys, and fobs — for 95% of vehicles, on site. No tow to the dealership, and usually at close to half the dealer's price."),
-        ("Are you available on nights, weekends, and holidays?", "Yes — OnSpot Locksmith 24/7 means exactly that. Lockouts, lost keys, and emergency rekeys are answered around the clock, every day of the year."),
-        ("What areas do you serve?", "All of San Luis Obispo County: San Luis Obispo, Paso Robles, Atascadero, Arroyo Grande, Pismo Beach, Morro Bay, Los Osos, Nipomo, Cambria, and every community in between."),
-        ("What payment methods do you accept?", "Visa, Mastercard, Discover, Venmo, cash, and checks."),
+        ('How fast can you get to me?',
+         "We're based in San Luis Obispo and fully mobile. Most calls in and around SLO see us in 15–30 minutes; North County and coastal towns are typically 30–60 minutes, 24 hours a day."),
+        ('Can you make a car key if I lost all of mine?',
+         "Yes. We cut and program keys — including smart keys, transponder keys, and fobs — for 95% of vehicles, on site. No tow to the dealership, and usually well below the dealer's price."),
+        ('Are you available on nights, weekends, and holidays?',
+         'Yes — OnSpot Locksmith 24/7 means exactly that. Lockouts, lost keys, and emergency rekeys are answered around the clock, every day of the year.'),
+        ('What areas do you serve?',
+         'All of San Luis Obispo County: San Luis Obispo, Paso Robles, Atascadero, Arroyo Grande, Pismo Beach, Morro Bay, Los Osos, Nipomo, Cambria, and every community in between.'),
+        ('What payment methods do you accept?',
+         'Visa, Mastercard, Discover, Venmo, cash, and checks.'),
+        ('How does pricing work — will I know the cost before you start?',
+         'Yes. We quote the job over the phone before we head your way, and the price is confirmed before any work begins. If what we find on site changes the job, we tell you and re-quote before continuing rather than adding it to the bill afterwards.'),
+        ('What should I have ready when I call?',
+         "Where you are and what's locked. For a vehicle, the year, make, and model — and whether you still have any working key, since that changes whether it's a duplicate or an all-keys-lost job. For a home or business, whether you need to get in now or need locks rekeyed or replaced."),
+        ('Are you a licensed locksmith?',
+         'Yes. Ryan Nunley holds California locksmith license LCO7813, issued by the Bureau of Security and Investigative Services, and it\'s printed at the bottom of every page of this site. California law requires a locksmith to publish that number in their advertising — so if you\'re comparing quotes and someone can\'t give you theirs, that tells you something. We are also insured and bonded. You can check any California locksmith, including us, using the "Verify a License" tool on the Bureau\'s own site at bsis.ca.gov.'),
+        ('How do I avoid locksmith scams?',
+         "Ask for the California license number first — a legitimate locksmith publishes it and a scam operation won't have one. Then get a firm price before anyone is dispatched, and be wary of a quote that jumps once the technician arrives; that bait-and-switch is the whole business model. Expect a real local address and reviews you can check, and expect to be asked for ID and proof you're entitled to the property. A locksmith who doesn't ask is a locksmith you shouldn't want. We wrote up the warning signs in more detail on our blog."),
+        ('Will you need to see ID before letting me in?',
+         "Yes, and that's deliberate. We verify you're authorized before opening anything: photo ID plus proof of ownership or residency — a registration, insurance card, lease, or a bill with your name on it. It takes a minute, and it's the difference between a locksmith and someone who will open any door for anyone."),
     ]
     body = f"""
 <section class="hero"><div class="wrap">
@@ -515,15 +702,15 @@ def build_home():
 <h1>24/7 Mobile Locksmith in San Luis Obispo County</h1>
 <p class="sub">Locked out? Lost your car keys? We cut and program keys for 95% of vehicles — on site, day or night — plus full residential and commercial locksmith services across SLO County.</p>
 <div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="/contact-us.html">Get a Free Quote</a></div>
-<ul class="badges"><li>✔ Open 24/7</li><li>✔ Mobile — we come to you</li><li>✔ Locally owned &amp; operated</li><li>✔ 5-star rated</li><li>✔ Car keys at ~half dealer cost</li></ul>
+<ul class="badges"><li>✔ Licensed, insured &amp; bonded</li><li>✔ Open 24/7</li><li>✔ Mobile — we come to you</li><li>✔ Locally owned &amp; operated</li><li>✔ 5-star rated</li><li>✔ Car keys below dealer pricing</li></ul>
 </div></section>
 
 <section><div class="wrap">
 <p class="eyebrow">What we do</p>
 <h2>Complete Locksmith Services, Wherever You Are</h2>
 <div class="grid grid-4" style="margin-top:26px">
-<div class="card"><div class="icon">🚗</div><h3>Automotive</h3><p>Car lockouts, all-keys-lost replacement, smart keys, fobs, and transponders — cut and programmed at your location for 95% of vehicles.</p><a class="more" href="/automotive.html">Automotive locksmith →</a></div>
-<div class="card"><div class="icon">🏠</div><h3>Residential</h3><p>Rekeying, lock installation, smart locks, repairs, and home lockouts — done by the county's most experienced residential locksmiths.</p><a class="more" href="/residential.html">Residential locksmith →</a></div>
+<div class="card"><div class="icon">🚗</div><h3>Automotive</h3><p>Car lockouts, all-keys-lost replacement, smart keys, fobs, and transponders — cut and programmed at your location for 95% of vehicle makes and models.</p><a class="more" href="/automotive.html">Automotive locksmith →</a></div>
+<div class="card"><div class="icon">🏠</div><h3>Residential</h3><p>Rekeying, lock installation, smart locks, repairs, and home lockouts — handled on site by a licensed, insured and bonded local locksmith.</p><a class="more" href="/residential.html">Residential locksmith →</a></div>
 <div class="card"><div class="icon">🏢</div><h3>Commercial</h3><p>Master key systems, access control, high-security locks, and fast rekeys that keep your business and staff secure.</p><a class="more" href="/commercial.html">Commercial locksmith →</a></div>
 <div class="card"><div class="icon">🚨</div><h3>Emergency 24/7</h3><p>Locked out at 2 a.m.? We answer around the clock and typically arrive within 30 minutes to an hour anywhere in the county.</p><a class="more" href="/emergency-24-7.html">Emergency locksmith →</a></div>
 </div>
@@ -533,10 +720,11 @@ def build_home():
 <p class="eyebrow">Why OnSpot</p>
 <h2>Why San Luis Obispo County Chooses OnSpot Locksmith</h2>
 <ul class="why">
+<li>Licensed by the California Bureau of Security and Investigative Services (Lic. {LICENSE}), insured, and bonded</li>
 <li>Locally owned and owner-operated — you deal with the locksmith, not a call center</li>
 <li>Over 5 years of experience across automotive, residential, and commercial work</li>
 <li>Fully mobile workshop — keys cut and programmed on site</li>
-<li>Original car keys at nearly half the dealership price</li>
+<li>Original car keys at well below dealership pricing</li>
 <li>True 24/7 emergency availability, every day of the year</li>
 <li>Upfront, honest pricing — no bait-and-switch quotes</li>
 </ul>
@@ -547,7 +735,7 @@ def build_home():
 <p class="eyebrow">How it works</p>
 <h2>Help Is Three Steps Away</h2>
 <div class="grid grid-3" style="margin-top:26px">
-<div class="card step"><div class="num">1</div><h3>Call or text us</h3><p>Reach us 24/7 at {PHONE_DISPLAY}. Tell us where you are and what happened — we'll quote you upfront.</p></div>
+<div class="card step"><div class="num">1</div><h3>Call or text us</h3><p><a href="tel:{PHONE_TEL}">Call</a> or <a href="{SMS}">text</a> 24/7 at {PHONE_DISPLAY}. Tell us where you are and what happened — we'll quote you upfront.</p></div>
 <div class="card step"><div class="num">2</div><h3>We come to you</h3><p>Our mobile workshop heads your way immediately — typically 30 minutes to an hour anywhere in SLO County.</p></div>
 <div class="card step"><div class="num">3</div><h3>Problem solved on the spot</h3><p>Keys cut and programmed, locks opened or rekeyed, hardware installed — finished in one visit, on site.</p></div>
 </div>
@@ -556,8 +744,9 @@ def build_home():
 <section id="reviews" style="padding-top:0"><div class="wrap">
 <p class="eyebrow">Reviews</p>
 <h2>5-Star Reviews From Your Neighbors</h2>
+<p class="lead" style="margin-top:-4px">Rated <strong>{REVIEW_SCORE}</strong> from <strong>{REVIEW_COUNT} Google reviews</strong> — <a href="{GOOGLE}" rel="noopener">read them on Google</a>.</p>
 <div class="grid grid-3" style="margin-top:26px">{review_cards(REVIEWS[:6])}</div>
-<p style="margin-top:20px"><a class="btn btn-navy" href="{YELP}" rel="noopener">Read more reviews</a></p>
+<p style="margin-top:20px"><a class="btn btn-navy" href="{GOOGLE}" rel="noopener">Read all {REVIEW_COUNT} Google reviews</a> <a class="btn btn-ghost btn-navy" href="{YELP}" rel="noopener" style="color:var(--navy)!important;border-color:var(--line)">See us on Yelp</a></p>
 </div></section>
 
 {areas_section()}
@@ -630,14 +819,27 @@ def build_services():
         "Automotive Locksmith in San Luis Obispo County",
         f"Locked out, broken key, or all keys lost? We cut and program keys for 95% of vehicles — smart keys, transponders, and fobs — at your location, 24/7. Call <a href=\"tel:{PHONE_TEL}\" style=\"color:#fff;font-weight:700\">{PHONE_DISPLAY}</a> for same-day service.",
         "Skip the Dealership — We Come to You",
-        f"From all-keys-lost replacements to fob programming and rekeyed cylinders, we carry nearly every smart key, transponder key, and fob in stock (or by the next business day) and program original keys at your location for nearly half the dealership cost. We unlock vehicles swiftly — typically within 30 minutes to an hour — and resolve most automotive jobs the same day you call. We service {CAR_BRANDS}.",
+        f"From all-keys-lost replacements to fob programming and rekeyed cylinders, we carry nearly every smart key, transponder key, and fob in stock (or by the next business day) and program original keys at your location for well below dealership cost. We unlock vehicles swiftly — typically within 30 minutes to an hour — and resolve most automotive jobs the same day you call. We service {CAR_BRANDS}.",
         AUTO_SERVICES, "Automotive Locksmith",
         [
-            ("Can you replace my car key if I lost all of them?", "Yes — all-keys-lost replacement is one of our specialties. We cut and program a brand-new key on site for 95% of vehicles, so you don't need to tow your car to a dealer."),
-            ("How much cheaper than the dealership are you?", "In most cases we program original keys at close to half of what a dealership charges — and you skip the tow and the multi-day wait."),
-            ("Do you program smart keys and key fobs?", "Yes. We program smart keys, proximity keys, transponder keys, and remote fobs — including remotes with remote start — for nearly every make and model."),
-            ("Can you make motorcycle keys?", "Yes — we're one of the only locksmiths on the Central Coast that cuts motorcycle keys, including from a lost-key situation."),
-            ("How fast can you unlock my car?", "We typically arrive within 30 minutes to an hour anywhere in San Luis Obispo County, 24/7, and most lockouts are open within minutes of arrival."),
+            ('Can you replace my car key if I lost all of them?',
+             "Yes — all-keys-lost replacement is one of our specialties. We cut and program a brand-new key on site for 95% of vehicles, so you don't need to tow your car to a dealer."),
+            ('How much cheaper than the dealership are you?',
+             'In most cases we program original keys at well below dealership pricing — and you skip the tow and the multi-day wait.'),
+            ('Do you program smart keys and key fobs?',
+             'Yes. We program smart keys, proximity keys, transponder keys, and remote fobs — including remotes with remote start — for nearly every make and model.'),
+            ('Can you make motorcycle keys?',
+             "Yes — we're one of the only locksmiths on the Central Coast that cuts motorcycle keys, including from a lost-key situation."),
+            ('How fast can you unlock my car?',
+             'We typically arrive within 30 minutes to an hour anywhere in San Luis Obispo County, 24/7, and most lockouts are open within minutes of arrival.'),
+            ('My key snapped off in the ignition or the door — can you get it out?',
+             "Yes. Broken key extraction is routine: we remove the broken piece without damaging the lock or ignition, and cut you a replacement on the spot from the remaining half or from the vehicle's code."),
+            ('Will you damage my car getting into it?',
+             'No. We use non-destructive entry tools designed for the vehicle, not slim jims and wedges that bend frames and tear weather seals. In almost every lockout you drive away with the same door, lock, and glass you arrived with.'),
+            ('Do you need proof the car is mine?',
+             "Yes — photo ID plus something tying you to the vehicle, like the registration or insurance card. It's a minute of your time and it's what separates a licensed locksmith from someone who will open any car for anyone."),
+            ('Can you make a key with no key at all, just the VIN?',
+             "For most vehicles, yes. We generate the key from the vehicle's code and program it to the car on site, which is the whole point of all-keys-lost service — no tow, no dealership appointment."),
         ],
         "Auto Locksmith SLO County | Car Keys On Site | OnSpot Locksmith",
         "Mobile auto locksmith in San Luis Obispo County. Car lockouts, all keys lost, smart key & fob programming for 95% of vehicles — on site 24/7. (805) 550-3666.")
@@ -645,15 +847,27 @@ def build_services():
     service_page(
         "residential.html", "residential.html", "Residential Locksmith",
         "Residential Locksmith in San Luis Obispo County",
-        f"Home lockouts, rekeying, smart locks, and repairs — handled by the county's most experienced residential locksmiths, with friendly service and honest prices. Call <a href=\"tel:{PHONE_TEL}\" style=\"color:#fff;font-weight:700\">{PHONE_DISPLAY}</a>.",
+        f"Home lockouts, rekeying, smart locks, and repairs — handled by a licensed, insured and bonded local locksmith, with friendly service and honest prices. Call <a href=\"tel:{PHONE_TEL}\" style=\"color:#fff;font-weight:700\">{PHONE_DISPLAY}</a>.",
         "Your Home's Security, Handled Properly",
         "Home security is our top priority. Whether you need a professional rekey after moving in, a fresh installation of new hardware, smart locks fitted and aligned correctly, or help with systems other locksmiths refuse to work on — we do it on site, with precision and attention to detail, and back it with personalized recommendations that actually improve your home's security.",
         RES_SERVICES, "Residential Locksmith",
         [
-            ("Should I rekey or replace my locks after moving in?", "Rekeying is usually the smart, budget-friendly choice: you keep your existing hardware but previous keys stop working. We'll tell you honestly if any lock is worn enough to be worth replacing instead."),
-            ("Can you install smart locks?", "Yes — we install and configure electronic keypads and smart locks, and we make sure they align properly with your door and strike plate so they don't fail later."),
-            ("I'm locked out of my house. Can you open it without damage?", "In almost all cases, yes. We use non-destructive entry techniques first, so you get back in without needing a new door or lock."),
-            ("Do you work on rentals and Airbnbs?", "All the time. We rekey between tenants and guests, install keyless entry for self-check-in, and respond 24/7 when guests get locked out."),
+            ('Should I rekey or replace my locks after moving in?',
+             "Rekeying is usually the smart, budget-friendly choice: you keep your existing hardware but previous keys stop working. We'll tell you honestly if any lock is worn enough to be worth replacing instead."),
+            ('Can you install smart locks?',
+             "Yes — we install and configure electronic keypads and smart locks, and we make sure they align properly with your door and strike plate so they don't fail later."),
+            ("I'm locked out of my house. Can you open it without damage?",
+             'In almost all cases, yes. We use non-destructive entry techniques first, so you get back in without needing a new door or lock.'),
+            ('Do you work on rentals and Airbnbs?',
+             'All the time. We rekey between tenants and guests, install keyless entry for self-check-in, and respond 24/7 when guests get locked out.'),
+            ('My key broke off in the door lock. Can you get it out without replacing the lock?',
+             'Usually, yes. We extract the broken piece, check the cylinder still turns cleanly, and cut you a fresh key. Replacing the lock is a last resort, not the opening move.'),
+            ('Can you rekey several locks to one key?',
+             'Yes — keying alike is one of the most common things we do. Front door, back door, garage side door, and the gate can all take the same key, so you carry one instead of four.'),
+            ('Do you work on safes?',
+             "Yes, including opening a safe when the combination is lost and servicing one that won't open properly. Tell us the make and roughly how old it is when you call so we arrive with the right approach."),
+            ('Can you come out at night or on a weekend for a house lockout?',
+             'Yes — residential lockouts are answered around the clock, the same as vehicle calls. You are not waiting until Monday to get back into your own home.'),
         ],
         "Residential Locksmith SLO County | Rekey & Smart Locks | OnSpot",
         "Home locksmith in San Luis Obispo County: lockouts, rekeying, lock installation, smart locks, safes. Mobile, 24/7, locally owned. Call (805) 550-3666.")
@@ -666,10 +880,18 @@ def build_services():
         "We understand what's at stake in commercial security and offer tailored solutions that safeguard your assets, employees, and customers — from high-security lock installations and master key systems to advanced access control. When an employee leaves or a key goes missing, we rekey fast so yesterday's keys don't open today's doors.",
         COM_SERVICES, "Commercial Locksmith",
         [
-            ("Can you set up one key that opens everything for me, but limited keys for staff?", "Yes — that's a master key system. We design them around your floor plan and staffing so owners and managers carry one key while employees only access what they need."),
-            ("Do you service exit devices and panic bars?", "Yes, we install and repair commercial exit devices and panic hardware, including Von Duprin and other major commercial brands."),
-            ("An employee just left with a key. How fast can you rekey?", "Same day in nearly all cases — often within hours. We're available 24/7, so after-hours rekeys before the next business day are routine."),
-            ("Do you handle access control and CCTV?", "Yes — we install, maintain, and upgrade keypads, access control systems, CCTV, and alarms alongside traditional lock hardware."),
+            ('Can you set up one key that opens everything for me, but limited keys for staff?',
+             "Yes — that's a master key system. We design them around your floor plan and staffing so owners and managers carry one key while employees only access what they need."),
+            ('Do you service exit devices and panic bars?',
+             'Yes, we install and repair commercial exit devices and panic hardware, including Von Duprin and other major commercial brands.'),
+            ('An employee just left with a key. How fast can you rekey?',
+             "Same day in nearly all cases — often within hours. We're available 24/7, so after-hours rekeys before the next business day are routine."),
+            ('Do you handle access control and CCTV?',
+             'Yes — we install, maintain, and upgrade keypads, access control systems, CCTV, and alarms alongside traditional lock hardware.'),
+            ('Can you match new locks to the key system we already have?',
+             'Yes. If your building is already on a master or keyed-alike system, we add new doors to it rather than starting over, so your existing keys keep working and nobody carries a second set.'),
+            ("Can you work outside business hours so we don't lose a day of trading?",
+             "Yes, and it's usually the sensible way to do it. Rekeys, hardware swaps, and access control work can be scheduled overnight or at the weekend so the doors are ready before you open."),
         ],
         "Commercial Locksmith SLO County | Master Keys & Access Control",
         "Commercial locksmith in San Luis Obispo County: master key systems, access control, high-security locks, rekeys, panic hardware. 24/7. (805) 550-3666.")
@@ -682,10 +904,20 @@ def build_services():
         "Whether it's a car lockout on the side of Highway 101, a house lockout at midnight, or a business that can't open in the morning, we're just a phone call away — 24 hours a day, 7 days a week. We answer live, quote upfront, and our mobile workshop typically reaches you within 30 minutes to an hour anywhere in San Luis Obispo County.",
         EMERG_SERVICES, "Emergency Locksmith",
         [
-            ("What's your response time for emergencies?", "Typically 30 minutes to an hour anywhere in San Luis Obispo County — often faster in and around the city of San Luis Obispo, where we're based."),
-            ("Do you charge extra for nights, weekends, or holidays?", "We quote every job upfront before we head your way, so you know the price before we start — no surprises when we arrive."),
-            ("Will you damage my lock or car getting me in?", "No — we use non-destructive entry techniques first. In almost all lockouts you keep your existing lock and keys."),
-            ("What do I need to show you when you arrive?", "For your protection we verify you're authorized: a photo ID plus proof of ownership or residency (registration, insurance, a bill, or a lease). It takes a minute and it's how a legitimate locksmith should operate."),
+            ("What's your response time for emergencies?",
+             "Typically 30 minutes to an hour anywhere in San Luis Obispo County — often faster in and around the city of San Luis Obispo, where we're based."),
+            ('Do you charge extra for nights, weekends, or holidays?',
+             'We quote every job upfront before we head your way, so you know the price before we start — no surprises when we arrive.'),
+            ('Will you damage my lock or car getting me in?',
+             'No — we use non-destructive entry techniques first. In almost all lockouts you keep your existing lock and keys.'),
+            ('What do I need to show you when you arrive?',
+             "For your protection we verify you're authorized: a photo ID plus proof of ownership or residency (registration, insurance, a bill, or a lease). It takes a minute and it's how a legitimate locksmith should operate."),
+            ("There's a child or a pet locked in the car — what do I do?",
+             "Call us and say so first thing, and call 911 as well if anyone is in distress or it's hot. We prioritize those calls above everything else in the queue. Emergency services can and will open a vehicle immediately when a life is at risk, and no lock is worth waiting on."),
+            ("I'm locked out somewhere unsafe or in the dark. Can you come to me?",
+             "Yes — we come to the vehicle wherever it is, including roadsides, parking structures, trailheads, and beach lots, at any hour. If you don't feel safe waiting where you are, tell us on the phone and we'll agree a better spot to meet."),
+            ('My keys were stolen. Should I rekey or just get a spare?',
+             'Rekey, and quickly. A spare key means whoever has the originals can still get in. Rekeying takes minutes per lock, keeps your existing hardware, and makes every key that walked off useless — for a house, a business, or a car we can rekey the cylinders too.'),
         ],
         "24/7 Emergency Locksmith SLO County | Fast Lockout Help | OnSpot",
         "Emergency locksmith in San Luis Obispo County, open 24/7. Car, home & business lockouts, lost keys, urgent rekeys. Fast response. Call (805) 550-3666.")
@@ -695,7 +927,7 @@ def build_city_pages():
     for c in CITIES:
         name, slug, eta = c["name"], c["slug"], c["eta"]
         fname = city_url(slug)
-        faqs = [
+        faqs = c.get("faqs", []) + [
             (f"How fast can you get to {name}?",
              f"We're based in San Luis Obispo and fully mobile — typical arrival in {name} is {eta}, 24 hours a day, every day of the year."),
             (f"Can you make car keys on site in {name}?",
@@ -704,6 +936,17 @@ def build_city_pages():
              f"Absolutely — rekeying, lock installation and repair, smart locks, master key systems, and safes, all on site anywhere in {name} and the surrounding {c['region']} area."),
         ]
         intro_html = "".join(f"<p class=\"lead\" style=\"margin-bottom:14px;max-width:70ch\">{esc(p)}</p>" for p in c["intro"])
+        local_html = ""
+        if c.get("local"):
+            paras = "".join(
+                f"<p class=\"lead\" style=\"margin-bottom:14px;max-width:70ch\">{esc(p)}</p>" for p in c["local"]
+            )
+            local_html = f"""
+<section style="padding-top:0"><div class="wrap">
+<h2>Where We Work in {esc(name)}</h2>
+{paras}
+</div></section>
+"""
         nearby_links = " · ".join(
             f'<a href="/{city_url(n)}">{CITY_BY_SLUG[n]["name"]}</a>' for n in c["nearby"] if n in CITY_BY_SLUG
         )
@@ -714,7 +957,7 @@ def build_city_pages():
 <h1>Locksmith in {esc(name)}, CA</h1>
 <p class="sub">24/7 mobile locksmith serving {esc(name)} — car keys cut &amp; programmed on site, lockouts, rekeying, and full residential &amp; commercial service. Typical arrival: {esc(eta)}.</p>
 <div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="/contact-us.html">Get a Free Quote</a></div>
-<ul class="badges"><li>✔ Open 24/7</li><li>✔ Mobile — we come to you</li><li>✔ Locally owned</li></ul>
+<ul class="badges"><li>✔ Licensed, insured &amp; bonded</li><li>✔ Open 24/7</li><li>✔ Mobile — we come to you</li><li>✔ Locally owned</li></ul>
 </div></section>
 
 <section><div class="wrap">
@@ -722,14 +965,14 @@ def build_city_pages():
 <h2>Your Mobile Locksmith in {esc(name)}</h2>
 {intro_html}
 </div></section>
-
+{local_html}
 <section style="padding-top:0"><div class="wrap">
 <h2>Locksmith Services We Bring to {esc(name)}</h2>
 <div class="grid grid-4" style="margin-top:26px">
-<div class="card"><div class="icon">🚗</div><h3>Automotive</h3><p>Lockouts, all keys lost, smart keys &amp; fobs programmed on site in {esc(name)} — for 95% of vehicles.</p><a class="more" href="/automotive.html">Learn more →</a></div>
-<div class="card"><div class="icon">🏠</div><h3>Residential</h3><p>Rekeys, lock installation, smart locks, and home lockout service across {esc(name)}.</p><a class="more" href="/residential.html">Learn more →</a></div>
-<div class="card"><div class="icon">🏢</div><h3>Commercial</h3><p>Master keys, access control, high-security locks, and fast rekeys for {esc(name)} businesses.</p><a class="more" href="/commercial.html">Learn more →</a></div>
-<div class="card"><div class="icon">🚨</div><h3>Emergency 24/7</h3><p>Locked out in {esc(name)} at any hour? We answer around the clock, every day.</p><a class="more" href="/emergency-24-7.html">Learn more →</a></div>
+<div class="card"><div class="icon">🚗</div><h3>Automotive</h3><p>Lockouts, all keys lost, smart keys &amp; fobs programmed on site in {esc(name)} — for 95% of vehicles.</p><a class="more" href="/automotive.html" aria-label="Learn more about automotive locksmith services in {esc(name)}">Learn more →</a></div>
+<div class="card"><div class="icon">🏠</div><h3>Residential</h3><p>Rekeys, lock installation, smart locks, and home lockout service across {esc(name)}.</p><a class="more" href="/residential.html" aria-label="Learn more about residential locksmith services in {esc(name)}">Learn more →</a></div>
+<div class="card"><div class="icon">🏢</div><h3>Commercial</h3><p>Master keys, access control, high-security locks, and fast rekeys for {esc(name)} businesses.</p><a class="more" href="/commercial.html" aria-label="Learn more about commercial locksmith services in {esc(name)}">Learn more →</a></div>
+<div class="card"><div class="icon">🚨</div><h3>Emergency 24/7</h3><p>Locked out in {esc(name)} at any hour? We answer around the clock, every day.</p><a class="more" href="/emergency-24-7.html" aria-label="Learn more about emergency 24/7 locksmith services in {esc(name)}">Learn more →</a></div>
 </div>
 </div></section>
 
@@ -789,7 +1032,7 @@ def build_service_areas():
 <h2>Every Community, Covered</h2>
 <p class="lead">Pick your town for local details, typical response times, and the services we bring to your door.</p>
 <div class="grid grid-2" style="margin-top:26px">{region_html}</div>
-<div class="map-card"><img src="/assets/img/slo-county-service-areas.png" alt="Map of OnSpot Locksmith service areas across San Luis Obispo County" loading="lazy" width="640" height="400" style="width:100%"></div>
+<div class="map-card"><img src="{asset('img/slo-county-service-areas.png')}" alt="Map of OnSpot Locksmith service areas across San Luis Obispo County" loading="lazy" width="640" height="400" style="width:100%"></div>
 </div></section>
 
 {cta_band()}
@@ -849,6 +1092,7 @@ def build_contact():
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <span>Contact</span></nav>
 <h1>Contact OnSpot Locksmith 24/7</h1>
 <p class="sub">Fastest response: call or text <a href="tel:{PHONE_TEL}" style="color:#fff;font-weight:700">{PHONE_DISPLAY}</a> — we answer 24/7. Prefer email? Use the form below for a free quote.</p>
+<div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="{SMS}">💬 Text us</a></div>
 <div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="{WHATSAPP}" rel="noopener">WhatsApp Us</a></div>
 </div></section>
 
@@ -858,10 +1102,12 @@ def build_contact():
 <h2>Get Your Free Quote</h2>
 <form action="https://formsubmit.co/{EMAIL}" method="POST">
 <input type="hidden" name="_subject" value="Quote request from onspotlocksmith.com">
+<input type="hidden" name="_next" value="{BASE}/thank-you.html">
+<input type="hidden" name="_captcha" value="false">
 <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off">
 <div class="row">
-<div><label for="f-name">Name</label><input id="f-name" name="name" type="text" required autocomplete="name"></div>
-<div><label for="f-phone">Phone</label><input id="f-phone" name="phone" type="tel" required autocomplete="tel"></div>
+<div><label for="f-name">Name <span class="req">(required)</span></label><input id="f-name" name="name" type="text" required autocomplete="name"></div>
+<div><label for="f-phone">Phone <span class="req">(required)</span></label><input id="f-phone" name="phone" type="tel" required autocomplete="tel"></div>
 </div>
 <label for="f-email">Email</label><input id="f-email" name="email" type="email" autocomplete="email">
 <label for="f-loc">Your location (city)</label><input id="f-loc" name="city" type="text" placeholder="e.g. Paso Robles">
@@ -878,12 +1124,13 @@ def build_contact():
 </select>
 <label for="f-msg">Details</label><textarea id="f-msg" name="message" rows="4" placeholder="Year/make/model if it's a car job, and anything else we should know."></textarea>
 <button class="btn btn-call" type="submit" style="border:0;width:100%;cursor:pointer">Request Free Quote</button>
+<p style="font-size:.82rem;color:var(--muted);margin-top:10px">By submitting this form you agree that we may contact you about your request by phone, text, or email. Consent is not a condition of purchase; reply STOP to any text to opt out. See our <a href="/privacy-policy.html">Privacy Policy</a>.</p>
 </form>
 </div>
 <div>
 <div class="card" style="margin-bottom:20px">
 <h3>Reach Us Directly</h3>
-<p style="margin-top:10px">☎ <a href="tel:{PHONE_TEL}"><b>{PHONE_DISPLAY}</b></a> — call or text, 24/7<br>
+<p style="margin-top:10px">☎ <a href="tel:{PHONE_TEL}"><b>{PHONE_DISPLAY}</b></a> — <a href="tel:{PHONE_TEL}">call</a> or <a href="{SMS}">text</a>, 24/7<br>
 ✉ <a href="mailto:{EMAIL}">{EMAIL}</a><br>
 💬 <a href="{WHATSAPP}" rel="noopener">WhatsApp</a></p>
 <p style="margin-top:12px;color:var(--muted)">📍 {STREET}, {CITY_LOC}, {STATE} {ZIP}<br>Mobile service — we come to you anywhere in San Luis Obispo County.</p>
@@ -920,7 +1167,7 @@ def build_blog():
 
     cards = ""
     for slug, m in posts:
-        cards += f"""<div class="card post-card"><p class="post-meta">{esc(m['date'])}</p><h3><a href="/{slug}.html">{esc(m['title'])}</a></h3><p>{esc(m['description'])}</p><a class="more" href="/{slug}.html">Read more →</a></div>"""
+        cards += f"""<div class="card post-card"><p class="post-meta">{esc(m['date'])}</p><h2><a href="/{slug}.html">{esc(m['title'])}</a></h2><p>{esc(m['description'])}</p><a class="more" href="/{slug}.html" aria-label="Read more: {esc(m['title'])}">Read more →</a></div>"""
     body = f"""
 <section class="hero hero-city"><div class="wrap">
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <span>Blog</span></nav>
@@ -960,6 +1207,7 @@ def build_blog():
                 "headline": m["title"],
                 "description": m["description"],
                 "datePublished": iso,
+                "dateModified": iso,
                 "author": {"@type": "Organization", "name": BIZ},
                 "publisher": {"@id": f"{BASE}/#business"},
                 "mainEntityOfPage": f"{BASE}/{slug}.html",
@@ -997,8 +1245,8 @@ def build_404():
 <h1>Page Not Found</h1>
 <p class="sub">That page has moved or no longer exists. If you're locked out right now, don't hunt for it — call and we'll be on the way.</p>
 <div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="/">Go to the Homepage</a></div>
+<ul class="badges"><li>✔ Open 24/7</li><li>✔ Mobile — we come to you</li><li>✔ Upfront pricing</li></ul>
 </div></section>
-
 <section><div class="wrap">
 <h2>Our Services</h2>
 <ul class="city-links">
@@ -1009,15 +1257,48 @@ def build_404():
 <li><a href="/service-areas.html">Service Areas</a></li>
 <li><a href="/contact-us.html">Contact Us</a></li>
 </ul>
-<h2 style="margin-top:26px">Areas We Serve</h2>
+<h2>Areas We Serve</h2>
 {city_links_grid()}
 </div></section>
-{cta_band()}
 """
     page("404.html",
          "Page Not Found | OnSpot Locksmith 24/7",
-         "That page has moved or no longer exists. Call OnSpot Locksmith 24/7 at (805) 550-3666 — mobile locksmith service across San Luis Obispo County.",
+         "That page could not be found. Call OnSpot Locksmith 24/7 for mobile locksmith service anywhere in San Luis Obispo County.",
          body, noindex=True)
+
+
+def build_thank_you():
+    """Where the quote form lands. Also where the Ads conversion is counted."""
+    body = f"""
+<section class="hero hero-city"><div class="wrap">
+<h1>Thanks — we've got your request</h1>
+<p class="sub">Your quote request is in. We answer 24/7, so you'll hear back from a real person, not an autoresponder.</p>
+<div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="{SMS}">💬 Text us</a></div>
+<ul class="badges"><li>✔ Licensed, insured &amp; bonded</li><li>✔ Open 24/7</li><li>✔ Mobile — we come to you</li></ul>
+</div></section>
+
+<section><div class="wrap">
+<h2>If you're locked out right now, call instead</h2>
+<p class="lead">A form is fine for planning a rekey or getting a price. It is not the fastest way to reach us in an emergency — the phone is. Call or text and we'll start heading your way while we talk.</p>
+<h2 style="margin-top:34px">What happens next</h2>
+<ul class="why" style="margin-top:14px">
+<li>We read your request and call or text you back on the number you gave us</li>
+<li>We confirm the job and quote you upfront, before anyone is dispatched</li>
+<li>We come to you — the van carries the tools, so most jobs finish in one visit</li>
+</ul>
+<p style="margin-top:26px"><a class="btn btn-navy" href="/">Back to the homepage</a></p>
+</div></section>
+"""
+    conversion = """<!-- The Ads conversion for a completed request is counted here rather than
+     on form submit: submitting navigates away immediately, which can cancel
+     the beacon, and this page is reached exactly once per request. -->
+<script>gtag("event","conversion",{send_to:"AW-441351166/h7PbCLbhzcUcEP73udIB"});</script>
+"""
+    page("thank-you.html",
+         "Request Received | OnSpot Locksmith 24/7",
+         "Thanks - your locksmith quote request has been received. Need someone right now? "
+         f"Call {BIZ} on {PHONE_DISPLAY}.",
+         body, noindex=True, after_body=conversion)
 
 
 def build_meta_files():
@@ -1095,7 +1376,7 @@ def main():
     if os.path.isdir(OUT):
         shutil.rmtree(OUT)
     os.makedirs(OUT)
-    shutil.copytree(os.path.join(ROOT, "static", "assets"), os.path.join(OUT, "assets"))
+    copy_assets()
     build_home()
     build_services()
     build_city_pages()
@@ -1105,6 +1386,7 @@ def main():
     build_blog()
     build_legal()
     build_404()
+    build_thank_you()
     build_meta_files()
     n = len([f for f in os.listdir(OUT) if f.endswith(".html")])
     print(f"Built {n} pages into {OUT}")

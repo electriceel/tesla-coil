@@ -74,6 +74,26 @@ quote form (same formsubmit.co backend as before, plus a honeypot spam trap).
 - All 7 blog posts kept at their original URLs (they target good long-tail
   keywords) with cleaned-up markup.
 
+## Reconciled with the live site (August 2026)
+
+The live site had been edited outside this repo for a while, so `build.py` was
+brought back up to what is actually deployed. Folded in here:
+
+| Change | Where it lives now |
+|---|---|
+| Adelaide → **Adelaida**, with the old URL redirected | `CITIES` |
+| BSIS licence LCO7813, insured & bonded — footer, badges, schema | `LICENSE`, `jsonld_business()` |
+| Address 1014 Railroad Avenue, `ryan@` email, text/SMS links | constants at the top |
+| Google (map profile), Facebook and BBB profiles | `GOOGLE`, `FACEBOOK`, `BBB` |
+| "OnSpot Locksmith Inc." wordmark + SLO Car & Key banner, skip link | `header()` |
+| Content-hashed asset filenames (`style.<hash>.css`) | `copy_assets()` |
+| `WebPage` schema per page, addressable FAQ answers, connected `@id`s | `page_nodes()` |
+| Extra local sections and FAQs for five cities | `local=` / `faqs=` in `CITIES` |
+| Rewritten service-page FAQs and home-page review counts | `build_services()`, `build_home()` |
+| `/thank-you.html` (form landing page, where the Ads conversion fires) | `build_thank_you()` |
+| `/404.html` + `ErrorDocument` | `build_404()` |
+| The August 22 blog post, updated legal pages | `data/` |
+
 ## Never let a live URL start 404ing
 
 Every URL that has been live is a URL Google has indexed and other sites may
@@ -108,21 +128,39 @@ into the site) via `ErrorDocument 404`.
 
 1. Upload the **contents** of `site/` (including the hidden `.htaccess`) to
    the web root, replacing the old files.
-2. The old `/assets/vendor/...` WordPress files are no longer referenced and
-   can be deleted whenever convenient.
+2. Assets are written twice: `style.<hash>.css` (what the pages link to, safe
+   to cache forever) and the plain `style.css` name for anything still
+   pointing at it. The old `/assets/vendor/...` WordPress files are no longer
+   referenced and can be deleted whenever convenient.
 3. In [Google Search Console](https://search.google.com/search-console),
    submit `https://onspotlocksmith.com/sitemap.xml` and request re-indexing
    of the homepage.
 4. Spot-check a few old URLs (e.g. `/service-areas-nipomo.html`) to confirm
    they 301 to the new pages.
 
-> **Check before you overwrite.** The live site has been edited outside this
-> repo — as of August 2026 it serves content-hashed asset filenames
-> (`style.<hash>.css`) and a hero image that `build.py` here does not
-> generate. Diff the live pages against a fresh `site/` build before
-> uploading everything, or change only what you need to — a missing redirect
-> is fixed by adding its one `Redirect 301` line to the live `.htaccess`,
-> without replacing the rest of the file.
+### Verifying a build against the live site
+
+`site/` is generated from `build.py` and, as of August 24 2026, reproduces
+onspotlocksmith.com byte for byte apart from three deliberate differences:
+
+- `/locksmith-adelaide-ca.html` now 301s to the Adelaida page instead of 404ing;
+- imported blog copy links straight to current URLs instead of retired ones;
+- `dateModified` / `lastmod` carry the date of the build, not of the last deploy.
+
+To re-check that after editing, mirror the live pages and diff them:
+
+```
+mkdir -p /tmp/live && cd /tmp/live
+curl -s https://onspotlocksmith.com/sitemap.xml \
+  | grep -o '<loc>[^<]*' | sed 's/<loc>//' \
+  | while read u; do curl -s "$u" -o "$(basename "${u%/}" | sed 's/^onspotlocksmith.com$/index.html/')"; done
+for f in *.html; do diff <(sed 's/></>\n</g' "$f") \
+  <(sed 's/></>\n</g' /path/to/onspotlocksmith/site/"$f"); done
+```
+
+Anything else that shows up is drift: someone edited the live site directly,
+and that edit needs to come back into `build.py` (or `data/`) before the next
+deploy overwrites it.
 
 ## Beyond the website
 
