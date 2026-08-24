@@ -1092,8 +1092,7 @@ def build_contact():
 <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> › <span>Contact</span></nav>
 <h1>Contact OnSpot Locksmith 24/7</h1>
 <p class="sub">Fastest response: call or text <a href="tel:{PHONE_TEL}" style="color:#fff;font-weight:700">{PHONE_DISPLAY}</a> — we answer 24/7. Prefer email? Use the form below for a free quote.</p>
-<div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="{SMS}">💬 Text us</a></div>
-<div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="{WHATSAPP}" rel="noopener">WhatsApp Us</a></div>
+<div class="cta-row"><a class="btn btn-call" href="tel:{PHONE_TEL}">☎ Call {PHONE_DISPLAY}</a><a class="btn btn-ghost" href="{SMS}">💬 Text us</a><a class="btn btn-ghost" href="{WHATSAPP}" rel="noopener">WhatsApp Us</a></div>
 </div></section>
 
 <section><div class="wrap">

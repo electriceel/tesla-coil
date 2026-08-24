@@ -141,10 +141,12 @@ into the site) via `ErrorDocument 404`.
 ### Verifying a build against the live site
 
 `site/` is generated from `build.py` and, as of August 24 2026, reproduces
-onspotlocksmith.com byte for byte apart from three deliberate differences:
+onspotlocksmith.com byte for byte apart from four deliberate differences:
 
 - `/locksmith-adelaide-ca.html` now 301s to the Adelaida page instead of 404ing;
 - imported blog copy links straight to current URLs instead of retired ones;
+- the contact hero has one button row (call / text / WhatsApp) where the
+  deployed page repeats the call button in a second row;
 - `dateModified` / `lastmod` carry the date of the build, not of the last deploy.
 
 To re-check that after editing, mirror the live pages and diff them:
