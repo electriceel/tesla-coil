@@ -107,7 +107,7 @@ as literal `&amp;`, and stray non-ASCII characters.
 master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on five categories —
-automotive, powersports, fleet & equipment, residential, commercial — because 193
+automotive, powersports, fleet & equipment, residential, commercial — because 207
 blanks across 200-odd makes is not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -130,7 +130,7 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 193 keyways, all editable: automotive, powersports,
+for the blank directory — 207 keyways, all editable: automotive, powersports,
 fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
 residential and commercial.
 
