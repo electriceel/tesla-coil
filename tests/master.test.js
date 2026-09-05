@@ -175,5 +175,78 @@ const collide = {
 eq('audit catches a key that should not open a lock',
    M.auditSystem(collide.keys, collide.locks).violations.map(v => v.key), ['AB']);
 
+/* ============ extending a system that already exists ============ */
+
+/* read the layout back off keys in hand */
+const an = M.analyzeExisting([2,2,2,2,2], [[4,2,4,2,4],[6,2,6,2,6]], kw);
+eq('reads which chambers progress', an.progressing, [0,2,4]);
+eq('reads which chambers are held', an.held, [1,3]);
+eq('reads a two-step system', an.step, 2);
+
+const an1 = M.analyzeExisting([2,2,2,2,2], [[3,2,2,2,2]], kw);
+eq('reads a one-step system', an1.step, 1);
+eq('one-step gets called out', an1.notes.some(n => n.includes('one-step')), true);
+
+const anBad = M.analyzeExisting([2,2,2,2,2], [[4,2,4,2],[2,2,2,2,2],[4,4,4,4,4]], kw);
+eq('short key rejected', anBad.rejected.some(r => r.why.includes('5 cuts')), true);
+eq('the master itself rejected', anBad.rejected.some(r => r.why.includes('master itself')), true);
+eq('good keys still counted', anBad.good.length, 1);
+
+/* the cross-key predicate itself */
+eq('a key between master and change opens that lock',
+   M.opensPair([4,2,2,2,2], [2,2,2,2,2], [4,4,2,2,2]), true);
+eq('a key off the pair does not',
+   M.opensPair([6,2,2,2,2], [2,2,2,2,2], [4,4,2,2,2]), false);
+
+/* extending: new keys must not touch what is already in the field */
+const ext = M.extendSystem({
+  system: kw, master: '2-2-2-2-2',
+  existing: ['4-2-4-2-4', '6-2-6-2-6'], count: 6
+});
+eq('extend builds', ext.ok, true);
+eq('extend keeps the original layout', ext.positions, [0,2,4]);
+eq('extend only progresses those chambers',
+   ext.keys.every(k => k.bitting[1] === 2 && k.bitting[3] === 2), true);
+eq('extend never repeats an existing key',
+   ext.keys.every(k => !['4-2-4-2-4','6-2-6-2-6'].includes(k.bitting.join('-'))), true);
+eq('extend never repeats the master',
+   ext.keys.every(k => k.bitting.join() !== '2,2,2,2,2'), true);
+eq('extend keys are MACS legal',
+   ext.keys.every(k => M.macsOk(k.bitting, kw.macs)), true);
+
+/* the point of the whole thing: no cross-keying, either direction */
+const fieldKeys = [[4,2,4,2,4],[6,2,6,2,6]];
+eq('no new key opens a lock in the field',
+   ext.keys.every(k => !fieldKeys.some(e => M.opensPair(k.bitting, ext.master, e))), true);
+eq('no key in the field opens a new lock',
+   ext.keys.every(k => !fieldKeys.some(e => M.opensPair(e, ext.master, k.bitting))), true);
+eq('the new keys do not cross-key each other',
+   ext.keys.every((a, i) => ext.keys.every((b, j) =>
+     i === j || !M.opensPair(a.bitting, ext.master, b.bitting))), true);
+eq('the master still opens every new lock',
+   ext.keys.every(k => M.opensLock(ext.master, k.chart)), true);
+eq('each new key opens its own lock',
+   ext.keys.every(k => M.opensLock(k.bitting, k.chart)), true);
+
+/* with nothing to read, every chamber is fair game */
+const bare = M.extendSystem({ system: kw, master: '2-2-2-2-2', existing: [], count: 5 });
+eq('no existing keys means all chambers progress', bare.positions, [0,1,2,3,4]);
+eq('bare extend still produces legal keys',
+   bare.keys.length === 5 && bare.keys.every(k => M.macsOk(k.bitting, kw.macs)), true);
+
+/* a one-step system in the field is matched, not overridden */
+const oneStep = M.extendSystem({ system: sc, master: '3-3-3-3-3-3', existing: ['4-3-3-3-3-3'], count: 4 });
+eq('one-step extension uses step 1', oneStep.step, 1);
+eq('one-step extension only moves the chamber the field key moved',
+   oneStep.keys.every(k => k.bitting.slice(1).join() === '3,3,3,3,3'), true);
+
+/* a bad master is refused before anything is generated */
+eq('extend refuses a master it cannot cut',
+   M.extendSystem({ system: kw, master: '1-6-1-6-1', existing: [], count: 3 }).ok, false);
+
+/* running out of room is reported, not faked */
+const tight = M.extendSystem({ system: kw, master: '2-2-2-2-2', existing: [], count: 200 });
+eq('exhaustion is reported', tight.exhausted, true);
+
 console.log(fail ? `\n${fail} FAILED` : '\nall master-key math checks passed');
 process.exit(fail ? 1 : 0);

@@ -888,7 +888,8 @@ function editBlank(id) {
 const mkUI = {
   sysId: 'schlage', chambers: 6, min: 0, max: 9, macs: 7, step: 2,
   tmk: '', method: 'rc', count: 12,
-  mode: 'single',            // 'single' = one master, 'full' = GGM/GM/MK/CK
+  mode: 'single',            // 'single' | 'full' | 'extend'
+  existing: '',              // change keys already in the field, one per line
   levels: 3, alloc: null, counts: [3, 4], openSym: {},
   label: '', result: null, openKey: null, loadedId: null
 };
@@ -905,6 +906,114 @@ function mkPickSystem(id) {
   const s = MK_SYSTEMS[id];
   if (!s) return;
   Object.assign(mkUI, { sysId: id, chambers: s.chambers, min: s.min, max: s.max, macs: s.macs, step: s.step, result: null });
+}
+
+/* ---- extending a master already in the field ---- */
+
+/* One bitting per line; blank lines and stray separators are the user typing,
+   not an error worth stopping for. */
+function mkExistingLines() {
+  return String(mkUI.existing || '').split(/[\n;]+/).map(l => l.trim()).filter(Boolean);
+}
+
+function mkExtendFormHtml(sys) {
+  return `
+    <div class="field"><label>The master you already have</label>
+      <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
+        placeholder="${Array(sys.chambers).fill(Math.min(sys.min + 2, sys.max)).join('-')}"
+        value="${esc(mkUI.tmk)}"></div>
+
+    <div class="field"><label>Change keys already in the field <span class="tiny muted">one per line, optional</span></label>
+      <textarea name="existing" rows="5" class="mono" inputmode="numeric"
+        placeholder="4-2-4-2-4&#10;6-2-6-2-6">${esc(mkUI.existing)}</textarea></div>
+    <div class="tiny muted" style="margin:-4px 0 12px">Decode or read what is already out there and
+      list it here. The tool works out how the system was laid out, keeps the new keys inside it, and
+      refuses any that would open a door already in the field. Leave it empty and it treats every
+      chamber as free.</div>
+
+    <div class="field"><label>New change keys wanted</label>
+      <input name="count" type="number" inputmode="numeric" min="1" max="200" value="${mkUI.count}"></div>`;
+}
+
+function mkExtendResultHtml(r) {
+  if (!r.ok) {
+    return `<div class="notice err"><strong>Cannot read that master.</strong><ul style="margin:6px 0 0 18px">
+      ${r.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+  }
+  const a = r.analysis;
+
+  return `
+    <h2>What the existing keys say</h2>
+    <div class="card">
+      <dl class="spec">
+        <dt>Master</dt><dd class="mono" style="font-size:17px;font-weight:700">${esc(formatBitting(r.master))}</dd>
+        <dt>Chambers that progress</dt>
+        <dd>${r.positions.map(p => p + 1).join(', ')}${a.progressing.length ? '' : ' (all — nothing to read from)'}</dd>
+        ${a.held.length ? `<dt>Chambers held</dt><dd>${a.held.map(p => p + 1).join(', ')}</dd>` : ''}
+        <dt>Step</dt><dd>${r.step} increment${r.step === 1 ? '' : 's'}</dd>
+        <dt>Keys read</dt><dd>${a.good.length} in the field</dd>
+      </dl>
+    </div>
+    ${a.notes.map(n => `<div class="notice info tiny">${esc(n)}</div>`).join('')}
+
+    ${a.rejected.length ? `<div class="notice warn tiny">
+      <strong>${a.rejected.length} line${a.rejected.length === 1 ? '' : 's'} could not be used:</strong>
+      <ul style="margin:6px 0 0 18px">${a.rejected.map(x =>
+        `<li class="mono">${esc(formatBitting(x.bitting))} &mdash; ${esc(x.why)}</li>`).join('')}</ul></div>` : ''}
+
+    <h2>New change keys</h2>
+    ${r.keys.length ? '' : `<div class="notice err"><strong>No safe change key left.</strong>
+      Every combination this master allows either duplicates a key in the field or would cross-key
+      with one. The system is full — it needs a rekey, not another change.</div>`}
+
+    ${r.exhausted && r.keys.length ? `<div class="notice warn tiny">Only ${r.keys.length} safe
+      change key${r.keys.length === 1 ? '' : 's'} left in this master, fewer than you asked for.</div>` : ''}
+
+    ${r.conflicts.length ? `<div class="notice ok tiny"><strong>${r.conflicts.length}${r.conflicts.length >= 12 ? '+' : ''}
+      combination${r.conflicts.length === 1 ? ' was' : 's were'} rejected for cross-keying.</strong>
+      They are legal cuts that would have opened a door already in the field:
+      ${r.conflicts.slice(0, 4).map(c =>
+        `<span class="mono">${esc(formatBitting(c.bitting))}</span>`).join(', ')}${r.conflicts.length > 4 ? ' and more' : ''}.</div>` : ''}
+
+    ${r.keys.map(k => mkKeyHtml({ ...k, subtitle: `chambers ${r.positions.map(p => p + 1).join(', ')}` },
+                                { tmk: r.master, system: r.system })).join('')}
+
+    ${r.existingLocks.length ? `<h2>Already in the field</h2>
+      <div class="card muted tiny">These are the keys you gave, shown so the new ones can be checked
+      against them by eye as well as by the tool.</div>
+      ${r.existingLocks.map(l => `<div class="card">
+        <div class="mono" style="font-weight:700">${esc(formatBitting(l.bitting))}</div>
+        <div class="tiny muted" style="margin-top:4px">bottom ${l.chart.map(c => c.bottom).join(' ')}
+          &middot; master ${l.chart.map(c => c.masters.length ? c.masters.join('+') : '-').join(' ')}</div>
+      </div>`).join('')}` : ''}
+
+    <div class="stack" style="margin-top:16px">
+      <button class="btn" data-mksave="1">Save this system</button>
+      <button class="btn ghost" data-mkcopy="1">Copy the whole schedule</button>
+    </div>`;
+}
+
+function mkExtendText(r) {
+  const out = [];
+  out.push(`${mkUI.label || 'Added to an existing master'} — ${r.system.name}`);
+  out.push(`Master  ${formatBitting(r.master)}`);
+  out.push(`Progressing chambers: ${r.positions.map(p => p + 1).join(', ')}   step ${r.step}`);
+  if (r.analysis.good.length) {
+    out.push('');
+    out.push('ALREADY IN THE FIELD');
+    r.analysis.good.forEach(b => out.push(`   ${formatBitting(b)}`));
+  }
+  out.push('');
+  out.push('NEW CHANGE KEYS');
+  r.keys.forEach(k => {
+    out.push(`CK${String(k.n).padStart(2, '0')}  ${formatBitting(k.bitting)}`);
+    out.push(`   bottom  ${k.chart.map(c => c.bottom).join(' ')}`);
+    out.push(`   master  ${k.chart.map(c => c.masters.length ? c.masters.join('+') : '-').join(' ')}`);
+  });
+  out.push('');
+  out.push(`${r.conflicts.length} combination(s) rejected for cross-keying with the field.`);
+  out.push('Verify against your pinning kit before you load a plug.');
+  return out.join('\n');
 }
 
 /* ---- full multi-level system ---- */
@@ -1076,11 +1185,13 @@ function RENDER_master() {
         <div class="chips">
           <button type="button" class="chip${mkUI.mode === 'single' ? ' on' : ''}" data-mkmode="single">Single master</button>
           <button type="button" class="chip${mkUI.mode === 'full' ? ' on' : ''}" data-mkmode="full">Full system</button>
+          <button type="button" class="chip${mkUI.mode === 'extend' ? ' on' : ''}" data-mkmode="extend">Existing master</button>
         </div>
       </div>
-      <div class="tiny muted" style="margin:6px 0 12px">${mkUI.mode === 'single'
-        ? 'One master over a run of change keys, progressed by rotating constant or total position.'
-        : 'A hierarchy — grand master over masters over change keys — with each level owning its own chambers.'}</div>
+      <div class="tiny muted" style="margin:6px 0 12px">${
+        mkUI.mode === 'single' ? 'One master over a run of change keys, progressed by rotating constant or total position.'
+        : mkUI.mode === 'full' ? 'A hierarchy — grand master over masters over change keys — with each level owning its own chambers.'
+        : 'A master already in the field. Give it the keys you know about and it works out the layout, then adds changes that will not open a door already out there.'}</div>
 
       <div class="field"><label>Manufacturer</label>
         <select name="sysId">${Object.values(MK_SYSTEMS).map(s =>
@@ -1101,7 +1212,8 @@ function RENDER_master() {
           <input name="max" type="number" inputmode="numeric" min="0" max="9" value="${sys.max}"></div>
       </div>
 
-      ${mkUI.mode === 'full' ? mkFullFormHtml(sys) : `
+      ${mkUI.mode === 'full' ? mkFullFormHtml(sys)
+        : mkUI.mode === 'extend' ? mkExtendFormHtml(sys) : `
         <div class="field"><label>Top master key (TMK)</label>
           <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
             placeholder="${Array(sys.chambers).fill(sys.min + 2 <= sys.max ? sys.min + 2 : sys.min).join('-')}"
@@ -1122,11 +1234,15 @@ function RENDER_master() {
       <div class="field"><label>Job / label</label>
         <input name="label" autocomplete="off" placeholder="Marsh St duplex" value="${esc(mkUI.label)}"></div>
 
-      <button class="btn primary" type="submit">${mkUI.mode === 'full' ? 'Build the system' : 'Build the schedule'}</button>
+      <button class="btn primary" type="submit">${
+        mkUI.mode === 'full' ? 'Build the system'
+        : mkUI.mode === 'extend' ? 'Add to this master' : 'Build the schedule'}</button>
     </form>
 
     ${mkUI.result
-      ? (mkUI.mode === 'full' ? mkFullResultHtml(mkUI.result) : mkResultHtml(mkUI.result))
+      ? (mkUI.mode === 'full' ? mkFullResultHtml(mkUI.result)
+         : mkUI.mode === 'extend' ? mkExtendResultHtml(mkUI.result)
+         : mkResultHtml(mkUI.result))
       : `<div class="notice info tiny">
       Enter the master bitting you want the system built around. Everything below is
       computed from it &mdash; nothing is looked up, so nothing is guessed. The depth
@@ -1140,6 +1256,8 @@ function RENDER_master() {
           <div class="sub mono">${esc(s.tmk)} &middot; ${esc((MK_SYSTEMS[s.sysId] || {}).name || s.sysId)}
             &middot; ${s.mode === 'full'
               ? `${s.levels}-level system`
+              : s.mode === 'extend'
+              ? `existing master, +${s.count}`
               : `${s.count} change key${s.count === 1 ? '' : 's'}`}</div>
         </div>
         <div class="go">&rsaquo;</div>
@@ -1168,6 +1286,21 @@ function mkReadForm() {
   if (mkUI.mode === 'full') {
     mkUI.counts = mkAlloc().map((_, g) => i('count' + g, (mkUI.counts && mkUI.counts[g]) || 3));
   }
+  if (mkUI.mode === 'extend') mkUI.existing = v('existing');
+}
+
+/* One place that knows how each mode builds, so building and reloading a saved
+   system can never drift apart. */
+function mkBuildResult() {
+  const system = mkSystem();
+  if (mkUI.mode === 'full') {
+    return buildFullSystem({ system, tmk: mkUI.tmk, levels: mkUI.levels,
+                             alloc: mkAlloc(), counts: mkUI.counts });
+  }
+  if (mkUI.mode === 'extend') {
+    return extendSystem({ system, master: mkUI.tmk, existing: mkExistingLines(), count: mkUI.count });
+  }
+  return buildSystem({ system, tmk: mkUI.tmk, method: mkUI.method, count: mkUI.count });
 }
 
 function mkBuild() {
@@ -1177,10 +1310,7 @@ function mkBuild() {
     RENDER_master();
     return;
   }
-  mkUI.result = mkUI.mode === 'full'
-    ? buildFullSystem({ system: mkSystem(), tmk: mkUI.tmk, levels: mkUI.levels,
-                        alloc: mkAlloc(), counts: mkUI.counts })
-    : buildSystem({ system: mkSystem(), tmk: mkUI.tmk, method: mkUI.method, count: mkUI.count });
+  mkUI.result = mkBuildResult();
   mkUI.openKey = null;
   mkUI.openSym = {};
   /* Open the top key so the schedule is not a wall of closed rows. */
@@ -1226,14 +1356,21 @@ function mkResultHtml(r) {
     </div>`;
 }
 
+/* Change keys reach this card from two different builders. Only the
+   single-master one has a rotating constant, so anything else says what it
+   actually knows rather than reading `undefined + 1` out loud. */
+function mkKeySubtitle(k) {
+  if (k.subtitle) return k.subtitle;
+  return k.constant == null ? 'all chambers progress' : `chamber ${k.constant + 1} held`;
+}
+
 function mkKeyHtml(k, r) {
   const open = mkUI.openKey === k.n;
   const label = 'CK' + String(k.n).padStart(2, '0');
   return `<div class="card" style="padding:0;overflow:hidden">
     <button class="grp" data-mkopen="${k.n}">
       <span class="grp-name mono">${label} &nbsp; ${esc(formatBitting(k.bitting))}
-        <span class="grp-sub">${k.constant === null ? 'all chambers progress'
-          : `chamber ${k.constant + 1} held`} &middot; also passes ${k.incidental}</span></span>
+        <span class="grp-sub">${esc(mkKeySubtitle(k))} &middot; also passes ${k.incidental}</span></span>
       ${k.warnings.length ? '<span class="badge err">THIN</span>' : ''}
       <span class="grp-x">${open ? '&minus;' : '+'}</span>
     </button>
@@ -1262,9 +1399,12 @@ function mkSave() {
     id: mkUI.loadedId || uid(),
     label: mkUI.label, sysId: mkUI.sysId,
     chambers: mkUI.chambers, min: mkUI.min, max: mkUI.max, macs: mkUI.macs, step: mkUI.step,
-    tmk: mkUI.mode === 'full' ? formatBitting(mkUI.result.top) : formatBitting(mkUI.result.tmk),
+    tmk: mkUI.mode === 'full' ? formatBitting(mkUI.result.top)
+       : mkUI.mode === 'extend' ? formatBitting(mkUI.result.master)
+       : formatBitting(mkUI.result.tmk),
     method: mkUI.method, count: mkUI.count,
     mode: mkUI.mode, levels: mkUI.levels, alloc: mkAlloc(), counts: mkUI.counts,
+    existing: mkUI.existing,
     savedAt: new Date().toISOString()
   };
   Store.saveMkSystem(rec);
@@ -1281,14 +1421,12 @@ function mkLoad(id) {
     macs: rec.macs, step: rec.step || 2, tmk: rec.tmk, method: rec.method,
     count: rec.count, label: rec.label, loadedId: rec.id, openKey: null,
     mode: rec.mode || 'single', levels: rec.levels || 3,
-    alloc: rec.alloc || null, counts: rec.counts || [3, 4], openSym: {}
+    alloc: rec.alloc || null, counts: rec.counts || [3, 4], openSym: {},
+    existing: rec.existing || ''
   });
   /* Rebuild rather than store the schedule: a saved system is its inputs, so
      the keys can never drift from the math that produced them. */
-  mkUI.result = mkUI.mode === 'full'
-    ? buildFullSystem({ system: mkSystem(), tmk: mkUI.tmk, levels: mkUI.levels,
-                        alloc: mkAlloc(), counts: mkUI.counts })
-    : buildSystem({ system: mkSystem(), tmk: mkUI.tmk, method: mkUI.method, count: mkUI.count });
+  mkUI.result = mkBuildResult();
   if (mkUI.mode === 'full' && mkUI.result.ok) mkUI.openSym[mkUI.result.root.symbol] = true;
   RENDER_master();
   window.scrollTo(0, 0);
@@ -1296,7 +1434,9 @@ function mkLoad(id) {
 
 function mkCopy() {
   if (!mkUI.result || !mkUI.result.ok) return;
-  const text = mkUI.mode === 'full' ? mkFullText(mkUI.result) : mkScheduleText(mkUI.result);
+  const text = mkUI.mode === 'full' ? mkFullText(mkUI.result)
+    : mkUI.mode === 'extend' ? mkExtendText(mkUI.result)
+    : mkScheduleText(mkUI.result);
   const done = () => alert('Schedule copied.');
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text).then(done, () => mkCopyFallback(text));

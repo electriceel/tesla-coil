@@ -65,6 +65,16 @@ lists matching vehicles from your own database.
 master) or total position (progresses every chamber, for the most changes a master will
 carry).
 
+*Existing master* is the job that actually comes up: a building already has a master
+and keys in the field, and needs six more changes. Give it the master and whatever keys
+you have decoded, and it reads the layout back off them — which chambers progress, which
+are held, and what step the system was cut on, including one-step systems that would be
+wrong to pin as two. Then it generates new changes inside that layout and **refuses any
+that would cross-key** — a new key that sits between the master and a key already in the
+field will open that lock, and nobody finds out until a tenant does. Rejections are
+counted and shown. If nothing safe is left, it says the system is full and needs a rekey
+rather than handing you another change.
+
 *Full system* builds the hierarchy — up to great grand master over grand master over
 master over change key, with standard key symbols (GGM, A, AA, AA1). The method is
 position allocation: each level owns a set of chambers and progresses only those,

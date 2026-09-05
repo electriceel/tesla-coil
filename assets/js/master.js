@@ -362,10 +362,147 @@ function buildFullSystem(opts) {
   };
 }
 
+/* ==================== extending a system that already exists ====================
+   The common job is not a fresh system. It is a building that already has a
+   master and keys in the field, and needs six more changes that will not open
+   somebody else's door.
+
+   Two things have to happen. Read the existing keys to work out how the system
+   was laid out — which chambers progress, and in what step — then generate new
+   changes inside that layout, rejecting any that cross-key with what is already
+   out there. Cross-keying is the whole risk here: a new change key that happens
+   to sit "between" the master and an existing key will open that lock, and
+   nobody finds out until a tenant does. */
+
+const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+
+/* What the keys in hand say about the system they came from. */
+function analyzeExisting(master, existing, sys) {
+  const chambers = master.length;
+  const used = master.map(() => new Set());
+  const rejected = [];
+  const good = [];
+  const diffs = [];
+
+  existing.forEach(bitting => {
+    const errs = validateBitting(bitting, { ...sys, chambers });
+    if (errs.length) { rejected.push({ bitting, why: errs[0] }); return; }
+    if (bitting.join() === master.join()) { rejected.push({ bitting, why: 'This is the master itself.' }); return; }
+    good.push(bitting);
+    bitting.forEach((d, i) => {
+      if (d !== master[i]) { used[i].add(d); diffs.push(Math.abs(d - master[i])); }
+    });
+  });
+
+  const progressing = [];
+  const held = [];
+  used.forEach((set, i) => (set.size ? progressing : held).push(i));
+
+  /* The step the original system was cut on, read off the keys rather than
+     assumed — a one-step system is real, and pinning it as two-step would be
+     wrong. */
+  const step = diffs.length ? diffs.reduce((a, b) => gcd(a, b)) : sys.step;
+
+  const notes = [];
+  if (!good.length) {
+    notes.push('No usable existing keys given, so every chamber is treated as free to progress.');
+  } else {
+    notes.push(`Read from ${good.length} existing key${good.length === 1 ? '' : 's'}: `
+      + (progressing.length
+        ? `chambers ${progressing.map(p => p + 1).join(', ')} progress`
+        : 'no chamber progresses')
+      + (held.length ? `, chambers ${held.map(p => p + 1).join(', ')} are held` : '') + '.');
+    if (step < sys.step) {
+      notes.push(`Step reads as ${step}, not ${sys.step}. This system was cut one-step, so some master `
+        + `pins will be ${step} increment${step === 1 ? '' : 's'} tall — thin, and pickable. That is how it `
+        + 'was built; the new keys match it rather than fighting it.');
+    }
+  }
+
+  return { progressing, held, step, used, good, rejected, notes };
+}
+
+/* Does this bitting open a lock pinned for the master plus one change key? */
+function opensPair(bitting, master, change) {
+  return bitting.every((d, i) => d === master[i] || d === change[i]);
+}
+
+function extendSystem(opts) {
+  const sys = opts.system;
+  const master = parseBitting(opts.master);
+  const errors = validateBitting(master, sys);
+  if (errors.length) return { ok: false, errors, stage: 'master' };
+
+  const existing = (opts.existing || []).map(parseBitting).filter(b => b.length);
+  const analysis = analyzeExisting(master, existing, sys);
+  const step = Math.max(1, analysis.step);
+
+  /* Progress the chambers the original system progressed. With nothing to read,
+     every chamber is fair game. */
+  const positions = analysis.progressing.length
+    ? analysis.progressing
+    : master.map((_, i) => i);
+
+  const lists = master.map((d, i) => {
+    if (!positions.includes(i)) return [d];
+    const out = [];
+    for (let x = sys.min; x <= sys.max; x++) {
+      if (x !== d && (x - d) % step === 0) out.push(x);
+    }
+    return out.sort((a, b) => Math.abs(a - d) - Math.abs(b - d) || b - a);
+  });
+
+  const want = Math.max(1, Math.min(opts.count || 6, 200));
+  const seen = new Set(analysis.good.map(b => b.join()));
+  seen.add(master.join());
+
+  const keys = [];
+  const conflicts = [];
+  let scanned = 0;
+
+  for (const bitting of product(lists)) {
+    if (keys.length >= want || scanned > 20000) break;
+    scanned++;
+    if (seen.has(bitting.join())) continue;
+    if (!macsOk(bitting, sys.macs)) continue;
+
+    /* Would this new key open a door already in the field, or would a key
+       already in the field open this one? Either way it does not get cut. */
+    const clash = analysis.good.find(e =>
+      opensPair(bitting, master, e) || opensPair(e, master, bitting));
+    if (clash) {
+      if (conflicts.length < 12) conflicts.push({ bitting, against: clash });
+      continue;
+    }
+    /* And it must not cross-key with the new ones we just accepted. */
+    const clash2 = keys.find(k =>
+      opensPair(bitting, master, k.bitting) || opensPair(k.bitting, master, bitting));
+    if (clash2) {
+      if (conflicts.length < 12) conflicts.push({ bitting, against: clash2.bitting });
+      continue;
+    }
+
+    seen.add(bitting.join());
+    const chart = pinChart(master, bitting);
+    keys.push({
+      n: keys.length + 1, bitting, chart,
+      incidental: incidentalCount(chart),
+      warnings: chartWarnings(chart, { ...sys, step })
+    });
+  }
+
+  return {
+    ok: true, errors: [], master, system: sys, analysis, step, positions,
+    keys, conflicts, exhausted: keys.length < want,
+    existingLocks: analysis.good.map(b => ({ bitting: b, chart: pinChart(master, b) }))
+  };
+}
+
 if (typeof module !== 'undefined') module.exports = {
   MK_SYSTEMS, parseBitting, formatBitting, macsOk, macsViolations, validateBitting,
   candidateDepths, orderedCandidates, progression, capacity, pinChamber, pinChart, incidentalCount,
   chartWarnings, buildSystem,
   LEVEL_NAMES, topSymbol, childSymbol, defaultAllocation, validateAllocation,
-  levelVariants, levelCapacity, opensLock, auditSystem, buildFullSystem
+  levelVariants, levelCapacity, opensLock, auditSystem, buildFullSystem,
+  analyzeExisting, opensPair, extendSystem
 };
