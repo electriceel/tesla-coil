@@ -390,8 +390,16 @@ const blankUI = { q: '', group: 'make', open: {}, detail: null };
 /* Keyway strings carry qualifiers ("TOY44D / TOY44H by year", "NSN14 (emergency
    blade)"), so compare whole words rather than substrings — a substring test
    makes the B1 blank match every B1xx keyway. */
+/* Words that describe a key without identifying a keyway. Matching on these
+   would link, say, a Porsche "emergency blade in the fob" to a Land Rover one. */
+const KEY_STOPWORDS = new Set([
+  'EMERGENCY', 'BLADE', 'KEY', 'KEYS', 'FOB', 'NONE', 'NO', 'MECHANICAL',
+  'FAMILY', 'STYLE', 'PROFILE', 'SERIES', 'CUT', 'LASER', 'EDGE', 'TIBBE',
+  'BY', 'YEAR', 'TRIM', 'MODEL', 'BUILD', 'IN', 'THE', 'AND', 'OR', 'ON', 'FOR', 'WITH'
+]);
 const keyWords = (s) => String(s || '')
-  .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/)
+  .filter(w => w && !KEY_STOPWORDS.has(w));
 const bareTokens = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase())
   .filter(Boolean);
