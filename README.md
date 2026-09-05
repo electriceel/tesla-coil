@@ -101,13 +101,15 @@ master pin makes up the difference. The math has its own test suite separate fro
 The seed data has one too — `node tests/data.test.js` — checking the mistakes that are
 easy to make by hand and impossible to see by eye in a 300 KB file: duplicate ids, a
 record entered twice, backwards or implausible years, HTML entities that would render
-as literal `&amp;`, and stray non-ASCII characters.
+as literal `&amp;`, stray non-ASCII characters, and residential or commercial keyways
+that match a vehicle — which is always two descriptions sharing an ordinary English
+word, and always reads as data.
 
 **Tools** is a launcher, not a scroll — four tiles, each opening its own screen:
 master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on five categories —
-automotive, powersports, fleet & equipment, residential, commercial — because 207
+automotive, powersports, fleet & equipment, residential, commercial — because 225
 blanks across 200-odd makes is not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -130,7 +132,7 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 207 keyways, all editable: automotive, powersports,
+for the blank directory — 225 keyways, all editable: automotive, powersports,
 fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
 residential and commercial.
 

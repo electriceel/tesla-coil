@@ -50,5 +50,31 @@ const badCat = B.filter(b => !CATS.includes(b.cat));
 check('every blank sits in a known category', !badCat.length,
   badCat.map(b => b.id + ':' + b.cat).join(', '));
 
+/* ---- cross-category linking ----
+   The blank detail page lists "vehicles in your database that take this blank"
+   by matching keyway words. A residential or commercial keyway must never match
+   a car: those matches are always a generic English word two descriptions
+   happen to share, and they read as data. This is the check that caught a
+   warehouse roll-up door claiming an Isuzu box truck. */
+const STOP = require('./stopwords.js');
+const words = (s) => String(s || '').replace(/\(.*?\)/g, ' ').toUpperCase()
+  .split(/[^A-Z0-9]+/).filter(w => w && !STOP.has(w));
+const bare = (s) => String(s || '').split(/[\/,]/)
+  .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).filter(Boolean);
+
+const crossLinks = [];
+B.filter(b => b.cat === 'Residential' || b.cat === 'Commercial').forEach(b => {
+  const keys = new Set(words(b.keyway));
+  const cats = new Set([b.ilco, b.ilcoChip].flatMap(bare));
+  V.forEach(v => {
+    const vb = v.blanks || {};
+    const hit = words(vb.keyway).some(w => keys.has(w))
+      || (cats.size && bare(vb.ilco).some(c => cats.has(c)));
+    if (hit) crossLinks.push(`${b.id} -> ${v.make} ${v.model}`);
+  });
+});
+check('no residential or commercial blank matches a vehicle', !crossLinks.length,
+  crossLinks.slice(0, 6).join('\n     '));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
