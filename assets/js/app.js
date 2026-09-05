@@ -450,7 +450,9 @@ function showVinMatches(make, model, year) {
 }
 
 /* ======================= blank cross-reference directory ======================= */
-const blankUI = { q: '', group: 'make', open: {}, detail: null };
+/* 139 blanks across 130-odd makes is unreadable as a make list on arrival, so
+   the directory opens on the five categories and drills down from there. */
+const blankUI = { q: '', group: 'cat', open: {}, detail: null };
 
 /* Keyway strings carry qualifiers ("TOY44D / TOY44H by year", "NSN14 (emergency
    blade)"), so compare whole words rather than substrings — a substring test
@@ -488,20 +490,27 @@ function matchBlanks() {
   const q = blankUI.q.trim().toLowerCase();
   if (!q) return Store.blanks();
   return Store.blanks().filter(b =>
-    [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.notes]
+    [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.cat, b.notes]
       .concat(b.makes || []).join(' ').toLowerCase().includes(q));
 }
+
+/* Categories sort in the order you meet them on a working day, not A-Z. */
+const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Residential', 'Commercial'];
+const catRank = (c) => { const i = BLANK_CATS.indexOf(c); return i < 0 ? BLANK_CATS.length : i; };
 
 function groupBlanks(list) {
   const g = new Map();
   const push = (k, b) => { if (!g.has(k)) g.set(k, []); g.get(k).push(b); };
   list.forEach(b => {
     if (blankUI.group === 'make') (b.makes || ['Other']).forEach(m => push(m, b));
+    else if (blankUI.group === 'cat') push(b.cat || 'Automotive', b);
     else if (blankUI.group === 'cut') push(b.cut || 'Other', b);
     else push((b.keyway || '?')[0].toUpperCase(), b);
   });
-  return new Map(Array.from(g.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
+  const order = blankUI.group === 'cat'
+    ? (a, b) => catRank(a[0]) - catRank(b[0]) || a[0].localeCompare(b[0])
+    : (a, b) => a[0].localeCompare(b[0]);
+  return new Map(Array.from(g.entries()).sort(order)
     .map(([k, v]) => [k, v.sort((x, y) => x.keyway.localeCompare(y.keyway))]));
 }
 
@@ -509,7 +518,7 @@ function RENDER_blanks() {
   if (blankUI.detail) return renderBlankDetail(blankUI.detail);
 
   $('#blankQ').value = blankUI.q;
-  $('#blankGroupChips').innerHTML = [['make', 'By make'], ['cut', 'By cut'], ['az', 'A-Z']]
+  $('#blankGroupChips').innerHTML = [['cat', 'By category'], ['make', 'By make'], ['cut', 'By cut'], ['az', 'A-Z']]
     .map(([k, label]) => `<button class="chip${blankUI.group === k ? ' on' : ''}" data-bgroup="${k}">${label}</button>`).join('');
 
   const hits = matchBlanks();
@@ -548,6 +557,7 @@ function renderBlankDetail(id) {
     <div class="card">
       <div style="font-size:22px;font-weight:700" class="mono">${esc(b.keyway)}</div>
       <div class="chips" style="margin-top:8px">
+        <span class="badge">${esc(b.cat || 'Automotive')}</span>
         <span class="badge info">${esc(b.cut)}</span>
         ${b.spaces ? `<span class="badge dim">${esc(b.spaces)} spaces</span>` : ''}
         ${b.depths ? `<span class="badge dim">${esc(b.depths)} depths</span>` : ''}
@@ -602,9 +612,14 @@ function editBlank(id) {
         ${F('strattec', 'Strattec', b.strattec)}
       </div>
       <div class="card">
-        <div class="field"><label>Cut type</label>
-          <select name="cut">${['Edge', 'Laser', 'Tibbe', 'Other'].map(c =>
-            `<option${b.cut === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div class="row">
+          <div class="field"><label>Category</label>
+            <select name="cat">${BLANK_CATS.map(c =>
+              `<option${(b.cat || 'Automotive') === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+          <div class="field"><label>Cut type</label>
+            <select name="cut">${['Edge', 'Laser', 'Tibbe', 'Other'].map(c =>
+              `<option${b.cut === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+        </div>
         <div class="row">${F('spaces', 'Spaces', b.spaces)}${F('depths', 'Depths', b.depths)}</div>
         ${F('makes', 'Makes (comma separated)', (b.makes || []).join(', '), 'Toyota, Lexus')}
         <div class="field"><label>Notes</label><textarea name="notes">${esc(b.notes || '')}</textarea></div>
@@ -621,7 +636,7 @@ function editBlank(id) {
     const rec = {
       id: id || f.keyway.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       keyway: f.keyway.trim(), ilco: f.ilco, ilcoChip: f.ilcoChip, silca: f.silca,
-      jma: f.jma, strattec: f.strattec, cut: f.cut,
+      jma: f.jma, strattec: f.strattec, cut: f.cut, cat: f.cat || 'Automotive',
       spaces: parseInt(f.spaces, 10) || '', depths: parseInt(f.depths, 10) || '',
       makes: f.makes.split(',').map(s => s.trim()).filter(Boolean),
       notes: f.notes

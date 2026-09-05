@@ -39,8 +39,10 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
-**Blanks** — a browsable key blank directory. Group by make, by cut type (edge /
-laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
+**Blanks** — a browsable key blank directory. It opens on five categories —
+automotive, powersports, fleet & equipment, residential, commercial — because 139
+blanks across 130-odd makes is not a list you read on arrival. From there, regroup
+by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
 the full cross-reference, cut spec (spaces, depths), every make it serves, notes,
 and the vehicles in your own database that take it, each one a link straight to its
@@ -61,8 +63,16 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 116 keyways across autos, powersports, RV and trailer,
-heavy truck, forklift, golf cart, marine and equipment, all editable.
+for the blank directory — 139 keyways, all editable: automotive, powersports,
+fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
+residential and commercial.
+
+The residential and commercial records are deliberately a separate category rather
+than more rows in the car list — it is different work, and the restricted systems
+in it (Everest, Primus, Medeco, Mul-T-Lock, Abloy, ASSA) are marked as restricted
+because that is the job, not a footnote: the blank comes from an authorized dealer
+against the end user on file, and the honest answer on site is to say so rather
+than promise a key. The USPS arrow lock record says do not service it at all.
 
 The seed ships 415 vehicle records across 69 makes and 307 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
