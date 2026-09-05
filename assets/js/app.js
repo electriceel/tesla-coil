@@ -701,7 +701,16 @@ const KEY_STOPWORDS = new Set([
   'FAMILY', 'STYLE', 'PROFILE', 'SERIES', 'CUT', 'LASER', 'EDGE', 'TIBBE',
   'BY', 'YEAR', 'TRIM', 'MODEL', 'BUILD', 'IN', 'THE', 'AND', 'OR', 'ON', 'FOR', 'WITH',
   'IGNITION', 'ENTRY', 'DOOR', 'LOCK', 'LOCKS', 'SET', 'MASTER', 'COMMON', 'UNIVERSAL',
-  'ACCESSORY', 'SECONDARY', 'VINTAGE', 'MOTORCYCLE', 'MARINE', 'TRAILER', 'TRUCK', 'RV'
+  'ACCESSORY', 'SECONDARY', 'VINTAGE', 'MOTORCYCLE', 'MARINE', 'TRAILER', 'TRUCK', 'RV',
+  /* Descriptive category names carry ordinary English. Without these, a
+     warehouse roll-up door matched an Isuzu box truck on the word
+     "commercial". */
+  'COMMERCIAL', 'RESIDENTIAL', 'OVERHEAD', 'ROLL', 'UP', 'CABINET', 'CABINETS', 'RACK',
+  'PANEL', 'STORAGE', 'CONTROL', 'HANDLING', 'ROUTE', 'MUNICIPAL', 'UTILITY', 'ENCLOSURE',
+  'DISPENSER', 'FORECOURT', 'HARDWARE', 'KEYING', 'HOTEL', 'SAFE', 'DRAWER', 'REGISTER',
+  'LAUNDRY', 'PEDESTAL', 'SERVER', 'EQUIPMENT', 'OFFICE', 'WINDOW', 'GATE', 'PRIVACY',
+  'OVERRIDE', 'SLIDING', 'SCREEN', 'STORM', 'POOL', 'GRADE', 'BUILDER', 'SMART', 'HIGH',
+  'SECURITY', 'ASSORTED', 'BLADES', 'DEPOSIT', 'DUAL', 'FIRE', 'DEPARTMENT', 'LOCKER'
 ]);
 const keyWords = (s) => String(s || '')
   .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/)
