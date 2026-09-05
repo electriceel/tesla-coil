@@ -12,14 +12,13 @@ runs with no signal, which is the point when you are under a truck in a canyon.
 ## Layout
 
 ```
-autopro/
-  index.html              app shell, all views
-  manifest.json  sw.js    PWA install + offline cache
-  assets/css/app.css      one stylesheet, dark + light
-  assets/js/data.js       SEED vehicle records, blank cross-ref, VIN WMI table
-  assets/js/vin.js        VIN check digit, year, WMI; NHTSA vPIC enrichment
-  assets/js/store.js      localStorage: your edits, jobs, BCM table, prefs
-  assets/js/app.js        routing, rendering, forms
+index.html              app shell, all views
+manifest.json  sw.js    PWA install + offline cache
+assets/css/app.css      one stylesheet, dark + light
+assets/js/data.js       SEED vehicle records, blank cross-ref, VIN WMI table
+assets/js/vin.js        VIN check digit, year, WMI; NHTSA vPIC enrichment
+assets/js/store.js      localStorage: your edits, jobs, BCM table, prefs
+assets/js/app.js        routing, rendering, forms
 ```
 
 ## What each tab does
@@ -35,7 +34,14 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
-**Blanks** — cross-reference across keyway, Ilco, Silca, JMA and Strattec.
+**Blanks** — a browsable key blank directory. Group by make, by cut type (edge /
+laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
+chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
+the full cross-reference, cut spec (spaces, depths), every make it serves, notes,
+and the vehicles in your own database that take it, each one a link straight to its
+record. Tapping a make jumps to the vehicle lookup filtered to it. Add and edit
+blanks the same way you do vehicles; your version overrides the seed and rides along
+in the backup file.
 
 **Tools** — Nissan BCM→PIN lookup (see below), hex/decimal converter, quote builder.
 
@@ -49,7 +55,9 @@ own database before you cut or program. Edit any record (Vehicle → Edit) and s
 marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
-import platforms to get you going; your database becomes the real one.
+import platforms to get you going; your database becomes the real one. The same goes
+for the blank directory — 47 keyways across autos, powersports and equipment, all
+editable.
 
 ## Nissan BCM → PIN
 
@@ -74,12 +82,12 @@ and shop prefs; Import merges or replaces. Do this before you switch phones.
 
 ## Deploying
 
-It is static — copy `autopro/` anywhere that serves files over HTTPS (service workers
+It is static — copy the repo anywhere that serves files over HTTPS (service workers
 need a secure origin; `localhost` counts). Bump `CACHE` in `sw.js` on every deploy or
 installed clients keep serving the old bundle.
 
 Local check:
 
 ```
-python3 -m http.server 8080     # then open http://localhost:8080/autopro/
+python3 -m http.server 8080     # then open http://localhost:8080/
 ```

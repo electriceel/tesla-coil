@@ -58,8 +58,11 @@ function RENDER_lookup() {
   const thisYear = new Date().getFullYear() + 1;
   for (let y = thisYear; y >= 1990; y--) years.push(y);
 
+  /* Include the active make even when no vehicle record uses it yet — otherwise
+     arriving from a blank's make chip shows an empty list with no visible filter. */
+  const makes = Array.from(new Set(allMakes().concat(filter.make ? [filter.make] : []))).sort();
   $('#makeChips').innerHTML = ['<button class="chip' + (filter.make ? '' : ' on') + '" data-make="">All makes</button>']
-    .concat(allMakes().map(m => `<button class="chip${filter.make === m ? ' on' : ''}" data-make="${esc(m)}">${esc(m)}</button>`))
+    .concat(makes.map(m => `<button class="chip${filter.make === m ? ' on' : ''}" data-make="${esc(m)}">${esc(m)}</button>`))
     .join('');
 
   const sel = $('#yearSel');
@@ -336,22 +339,175 @@ function showVinMatches(make, model, year) {
     : `<h2>Matches in your database</h2><div class="card muted tiny">Nothing on file for this one yet.</div>`;
 }
 
-/* ======================= blank cross-reference ======================= */
+/* ======================= blank cross-reference directory ======================= */
+const blankUI = { q: '', group: 'make', open: {}, detail: null };
+
+/* "HD106/HO05" -> ["HD106","HO05"]; strips punctuation for loose matching. */
+const bareTokens = (s) => String(s || '').split(/[\/,]/)
+  .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase())
+  .filter(Boolean);
+
+/* Vehicles in the user's database that take this blank. */
+function vehiclesForBlank(b) {
+  const keys = bareTokens(b.keyway);
+  const cats = [b.ilco, b.ilcoChip].flatMap(bareTokens);
+  return Store.vehicles().filter(v => {
+    const vb = v.blanks || {};
+    const vKey = bareTokens(vb.keyway).concat(String(vb.keyway || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase());
+    const vCat = bareTokens(vb.ilco);
+    if (keys.some(k => vKey.some(x => x === k || x.includes(k)))) return true;
+    if (cats.length && vCat.some(c => cats.includes(c))) return true;
+    return false;
+  });
+}
+
+function matchBlanks() {
+  const q = blankUI.q.trim().toLowerCase();
+  if (!q) return Store.blanks();
+  return Store.blanks().filter(b =>
+    [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.notes]
+      .concat(b.makes || []).join(' ').toLowerCase().includes(q));
+}
+
+function groupBlanks(list) {
+  const g = new Map();
+  const push = (k, b) => { if (!g.has(k)) g.set(k, []); g.get(k).push(b); };
+  list.forEach(b => {
+    if (blankUI.group === 'make') (b.makes || ['Other']).forEach(m => push(m, b));
+    else if (blankUI.group === 'cut') push(b.cut || 'Other', b);
+    else push((b.keyway || '?')[0].toUpperCase(), b);
+  });
+  return new Map(Array.from(g.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([k, v]) => [k, v.sort((x, y) => x.keyway.localeCompare(y.keyway))]));
+}
+
 function RENDER_blanks() {
-  const q = ($('#blankQ').value || '').trim().toLowerCase();
-  const rows = SEED_BLANKS.filter(r =>
-    !q || [r.keyway, r.ilco, r.silca, r.jma, r.strattec, r.makes].join(' ').toLowerCase().includes(q));
-  $('#blankTable').innerHTML = rows.length ? `
-    <div class="scroll-x"><table>
-      <thead><tr><th>Keyway</th><th>Ilco</th><th>Silca</th><th>JMA</th><th>Strattec</th><th>Cut</th><th>Used on</th></tr></thead>
-      <tbody>${rows.map(r => `<tr>
-        <td class="mono"><strong>${esc(r.keyway)}</strong></td>
-        <td class="mono">${esc(r.ilco)}</td><td class="mono">${esc(r.silca)}</td>
-        <td class="mono">${esc(r.jma)}</td><td class="mono">${esc(r.strattec)}</td>
-        <td>${esc(r.cut)}</td><td class="muted">${esc(r.makes)}</td></tr>`).join('')}
-      </tbody></table></div>`
-    : '<div class="empty">No blank matches that.</div>';
-};
+  if (blankUI.detail) return renderBlankDetail(blankUI.detail);
+
+  $('#blankQ').value = blankUI.q;
+  $('#blankGroupChips').innerHTML = [['make', 'By make'], ['cut', 'By cut'], ['az', 'A-Z']]
+    .map(([k, label]) => `<button class="chip${blankUI.group === k ? ' on' : ''}" data-bgroup="${k}">${label}</button>`).join('');
+
+  const hits = matchBlanks();
+  const groups = groupBlanks(hits);
+  $('#blankCount').textContent = `${hits.length} blank${hits.length === 1 ? '' : 's'} in ${groups.size} group${groups.size === 1 ? '' : 's'}`;
+
+  /* A search narrow enough to be readable opens everything; browsing starts collapsed. */
+  const autoOpen = blankUI.q.trim().length > 0 && hits.length <= 12;
+
+  $('#blankDir').innerHTML = groups.size ? Array.from(groups.entries()).map(([name, items]) => {
+    const open = autoOpen || blankUI.open[name];
+    return `<div class="card" style="padding:0;overflow:hidden">
+      <button class="grp" data-bopen="${esc(name)}">
+        <span class="grp-name">${esc(name)}</span>
+        <span class="grp-n">${items.length}</span>
+        <span class="grp-x">${open ? '&minus;' : '+'}</span>
+      </button>
+      ${open ? `<div class="grp-body">${items.map(b => `
+        <button class="brow" data-bid="${esc(b.id)}">
+          <span class="brow-key mono">${esc(b.keyway)}</span>
+          <span class="brow-sub mono">${[b.ilco, b.silca, b.jma].filter(x => x && x !== '\u2014').map(esc).join(' &middot; ')}</span>
+          <span class="brow-cut">${esc(b.cut)}</span>
+        </button>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('') : '<div class="empty">Nothing matches that.</div>';
+}
+
+function renderBlankDetail(id) {
+  const b = Store.blanks().find(x => x.id === id);
+  if (!b) { blankUI.detail = null; return RENDER_blanks(); }
+  const vehicles = vehiclesForBlank(b);
+  const dash = (v) => (!v || v === '—') ? '&mdash;' : esc(v);
+
+  $('#blankDir').innerHTML = `
+    <button class="btn btn-sm ghost" data-bback="1" style="margin-bottom:10px">&lsaquo; Back to directory</button>
+    <div class="card">
+      <div style="font-size:22px;font-weight:700" class="mono">${esc(b.keyway)}</div>
+      <div class="chips" style="margin-top:8px">
+        <span class="badge info">${esc(b.cut)}</span>
+        ${b.spaces ? `<span class="badge dim">${esc(b.spaces)} spaces</span>` : ''}
+        ${b.depths ? `<span class="badge dim">${esc(b.depths)} depths</span>` : ''}
+        ${b.custom ? '<span class="badge ok">Your record</span>' : ''}
+      </div>
+    </div>
+
+    <h2>Catalog numbers</h2>
+    <div class="card"><dl class="spec">
+      <dt>Ilco</dt><dd class="mono">${dash(b.ilco)}</dd>
+      <dt>Ilco chip</dt><dd class="mono">${dash(b.ilcoChip)}</dd>
+      <dt>Silca</dt><dd class="mono">${dash(b.silca)}</dd>
+      <dt>JMA</dt><dd class="mono">${dash(b.jma)}</dd>
+      <dt>Strattec</dt><dd class="mono">${dash(b.strattec)}</dd>
+    </dl></div>
+
+    <h2>Used on</h2>
+    <div class="card"><div class="chips">${(b.makes || []).map(m =>
+      `<button class="chip" data-bmake="${esc(m)}">${esc(m)}</button>`).join('') || '<span class="muted tiny">Not recorded.</span>'}</div></div>
+
+    ${b.notes ? `<h2>Notes</h2><div class="card">${esc(b.notes)}</div>` : ''}
+
+    <h2>Vehicles in your database</h2>
+    ${vehicles.length ? vehicles.map(v => `
+      <div class="card tap vres" data-vid="${esc(v.id)}">
+        <div style="flex:1;min-width:0">
+          <div class="yr">${v.yearStart}&ndash;${v.yearEnd}</div>
+          <div class="nm">${esc(v.make)} ${esc(v.model)}</div>
+          <div class="sub">${esc(nz(v.transponder && v.transponder.chip))}</div>
+        </div><div class="go">&rsaquo;</div>
+      </div>`).join('')
+      : '<div class="card muted tiny">No vehicle records point at this blank yet.</div>'}
+
+    <div class="stack" style="margin-top:16px">
+      <button class="btn" data-bedit="${esc(b.id)}">Edit this blank</button>
+      ${b.custom && !SEED_BLANKS.some(s => s.id === b.id)
+        ? `<button class="btn danger" data-bdel="${esc(b.id)}">Delete this blank</button>` : ''}
+    </div>`;
+}
+
+function editBlank(id) {
+  const b = id ? (Store.blanks().find(x => x.id === id) || {}) : {};
+  const F = (n, label, val, ph = '') =>
+    `<div class="field"><label>${label}</label><input name="${n}" value="${esc(val == null ? '' : val)}" placeholder="${esc(ph)}"></div>`;
+  $('#blankDir').innerHTML = `
+    <form id="blankForm">
+      <h2>${id ? 'Edit blank' : 'New blank'}</h2>
+      <div class="card">
+        ${F('keyway', 'Keyway', b.keyway, 'TOY48')}
+        <div class="row">${F('ilco', 'Ilco', b.ilco)}${F('ilcoChip', 'Ilco chip version', b.ilcoChip)}</div>
+        <div class="row">${F('silca', 'Silca', b.silca)}${F('jma', 'JMA', b.jma)}</div>
+        ${F('strattec', 'Strattec', b.strattec)}
+      </div>
+      <div class="card">
+        <div class="field"><label>Cut type</label>
+          <select name="cut">${['Edge', 'Laser', 'Tibbe', 'Other'].map(c =>
+            `<option${b.cut === c ? ' selected' : ''}>${c}</option>`).join('')}</select></div>
+        <div class="row">${F('spaces', 'Spaces', b.spaces)}${F('depths', 'Depths', b.depths)}</div>
+        ${F('makes', 'Makes (comma separated)', (b.makes || []).join(', '), 'Toyota, Lexus')}
+        <div class="field"><label>Notes</label><textarea name="notes">${esc(b.notes || '')}</textarea></div>
+      </div>
+      <div class="stack">
+        <button type="submit" class="btn primary">Save blank</button>
+        <button type="button" class="btn ghost" data-bcancel="${esc(id || '')}">Cancel</button>
+      </div>
+    </form>`;
+  $('#blankForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = Object.fromEntries(new FormData(e.target).entries());
+    if (!f.keyway.trim()) { alert('Keyway is required.'); return; }
+    const rec = {
+      id: id || f.keyway.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      keyway: f.keyway.trim(), ilco: f.ilco, ilcoChip: f.ilcoChip, silca: f.silca,
+      jma: f.jma, strattec: f.strattec, cut: f.cut,
+      spaces: parseInt(f.spaces, 10) || '', depths: parseInt(f.depths, 10) || '',
+      makes: f.makes.split(',').map(s => s.trim()).filter(Boolean),
+      notes: f.notes
+    };
+    Store.saveBlank(rec);
+    blankUI.detail = rec.id;
+    RENDER_blanks();
+  });
+}
 
 /* ======================= tools ======================= */
 function RENDER_tools() {
@@ -496,7 +652,7 @@ function RENDER_settings() {
   const ov = Object.keys(Store.overrides()).length;
   $('#setStats').innerHTML = `<dl class="spec">
     <dt>Seed data</dt><dd>${SEED_VEHICLES.length} vehicles &middot; ${SEED_BLANKS.length} blanks &middot; v${esc(SEED_VERSION)}</dd>
-    <dt>Your edits</dt><dd>${ov} vehicle record(s)</dd>
+    <dt>Your edits</dt><dd>${ov} vehicle record(s) &middot; ${Object.keys(Store.blankOverrides()).length} blank record(s)</dd>
     <dt>Jobs</dt><dd>${Store.jobs().length}</dd>
     <dt>BCM rows</dt><dd>${Store.bcmRows().length}</dd>
   </dl>`;
@@ -532,7 +688,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob]');
+  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -549,6 +705,26 @@ document.addEventListener('click', (e) => {
     if (confirm('Delete this record for good?')) { Store.deleteVehicle(t.dataset.delveh); go('lookup'); }
     return;
   }
+  /* --- blank directory --- */
+  if (t.dataset.bgroup)  { blankUI.group = t.dataset.bgroup; blankUI.open = {}; RENDER_blanks(); return; }
+  if (t.dataset.bopen)   { const k = t.dataset.bopen; blankUI.open[k] = !blankUI.open[k]; RENDER_blanks(); return; }
+  if (t.dataset.bid)     { blankUI.detail = t.dataset.bid; RENDER_blanks(); return; }
+  if (t.hasAttribute('data-bback')) { blankUI.detail = null; RENDER_blanks(); return; }
+  if (t.dataset.bnew)    { blankUI.detail = null; editBlank(null); return; }
+  if (t.dataset.bedit)   { editBlank(t.dataset.bedit); return; }
+  if (t.hasAttribute('data-bcancel')) {
+    const back = t.dataset.bcancel;
+    blankUI.detail = back || null;
+    RENDER_blanks();
+    return;
+  }
+  if (t.dataset.bdel) {
+    if (confirm('Delete this blank record?')) { Store.deleteBlank(t.dataset.bdel); blankUI.detail = null; RENDER_blanks(); }
+    return;
+  }
+  /* A make chip on a blank detail jumps to the vehicle lookup filtered to it. */
+  if (t.dataset.bmake)   { filter.make = t.dataset.bmake; filter.q = ''; filter.year = ''; go('lookup'); return; }
+
   if (t.dataset.jobfrom)   { go('jobs'); editJob(null, t.dataset.jobfrom); return; }
   if (t.dataset.newjob)    { editJob(null); return; }
   if (t.dataset.editjob)   { editJob(t.dataset.editjob); return; }
@@ -584,7 +760,12 @@ function boot() {
   });
 
   /* blanks */
-  $('#blankQ').addEventListener('input', RENDER_blanks);
+  $('#blankQ').addEventListener('input', (e) => {
+    blankUI.q = e.target.value;
+    blankUI.detail = null;
+    RENDER_blanks();
+  });
+  $('#addBlankBtn').addEventListener('click', () => { blankUI.detail = null; editBlank(null); });
 
   /* tools */
   $('#bcmForm').addEventListener('submit', (e) => { e.preventDefault(); bcmLookup(); });
@@ -626,7 +807,7 @@ function boot() {
   $('#wipeBtn').addEventListener('click', () => {
     if (!confirm('Erase every edit, job and BCM row on this device? Export a backup first.')) return;
     if (!confirm('Last chance. This cannot be undone.')) return;
-    ['vehicles', 'jobs', 'bcm', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
+    ['vehicles', 'blanks', 'jobs', 'bcm', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
     RENDER_settings();
   });
 
