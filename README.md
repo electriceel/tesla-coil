@@ -56,12 +56,19 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 49 keyways across autos, powersports and equipment, all
+for the blank directory — 51 keyways across autos, powersports and equipment, all
 editable.
 
-The seed ships 135 vehicle platforms, with Toyota / Lexus / Scion carried in depth
-(66 records, every nameplate split at its chip-generation boundaries, no year gaps).
-Other makes are covered at the platform level rather than generation by generation.
+The seed ships 260 vehicle records across 38 makes and 157 nameplates, every make
+carried at generation depth — split where the transponder or keyway changes, which
+is what decides the job, rather than where the styling changed. Coverage is audited
+programmatically: no overlapping year ranges, and the only gaps are two real North
+American production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014),
+noted in the records themselves.
+
+Records are written in a compact form and expanded by `V()` at the top of
+`data.js` — short keys, one record per handful of lines. The object it returns is
+the same shape the app has always read.
 
 Where a fob's FCC ID or OEM part number was not something the data could state
 confidently, the field is left blank rather than filled with a plausible guess — an empty field costs you a lookup, a wrong

@@ -30,6 +30,10 @@ function routeFromHash() {
 
 /* ======================= lookup ======================= */
 const filter = { make: '', year: '', q: '' };
+/* The seed is a few hundred records and grows as the user adds their own, so the
+   unfiltered list is capped until they ask for the rest. */
+const LOOKUP_CAP = 60;
+let lookupShowAll = false;
 
 function allMakes() {
   return Array.from(new Set(Store.vehicles().map(v => v.make))).sort();
@@ -73,8 +77,12 @@ function RENDER_lookup() {
   $('#lookupQ').value = filter.q;
 
   const hits = matchVehicles();
-  $('#lookupCount').textContent = hits.length ? `${hits.length} match${hits.length === 1 ? '' : 'es'}` : '';
-  $('#lookupResults').innerHTML = hits.length ? hits.map(v => `
+  const capped = !lookupShowAll && hits.length > LOOKUP_CAP;
+  const shown = capped ? hits.slice(0, LOOKUP_CAP) : hits;
+  $('#lookupCount').textContent = hits.length
+    ? `${hits.length} match${hits.length === 1 ? '' : 'es'}` + (capped ? ` \u00b7 showing ${LOOKUP_CAP}` : '')
+    : '';
+  $('#lookupResults').innerHTML = hits.length ? shown.map(v => `
     <div class="card tap vres" data-vid="${esc(v.id)}">
       <div style="flex:1;min-width:0">
         <div class="yr">${v.yearStart}${v.yearEnd !== v.yearStart ? '–' + v.yearEnd : ''}${v.custom ? ' &middot; YOURS' : ''}</div>
@@ -82,7 +90,8 @@ function RENDER_lookup() {
         <div class="sub">${esc(nz(v.blanks && v.blanks.keyway))} &middot; ${esc(nz(v.transponder && v.transponder.chip))}</div>
       </div>
       <div class="go">&rsaquo;</div>
-    </div>`).join('')
+    </div>`).join('') + (capped
+      ? `<button class="btn ghost" data-showall="1">Show all ${hits.length}</button>` : '')
     : `<div class="empty">No match in your database.<br><br>
        <button class="btn btn-sm" data-newveh="1">Add this vehicle</button></div>`;
 };
@@ -691,11 +700,12 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew]');
+  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
-  if (t.dataset.make !== undefined) { filter.make = t.dataset.make; RENDER_lookup(); return; }
+  if (t.dataset.make !== undefined) { filter.make = t.dataset.make; lookupShowAll = false; RENDER_lookup(); return; }
+  if (t.dataset.showall)   { lookupShowAll = true; RENDER_lookup(); return; }
   if (t.dataset.vid)       { go('vehicle', t.dataset.vid); return; }
   if (t.dataset.editveh)   { editVehicle(t.dataset.editveh); return; }
   if (t.dataset.newveh)    { go('vehicle'); editVehicle(null); return; }
@@ -750,9 +760,9 @@ function boot() {
   $('#gearBtn').addEventListener('click', () => go('settings'));
 
   /* lookup */
-  $('#yearSel').addEventListener('change', (e) => { filter.year = e.target.value; RENDER_lookup(); });
-  $('#lookupQ').addEventListener('input', (e) => { filter.q = e.target.value; RENDER_lookup(); });
-  $('#lookupClear').addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; RENDER_lookup(); });
+  $('#yearSel').addEventListener('change', (e) => { filter.year = e.target.value; lookupShowAll = false; RENDER_lookup(); });
+  $('#lookupQ').addEventListener('input', (e) => { filter.q = e.target.value; lookupShowAll = false; RENDER_lookup(); });
+  $('#lookupClear').addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; lookupShowAll = false; RENDER_lookup(); });
   $('#addVehBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null); });
 
   /* vin */
