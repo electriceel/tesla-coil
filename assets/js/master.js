@@ -75,6 +75,17 @@ function candidateDepths(tmkDepth, sys) {
   return out;
 }
 
+/* Same set as candidateDepths, ordered the way a schedule should actually be
+   cut: nearest the parent first, and on a tie the deeper one. Ascending order
+   would walk every level down to the shallowest depth, so the first change key
+   of a 6-pin system came out 0-0-0-0-0-0 — legal, and not a key anyone wants to
+   hand a tenant. Nearest-first also means the early locks take the minimum
+   2-increment master pin, which is what you want in the plug. */
+function orderedCandidates(parent, sys) {
+  return candidateDepths(parent, sys).sort((a, b) =>
+    Math.abs(a - parent) - Math.abs(b - parent) || b - a);
+}
+
 /* Cartesian product, walked lazily enough that a wide system does not build
    millions of arrays before we cap it. */
 function* product(lists) {
@@ -92,7 +103,7 @@ function* product(lists) {
 /* Total position progression: every chamber progresses. Most changes per
    system, and the widest incidental exposure. */
 function progressTPP(tmk, sys, limit) {
-  const lists = tmk.map(d => candidateDepths(d, sys));
+  const lists = tmk.map(d => orderedCandidates(d, sys));
   const out = [];
   for (const key of product(lists)) {
     if (macsOk(key, sys.macs)) out.push({ bitting: key, constant: null });
@@ -107,7 +118,7 @@ function progressTPP(tmk, sys, limit) {
 function progressRC(tmk, sys, limit) {
   const out = [];
   for (let c = 0; c < tmk.length && out.length < limit; c++) {
-    const lists = tmk.map((d, i) => (i === c ? [d] : candidateDepths(d, sys)));
+    const lists = tmk.map((d, i) => (i === c ? [d] : orderedCandidates(d, sys)));
     for (const key of product(lists)) {
       if (macsOk(key, sys.macs)) out.push({ bitting: key, constant: c });
       if (out.length >= limit) break;
@@ -193,8 +204,168 @@ function buildSystem(opts) {
   };
 }
 
+/* ==================== multi-level systems ====================
+   A full system is GGM over GM over MK over CK. The method is position
+   allocation: each level owns a set of chambers and progresses only those,
+   leaving every other chamber at its parent's depth. That is what keeps the
+   levels from colliding — a master and a change key never fight over the same
+   chamber, so no change key can reach a door above it.
+
+   A lock is pinned for the whole chain that must open it, root to leaf, so a
+   chamber can end up holding three or four depths and a stack of master pins.
+   pinChamber already takes any number of depths, which is why it was written
+   that way. */
+
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const letterAt = (i) => LETTERS[i % 26] + (i >= 26 ? String(Math.floor(i / 26)) : '');
+
+/* Standard key symbols. Two levels: A over AA, AB. Three: A over AA, AB over
+   AA1, AA2. Four: GGM over A, B over AA, AB over AA1, AA2. */
+function topSymbol(levels) { return levels >= 4 ? 'GGM' : 'A'; }
+function childSymbol(parent, depth, idx, levels) {
+  const d = depth - (levels >= 4 ? 1 : 0);
+  if (d === 0) return letterAt(idx);
+  return d % 2 === 1 ? parent + letterAt(idx) : parent + (idx + 1);
+}
+
+const LEVEL_NAMES = {
+  2: ['Master key', 'Change key'],
+  3: ['Grand master', 'Master key', 'Change key'],
+  4: ['Great grand master', 'Grand master', 'Master key', 'Change key']
+};
+
+/* Chambers split across the progressing levels, deepest level taking the
+   remainder — change keys need the most room because there are the most of
+   them. */
+function defaultAllocation(chambers, levels) {
+  const groups = levels - 1;
+  const all = Array.from({ length: chambers }, (_, i) => i);
+  const per = Math.floor(chambers / groups);
+  const out = [];
+  let at = 0;
+  for (let g = 0; g < groups; g++) {
+    const take = g === groups - 1 ? all.length - at : per;
+    out.push(all.slice(at, at + take));
+    at += take;
+  }
+  return out;
+}
+
+function validateAllocation(alloc, chambers, sys) {
+  const errs = [];
+  const seen = new Map();
+  alloc.forEach((positions, g) => {
+    if (!positions.length) errs.push(`Level ${g + 1} has no chambers to progress.`);
+    positions.forEach(p => {
+      if (p < 0 || p >= chambers) errs.push(`Chamber ${p + 1} is not on this key.`);
+      else if (seen.has(p)) errs.push(`Chamber ${p + 1} is claimed by two levels — each chamber belongs to one.`);
+      else seen.set(p, g);
+    });
+  });
+  return errs;
+}
+
+/* Every bitting one level can reach from its parent: the allocated chambers
+   progress, everything else holds. */
+function levelVariants(parent, positions, sys, limit) {
+  const lists = parent.map((d, i) => (positions.includes(i) ? orderedCandidates(d, sys) : [d]));
+  const out = [];
+  for (const b of product(lists)) {
+    if (macsOk(b, sys.macs)) out.push(b);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function levelCapacity(parent, positions, sys) {
+  return positions.reduce((p, i) => p * candidateDepths(parent[i], sys).length, 1);
+}
+
+/* Walk the tree, giving every key its symbol and its chain back to the top. */
+function growTree(node, depth, alloc, counts, sys, levels, out) {
+  out.push(node);
+  if (depth >= alloc.length) return node;   // a leaf is still a node
+  const variants = levelVariants(node.bitting, alloc[depth], sys, counts[depth]);
+  node.children = variants.map((bitting, i) => growTree({
+    symbol: childSymbol(node.symbol, depth + 1, i, levels),
+    bitting, depth: depth + 1,
+    chain: node.chain.concat([node]),
+    children: []
+  }, depth + 1, alloc, counts, sys, levels, out));
+  return node;
+}
+
+const opensLock = (bitting, chart) => chart.every((c, i) => c.depths.includes(bitting[i]));
+
+/* The check that makes the schedule worth cutting: try every key in the system
+   against every lock in it, and report any that opens a door it has no business
+   opening. With clean position allocation there should be none — but "should"
+   is not the same as "checked". */
+function auditSystem(keys, locks) {
+  const violations = [];
+  let checked = 0;
+  locks.forEach(lock => {
+    const allowed = new Set(lock.chain.concat([lock.symbol]));
+    keys.forEach(k => {
+      checked++;
+      if (allowed.has(k.symbol)) return;
+      if (opensLock(k.bitting, lock.chart)) {
+        violations.push({ key: k.symbol, keyBitting: k.bitting, lock: lock.symbol, lockBitting: lock.bitting });
+      }
+    });
+  });
+  return { checked, violations };
+}
+
+function buildFullSystem(opts) {
+  const sys = opts.system;
+  const levels = Math.max(2, Math.min(4, opts.levels || 2));
+  const top = parseBitting(opts.tmk);
+
+  const errors = validateBitting(top, sys);
+  const alloc = opts.alloc || defaultAllocation(sys.chambers, levels);
+  errors.push(...validateAllocation(alloc, sys.chambers, sys));
+  if (alloc.length !== levels - 1) errors.push(`A ${levels}-level system needs ${levels - 1} chamber groups.`);
+  if (errors.length) return { ok: false, errors, levels };
+
+  const counts = (opts.counts || []).slice(0, levels - 1);
+  while (counts.length < levels - 1) counts.push(4);
+
+  const all = [];
+  const root = { symbol: topSymbol(levels), bitting: top, depth: 0, chain: [], children: [] };
+  growTree(root, 0, alloc, counts.map(c => Math.max(1, Math.min(c, 60))), sys, levels, all);
+
+  /* A lock exists for each key at the bottom level; it is pinned for its whole
+     chain, so every key above it turns it. */
+  const locks = all.filter(k => k.depth === levels - 1).map(leaf => {
+    const chain = leaf.chain.map(n => n.symbol);
+    const bittings = leaf.chain.map(n => n.bitting).concat([leaf.bitting]);
+    const chart = top.map((_, i) => pinChamber(bittings.map(b => b[i])));
+    const total = chart.reduce((p, c) => p * c.depths.length, 1);
+    return {
+      symbol: leaf.symbol, bitting: leaf.bitting, chain, chart,
+      keysThatOpen: bittings.length,
+      incidental: Math.max(0, total - bittings.length),
+      warnings: chartWarnings(chart, sys)
+    };
+  });
+
+  const flat = all.map(k => ({ symbol: k.symbol, bitting: k.bitting, depth: k.depth,
+                               chain: k.chain.map(n => n.symbol) }));
+
+  return {
+    ok: true, errors: [], levels, system: sys, top, alloc, counts,
+    names: LEVEL_NAMES[levels],
+    root, keys: flat, locks,
+    capacity: alloc.map((positions, g) => levelCapacity(top, positions, sys)),
+    audit: auditSystem(flat, locks)
+  };
+}
+
 if (typeof module !== 'undefined') module.exports = {
   MK_SYSTEMS, parseBitting, formatBitting, macsOk, macsViolations, validateBitting,
-  candidateDepths, progression, capacity, pinChamber, pinChart, incidentalCount,
-  chartWarnings, buildSystem
+  candidateDepths, orderedCandidates, progression, capacity, pinChamber, pinChart, incidentalCount,
+  chartWarnings, buildSystem,
+  LEVEL_NAMES, topSymbol, childSymbol, defaultAllocation, validateAllocation,
+  levelVariants, levelCapacity, opensLock, auditSystem, buildFullSystem
 };
