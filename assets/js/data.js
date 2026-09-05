@@ -271,28 +271,149 @@ const SEED_VEHICLES = [
   }
 ];
 
-/* --- Key blank cross-reference ------------------------------------------- */
-/* keyway -> equivalents across the common catalogs. */
+/* --- Key blank cross-reference directory ---------------------------------
+   One record per keyway. `ilco` is the mechanical blank, `ilcoChip` the
+   transponder version of the same blank where one exists. Same caveat as the
+   vehicle data: verify against your catalog before you order a box of them. */
 const SEED_BLANKS = [
-  { keyway: 'HU101',   ilco: 'HU101-PT',  silca: 'FO21T',   jma: 'FO-24.P',      strattec: '5913441', makes: 'Ford, Lincoln, Jaguar, Land Rover', cut: 'Laser / 2-track' },
-  { keyway: 'H92',     ilco: 'H92-PT',    silca: 'FO21T',   jma: 'FO-21.P2',     strattec: '5913441', makes: 'Ford, Mercury', cut: '8-cut edge' },
-  { keyway: 'B111',    ilco: 'B111-PT',   silca: 'GM39RT',  jma: 'GM-37.P',      strattec: '5912543', makes: 'GM 10-cut', cut: '10-cut edge' },
-  { keyway: 'B119',    ilco: 'B119-PT',   silca: 'GM45',    jma: 'GM-40.P',      strattec: '5928114', makes: 'GM 2014+', cut: '10-cut edge' },
-  { keyway: 'HU100',   ilco: 'B116-PT',   silca: 'GM45',    jma: 'GM-40.P',      strattec: '5912542', makes: 'GM, Opel', cut: '10-cut edge' },
-  { keyway: 'TOY48',   ilco: 'TOY44D-PT', silca: 'TOY48',   jma: 'TP00TOYO-15.P',strattec: '—',       makes: 'Toyota, Lexus', cut: 'Laser / sidewinder' },
-  { keyway: 'TOY44H',  ilco: 'TOY44H-PT', silca: 'TOY48',   jma: 'TP00TOYO-15.P',strattec: '—',       makes: 'Toyota 2013+ (H chip)', cut: 'Laser / sidewinder' },
-  { keyway: 'HON66',   ilco: 'HO03-PT',   silca: 'HON66',   jma: 'HOND-22.P',    strattec: '—',       makes: 'Honda, Acura high security', cut: 'Laser / sidewinder' },
-  { keyway: 'HO01',    ilco: 'HO01-PT',   silca: 'HON58R',  jma: 'HOND-20.P',    strattec: '—',       makes: 'Honda, Acura 8-cut', cut: '8-cut edge' },
-  { keyway: 'NSN14',   ilco: 'DA34',      silca: 'NSN14',   jma: 'NE-38.P',      strattec: '—',       makes: 'Nissan, Infiniti', cut: 'Laser / sidewinder' },
-  { keyway: 'HY20',    ilco: 'HY20-PT',   silca: 'HYN14R',  jma: 'HY-20.P',      strattec: '—',       makes: 'Hyundai, Kia', cut: '8-cut edge' },
-  { keyway: 'KK10',    ilco: 'KK10-PT',   silca: 'HYN14R',  jma: 'HY-18.P',      strattec: '—',       makes: 'Kia', cut: '8-cut edge' },
-  { keyway: 'CY24',    ilco: 'Y164-PT',   silca: 'CY24',    jma: 'CHR-15.P',     strattec: '692352',  makes: 'Chrysler, Dodge, Jeep, Ram', cut: '8-cut edge' },
-  { keyway: 'HU66',    ilco: 'HU66AT4',   silca: 'HU66',    jma: 'TP00VA-6D.P',  strattec: '—',       makes: 'VW, Audi, Seat, Skoda', cut: 'Laser / sidewinder' },
-  { keyway: 'HU92',    ilco: 'HU92',      silca: 'HU92',    jma: 'TP00BM-15.P',  strattec: '—',       makes: 'BMW, Mini, Rolls-Royce', cut: 'Laser / sidewinder' },
-  { keyway: 'HU64',    ilco: 'HU64',      silca: 'HU64',    jma: 'TP00ME-10.P',  strattec: '—',       makes: 'Mercedes-Benz', cut: 'Laser / sidewinder' },
-  { keyway: 'MAZ24',   ilco: 'MAZ24R-PT', silca: 'MAZ24R',  jma: 'MAZ-16.P',     strattec: '—',       makes: 'Mazda', cut: 'Laser / sidewinder' },
-  { keyway: 'SUB4',    ilco: 'SUB4-PT',   silca: 'SUB4',    jma: 'SUBA-6.P',     strattec: '—',       makes: 'Subaru', cut: '8-cut edge' },
-  { keyway: 'HD103',   ilco: 'HD103',     silca: 'HD64',    jma: 'HD-3',         strattec: '—',       makes: 'Harley-Davidson', cut: '6-cut edge' }
+  /* ---- FORD / LINCOLN / MERCURY ---- */
+  { id:'hu101', keyway:'HU101', ilco:'HU101', ilcoChip:'HU101-PT', silca:'FO21T', jma:'FO-24.P', strattec:'5913441',
+    cut:'Laser', spaces:10, depths:4, makes:['Ford','Lincoln','Jaguar','Land Rover'],
+    notes:'The 2-track Ford laser key. Also the emergency blade inside most Ford prox fobs.' },
+  { id:'h92', keyway:'H92', ilco:'H92', ilcoChip:'H92-PT', silca:'FO21T', jma:'FO-21.P2', strattec:'599114',
+    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
+    notes:'Ford 8-cut. 40-bit chip through ~2010, 80-bit after — same blank, different chip.' },
+  { id:'h75', keyway:'H75', ilco:'H75', ilcoChip:'H72-PT', silca:'FO38', jma:'FO-15.P', strattec:'596753',
+    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
+    notes:'Older Ford 8-cut, pre-PATS and early PATS.' },
+  { id:'fo38', keyway:'FO38 (Tibbe)', ilco:'FO21', ilcoChip:'FO21T', silca:'FO12', jma:'FO-13.P', strattec:'—',
+    cut:'Tibbe', spaces:6, depths:4, makes:['Ford','Jaguar'],
+    notes:'Tibbe. Needs a dedicated Tibbe decoder and cutter — not an edge or laser machine.' },
+
+  /* ---- GM ---- */
+  { id:'b111', keyway:'B111', ilco:'B111', ilcoChip:'B111-PT', silca:'GM39RT', jma:'GM-37.P', strattec:'5912543',
+    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','GMC','Buick','Cadillac','Pontiac','Saturn'],
+    notes:'GM 10-cut, PK3+/Circle-Plus era. The workhorse GM blank of 2006-2013.' },
+  { id:'b119', keyway:'B119', ilco:'B119', ilcoChip:'B119-PT', silca:'GM45', jma:'GM-40.P', strattec:'5928114',
+    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','GMC','Buick','Cadillac'],
+    notes:'GM 2014+ 10-cut with the 46E chip.' },
+  { id:'b116', keyway:'HU100', ilco:'B116', ilcoChip:'B116-PT', silca:'GM45', jma:'GM-40.P', strattec:'5912542',
+    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','Buick','GMC','Opel','Saturn'],
+    notes:'HU100 profile. Cruze, Malibu, Equinox era.' },
+  { id:'b106', keyway:'B106', ilco:'B106', ilcoChip:'B106-PT', silca:'GM37', jma:'GM-14.P', strattec:'596415',
+    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Buick','Pontiac','Oldsmobile'],
+    notes:'GM 6-cut, VATS/PASS-Key era. Pellet keys are B62-P1 through P15.' },
+  { id:'b102', keyway:'B102', ilco:'B102', ilcoChip:'—', silca:'GM32', jma:'GM-10.P', strattec:'322773',
+    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Buick','Pontiac'],
+    notes:'Older GM 10-cut door/trunk secondary.' },
+
+  /* ---- TOYOTA / LEXUS / SCION ---- */
+  { id:'toy48', keyway:'TOY48', ilco:'TOY44D', ilcoChip:'TOY44D-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus','Scion'],
+    notes:'Dot / G chip era. The G chip is stamped "G" on the head.' },
+  { id:'toy44h', keyway:'TOY44H', ilco:'TOY44H', ilcoChip:'TOY44H-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus'],
+    notes:'H chip, 2013+. Same TOY48 keyway, different chip — do not mix the boxes up.' },
+  { id:'toy43', keyway:'TOY43', ilco:'TOY43', ilcoChip:'TOY43-PT', silca:'TOY43', jma:'TOYO-21.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Scion'],
+    notes:'Toyota 8-cut, older Corolla / Camry / Tacoma.' },
+  { id:'toy40', keyway:'TOY40', ilco:'TOY40', ilcoChip:'—', silca:'TOY40', jma:'TOYO-15.P', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Toyota','Lexus'], notes:'Older 4-track Toyota.' },
+
+  /* ---- HONDA / ACURA ---- */
+  { id:'hon66', keyway:'HON66', ilco:'HO03', ilcoChip:'HO03-PT', silca:'HON66', jma:'HOND-22.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Honda','Acura'],
+    notes:'High security Honda. Emergency blade in the smart fobs is this profile.' },
+  { id:'ho01', keyway:'HO01', ilco:'HO01', ilcoChip:'HO01-PT', silca:'HON58R', jma:'HOND-20.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Honda','Acura'],
+    notes:'Honda 8-cut, ID46 era.' },
+  { id:'ho05', keyway:'HD106/HO05', ilco:'HO05', ilcoChip:'—', silca:'HON43', jma:'HOND-14.P', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Honda','Acura'], notes:'Older Honda 6-cut, non-transponder.' },
+
+  /* ---- NISSAN / INFINITI ---- */
+  { id:'nsn14', keyway:'NSN14', ilco:'DA34', ilcoChip:'DA34-PT', silca:'NSN14', jma:'NE-38.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Nissan','Infiniti'],
+    notes:'Nissan high security. Also the emergency blade in the Intelligent Key.' },
+  { id:'da31', keyway:'DA31', ilco:'DA31', ilcoChip:'DA31-PT', silca:'NSN11', jma:'DAT-17.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Nissan','Infiniti'], notes:'Nissan 8-cut, older Altima / Sentra / Frontier.' },
+
+  /* ---- HYUNDAI / KIA ---- */
+  { id:'hy20', keyway:'HY20', ilco:'HY20', ilcoChip:'HY20-PT', silca:'HYN14R', jma:'HY-20.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Hyundai','Kia'], notes:'The common Hyundai 8-cut.' },
+  { id:'hy22', keyway:'HY22', ilco:'HY22', ilcoChip:'HY22-PT', silca:'HYN17R', jma:'HY-22.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Hyundai','Kia'], notes:'Hyundai/Kia high security laser.' },
+  { id:'kk10', keyway:'KK10', ilco:'KK10', ilcoChip:'KK10-PT', silca:'HYN14R', jma:'HY-18.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Kia'], notes:'Kia 8-cut.' },
+
+  /* ---- STELLANTIS ---- */
+  { id:'cy24', keyway:'CY24', ilco:'Y164', ilcoChip:'Y164-PT', silca:'CY24', jma:'CHR-15.P', strattec:'692352',
+    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Jeep','Ram'],
+    notes:'The Stellantis 8-cut. Y170 is the same keyway in the later fob-head style.' },
+  { id:'y160', keyway:'Y160', ilco:'Y160', ilcoChip:'Y160-PT', silca:'CY22', jma:'CHR-9.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Jeep'], notes:'Older Chrysler 8-cut, SKIM era.' },
+  { id:'sip22', keyway:'SIP22', ilco:'FT48', ilcoChip:'FT48-PT', silca:'SIP22', jma:'FI-21.P', strattec:'—',
+    cut:'Laser', spaces:8, depths:4, makes:['Fiat','Chrysler','Dodge','Ram','Alfa Romeo'],
+    notes:'Fiat platform laser — ProMaster City, 500, Renegade.' },
+
+  /* ---- VW / AUDI ---- */
+  { id:'hu66', keyway:'HU66', ilco:'HU66AT4', ilcoChip:'HU66AT4-PT', silca:'HU66', jma:'TP00VA-6D.P', strattec:'—',
+    cut:'Laser', spaces:8, depths:4, makes:['Volkswagen','Audi','Seat','Skoda','Porsche'],
+    notes:'The VAG laser. Check MQB vs non-MQB before quoting the programming.' },
+  { id:'hu162t', keyway:'HU162T', ilco:'HU162T', ilcoChip:'HU162T-PT', silca:'HU162T', jma:'TP00VAG-7.P', strattec:'—',
+    cut:'Laser', spaces:9, depths:4, makes:['Volkswagen','Audi','Seat','Skoda'],
+    notes:'MQB platform blade, 2015+.' },
+  { id:'hu49', keyway:'HU49', ilco:'VW1', ilcoChip:'—', silca:'HU49', jma:'VO-1.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Volkswagen','Audi'], notes:'Old air-cooled and early water-cooled VW.' },
+
+  /* ---- BMW / MERCEDES ---- */
+  { id:'hu92', keyway:'HU92', ilco:'HU92', ilcoChip:'HU92-PT', silca:'HU92', jma:'TP00BM-15.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['BMW','Mini','Rolls-Royce'], notes:'BMW 2-track, CAS era.' },
+  { id:'hu100r', keyway:'HU100R', ilco:'BMW1', ilcoChip:'—', silca:'HU100R', jma:'TP00BM-20.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['BMW','Mini'], notes:'BMW F-series / FEM-BDC emergency blade.' },
+  { id:'hu64', keyway:'HU64', ilco:'HU64', ilcoChip:'—', silca:'HU64', jma:'TP00ME-10.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Mercedes-Benz'], notes:'Mercedes 4-track. FBS3/FBS4 is the hard part, not the cut.' },
+  { id:'ymb', keyway:'YM15/YM23', ilco:'YM23', ilcoChip:'—', silca:'YM15', jma:'ME-3.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Mercedes-Benz'], notes:'Older Mercedes edge cut.' },
+
+  /* ---- MAZDA / SUBARU / MITSUBISHI ---- */
+  { id:'maz24', keyway:'MAZ24', ilco:'MAZ24R', ilcoChip:'MAZ24R-PT', silca:'MAZ24R', jma:'MAZ-16.P', strattec:'—',
+    cut:'Laser', spaces:8, depths:4, makes:['Mazda'], notes:'Mazda high security.' },
+  { id:'mz34', keyway:'MZ34', ilco:'MZ34', ilcoChip:'MZ34-PT', silca:'MAZ20', jma:'MAZ-11.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Mazda'], notes:'Mazda 8-cut, older.' },
+  { id:'sub4', keyway:'SUB4', ilco:'SUB4', ilcoChip:'SUB4-PT', silca:'SUB4', jma:'SUBA-6.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Subaru'], notes:'Subaru 8-cut and the smart-key emergency blade.' },
+  { id:'dat17', keyway:'DAT17', ilco:'DAT17', ilcoChip:'—', silca:'NSN11', jma:'DAT-17.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Subaru','Nissan'], notes:'Older Subaru / Datsun profile.' },
+  { id:'mit11', keyway:'MIT11', ilco:'MIT11', ilcoChip:'MIT11-PT', silca:'MIT11', jma:'MIT-6.P', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Mitsubishi','Chrysler','Dodge'], notes:'Mitsubishi 8-cut, also on captive Chrysler models.' },
+
+  /* ---- VOLVO / SAAB / OTHER EURO ---- */
+  { id:'hu56r', keyway:'HU56R', ilco:'HU56R', ilcoChip:'—', silca:'HU56R', jma:'TP00VOL-1.P', strattec:'—',
+    cut:'Laser', spaces:8, depths:4, makes:['Volvo'], notes:'Volvo laser.' },
+  { id:'yh35r', keyway:'YM30/NE66', ilco:'YM30', ilcoChip:'—', silca:'NE66', jma:'VAL-3.P', strattec:'—',
+    cut:'Laser', spaces:8, depths:4, makes:['Volvo','Renault','Saab'], notes:'Renault/Volvo shared laser profile.' },
+
+  /* ---- MOTORCYCLE / POWERSPORTS ---- */
+  { id:'hd103', keyway:'HD103', ilco:'HD103', ilcoChip:'—', silca:'HD64', jma:'HD-3', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Harley-Davidson'], notes:'The common Harley ignition blank.' },
+  { id:'hd106', keyway:'HD106', ilco:'HD106', ilcoChip:'—', silca:'HD66', jma:'HD-6', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Harley-Davidson'], notes:'Harley saddlebag / accessory.' },
+  { id:'ya23', keyway:'YH35 / YA23', ilco:'YH35', ilcoChip:'—', silca:'YH35', jma:'YAMA-14', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Yamaha'], notes:'Yamaha ignition.' },
+  { id:'ka13', keyway:'KA13', ilco:'KA13', ilcoChip:'—', silca:'KW14', jma:'KAWA-10', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Kawasaki'], notes:'Kawasaki ignition.' },
+  { id:'sz14', keyway:'SUZ14', ilco:'X257', ilcoChip:'—', silca:'SZ14', jma:'SUZU-14', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Suzuki'], notes:'Suzuki ignition.' },
+  { id:'hon41', keyway:'HD91 / HON41', ilco:'HD91', ilcoChip:'—', silca:'HON41', jma:'HOND-11', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Honda'], notes:'Honda motorcycle and powersports.' },
+
+  /* ---- FLEET / EQUIPMENT ---- */
+  { id:'b1', keyway:'B1 / 1098', ilco:'1098', ilcoChip:'—', silca:'GM1', jma:'GM-1', strattec:'—',
+    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Fleet'], notes:'Classic GM ignition / equipment.' },
+  { id:'cat', keyway:'CAT / 5P8500', ilco:'1690', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:5, depths:3, makes:['Caterpillar','Equipment'], notes:'Heavy equipment master. Common on job-site calls.' },
+  { id:'jd', keyway:'John Deere AR51481', ilco:'1660', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:5, depths:3, makes:['John Deere','Equipment'], notes:'Deere tractor / mower ignition.' }
 ];
 
 /* --- VIN: World Manufacturer Identifier prefixes -------------------------- */

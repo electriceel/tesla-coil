@@ -4,6 +4,7 @@
 const NS = 'keypro:';
 const K = {
   vehicles: NS + 'vehicles',   // user-added / user-edited vehicle records
+  blanks:   NS + 'blanks',     // user-added / user-edited blank records
   jobs:     NS + 'jobs',       // job log
   bcm:      NS + 'bcm',        // Nissan BCM -> PIN lookup rows the user imports
   prefs:    NS + 'prefs'
@@ -41,6 +42,26 @@ const Store = {
     return write(K.vehicles, ov);
   },
 
+  /* ---- blanks ---- */
+  blankOverrides() { return read(K.blanks, {}); },
+  blanks() {
+    const ov = Store.blankOverrides();
+    const merged = SEED_BLANKS.map(b => (ov[b.id] ? { ...b, ...ov[b.id], id: b.id, custom: true } : b));
+    const seedIds = new Set(SEED_BLANKS.map(b => b.id));
+    Object.keys(ov).forEach(id => { if (!seedIds.has(id)) merged.push({ ...ov[id], id, custom: true }); });
+    return merged;
+  },
+  saveBlank(rec) {
+    const ov = Store.blankOverrides();
+    ov[rec.id] = rec;
+    return write(K.blanks, ov);
+  },
+  deleteBlank(id) {
+    const ov = Store.blankOverrides();
+    delete ov[id];
+    return write(K.blanks, ov);
+  },
+
   /* ---- jobs ---- */
   jobs() { return read(K.jobs, []); },
   saveJob(job) {
@@ -63,17 +84,20 @@ const Store = {
   exportAll() {
     return {
       app: 'keypro-field', schema: 1, exportedAt: new Date().toISOString(),
-      vehicles: Store.overrides(), jobs: Store.jobs(), bcm: Store.bcmRows(), prefs: Store.prefs()
+      vehicles: Store.overrides(), blanks: Store.blankOverrides(),
+      jobs: Store.jobs(), bcm: Store.bcmRows(), prefs: Store.prefs()
     };
   },
   importAll(obj, mode) {
     if (!obj || obj.app !== 'keypro-field') throw new Error('Not a KeyPro backup file.');
     if (mode === 'replace') {
       write(K.vehicles, obj.vehicles || {});
+      write(K.blanks, obj.blanks || {});
       write(K.jobs, obj.jobs || []);
       write(K.bcm, obj.bcm || []);
     } else {
       write(K.vehicles, { ...Store.overrides(), ...(obj.vehicles || {}) });
+      write(K.blanks, { ...Store.blankOverrides(), ...(obj.blanks || {}) });
       const seen = new Set(Store.jobs().map(j => j.id));
       write(K.jobs, Store.jobs().concat((obj.jobs || []).filter(j => !seen.has(j.id))));
       const key = r => `${r.bcm}`.toUpperCase();

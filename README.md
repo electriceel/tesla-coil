@@ -34,7 +34,14 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
-**Blanks** — cross-reference across keyway, Ilco, Silca, JMA and Strattec.
+**Blanks** — a browsable key blank directory. Group by make, by cut type (edge /
+laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
+chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
+the full cross-reference, cut spec (spaces, depths), every make it serves, notes,
+and the vehicles in your own database that take it, each one a link straight to its
+record. Tapping a make jumps to the vehicle lookup filtered to it. Add and edit
+blanks the same way you do vehicles; your version overrides the seed and rides along
+in the backup file.
 
 **Tools** — Nissan BCM→PIN lookup (see below), hex/decimal converter, quote builder.
 
@@ -48,7 +55,9 @@ own database before you cut or program. Edit any record (Vehicle → Edit) and s
 marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
-import platforms to get you going; your database becomes the real one.
+import platforms to get you going; your database becomes the real one. The same goes
+for the blank directory — 47 keyways across autos, powersports and equipment, all
+editable.
 
 ## Nissan BCM → PIN
 
