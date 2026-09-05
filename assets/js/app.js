@@ -460,7 +460,9 @@ const blankUI = { q: '', group: 'make', open: {}, detail: null };
 const KEY_STOPWORDS = new Set([
   'EMERGENCY', 'BLADE', 'KEY', 'KEYS', 'FOB', 'NONE', 'NO', 'MECHANICAL',
   'FAMILY', 'STYLE', 'PROFILE', 'SERIES', 'CUT', 'LASER', 'EDGE', 'TIBBE',
-  'BY', 'YEAR', 'TRIM', 'MODEL', 'BUILD', 'IN', 'THE', 'AND', 'OR', 'ON', 'FOR', 'WITH'
+  'BY', 'YEAR', 'TRIM', 'MODEL', 'BUILD', 'IN', 'THE', 'AND', 'OR', 'ON', 'FOR', 'WITH',
+  'IGNITION', 'ENTRY', 'DOOR', 'LOCK', 'LOCKS', 'SET', 'MASTER', 'COMMON', 'UNIVERSAL',
+  'ACCESSORY', 'SECONDARY', 'VINTAGE', 'MOTORCYCLE', 'MARINE', 'TRAILER', 'TRUCK', 'RV'
 ]);
 const keyWords = (s) => String(s || '')
   .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/)

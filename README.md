@@ -61,10 +61,10 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 79 keyways across autos, powersports and equipment, all
-editable.
+for the blank directory — 116 keyways across autos, powersports, RV and trailer,
+heavy truck, forklift, golf cart, marine and equipment, all editable.
 
-The seed ships 377 vehicle records across 63 makes and 263 nameplates, every make
+The seed ships 415 vehicle records across 69 makes and 307 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
