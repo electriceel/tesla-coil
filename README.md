@@ -61,7 +61,7 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 60 keyways across autos, powersports and equipment, all
+for the blank directory — 79 keyways across autos, powersports and equipment, all
 editable.
 
 The seed ships 377 vehicle records across 63 makes and 263 nameplates, every make
@@ -76,8 +76,8 @@ missing data.
 ## Two kinds of data, and only one of them is sourced
 
 `assets/js/models.js` is a make / model / year index harvested from the NHTSA vPIC
-database (a free public federal API) for model years 1995-2026 — 1,611 models across
-51 makes. It is real, checkable reference data, and it says only which vehicles exist
+database (a free public federal API) for model years 1981-2026 — 2,301 models across
+62 makes. It is real, checkable reference data, and it says only which vehicles exist
 and when they were built.
 
 `assets/js/data.js` holds the key data — blanks, chips, fobs, cutting, programming.
