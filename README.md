@@ -29,10 +29,29 @@ chip and FCC ID. The search box takes a job the way it arrives on the phone: typ
 the one generation rather than all five. Punctuation is ignored, so `f150` finds
 the F-150. Results are grouped by nameplate: a model with several generations
 is one line showing its full year span and a count, which opens to the individual
-generations. Narrow to a few models and they open themselves. Tap a result for the full record: blank (keyway / Ilco /
-Silca / JMA / OEM P/N), transponder and whether it clones, fobs with FCC IDs,
-code series and cut type, OBD vs onboard vs all-keys-lost programming, whether a
-PIN is needed, OBD port location and an entry note.
+generations. Narrow to a few models and they open themselves.
+
+**The record** — tap a result and the vehicle opens as four tabs under a sticky
+header, with a generation dropdown so you can move between year ranges of the same
+nameplate without going back to the list.
+
+- **Overview** — the basics (code series, spaces, depths, ignition retainer, MACS,
+  cut type — a block per code series when a car carries more than one, each with
+  its own MACS), a tumbler-location grid, the keys (keyway / Ilco / Silca / JMA / OEM
+  P/N) with a jump straight to that blank in the directory, the transponder and
+  whether it clones, the fobs with FCC IDs, and the decoders.
+- **Keymaking** — the three ways in, in order: decode the lock, originate by code,
+  program the key (OBD vs onboard vs all-keys-lost, with the PIN warning up front),
+  plus the OBD port and entry note.
+- **Tips** — your own notes from your own jobs, filed under the seven categories a
+  job actually goes through: car door unlocking, lock picking / decoding, key
+  programming, remote programming, code locations, lock removal, OBD port location.
+  They save per vehicle on this device and ride along in the backup.
+- **Parts** — what this job takes, in one list you can read at the van.
+
+The ignition retainer, MACS and per-lock tumbler positions ship empty. They are
+machine-book facts with no source to cite, so the record says so rather than
+guessing, and the editor takes them (`1-8` or `1,3,5,7`) once you have decoded one.
 
 **VIN** — offline decode always works: WMI to manufacturer, model year from
 position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
@@ -74,7 +93,7 @@ because that is the job, not a footnote: the blank comes from an authorized deal
 against the end user on file, and the honest answer on site is to say so rather
 than promise a key. The USPS arrow lock record says do not service it at all.
 
-The seed ships 415 vehicle records across 69 makes and 307 nameplates, every make
+The seed ships 419 vehicle records across 70 makes and 311 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no

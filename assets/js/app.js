@@ -11,8 +11,12 @@ const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 const VIEWS = ['lookup', 'vehicle', 'vin', 'blanks', 'tools', 'jobs', 'settings'];
 let current = 'lookup';
 
+let vehShown = '';
 function go(view, arg) {
   if (!VIEWS.includes(view)) view = 'lookup';
+  /* Arriving at a different vehicle starts on Overview; re-rendering the one you
+     are already reading keeps the tab you are on. */
+  if (view === 'vehicle' && arg !== vehShown) { vehTab = 'overview'; vehTipOpen = ''; vehShown = arg; }
   current = view;
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
   $$('.nav button').forEach(b => b.classList.toggle('on', b.dataset.go === view));
@@ -209,63 +213,275 @@ function specList(pairs, opts) {
     `<dt>${label}</dt><dd${cls ? ` class="${cls}"` : ''}>${esc(val)}</dd>`).join('') + `</dl></div>`;
 }
 
+/* ---- vehicle record: tabbed, the way the job actually runs ---------------
+   Overview is what you read at the curb, Keymaking is what you do, Tips is
+   what you learned last time, Parts is what you carry back to the van. */
+const VEH_TABS = [['overview', 'Overview'], ['keymaking', 'Keymaking'], ['tips', 'Tips'], ['parts', 'Parts']];
+let vehTab = 'overview';
+let vehTipOpen = '';
+
+/* The categories AutoProAPP splits tips into — they map to the order a lockout
+   or a key job actually goes. */
+const TIP_CATS = [
+  'Car door unlocking', 'Lock picking / decoding', 'Key programming',
+  'Remote programming', 'Code locations', 'Lock removal', 'OBD port location'
+];
+
+/* Every generation of the same nameplate, newest first — the dropdown at the
+   top of the record. */
+function generationsOf(v) {
+  return Store.vehicles()
+    .filter(x => x.make === v.make && x.model === v.model)
+    .sort((a, b) => b.yearStart - a.yearStart);
+}
+
+const yearSpan = (v) => v.yearStart + (v.yearEnd !== v.yearStart ? '–' + v.yearEnd : '');
+
+/* "1-8", "1,3,5" or [1,2,3] -> a Set of positions. */
+function positionSet(spec) {
+  const out = new Set();
+  String(spec == null ? '' : Array.isArray(spec) ? spec.join(',') : spec)
+    .split(',').map(s => s.trim()).filter(Boolean).forEach(part => {
+      const m = part.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+      if (m) { for (let i = +m[1]; i <= +m[2]; i++) out.add(i); }
+      else if (/^\d+$/.test(part)) out.add(+part);
+    });
+  return out;
+}
+
+/* The wafer map. The ignition uses every cut by definition of the space count;
+   the other locks are drawn only where the record actually says so. */
+function tumblerGridHtml(l) {
+  const n = parseInt(l.spaces, 10);
+  if (!n || n > 16) return '';
+  const t = l.tumblers || {};
+  const rows = [['Ignition', t.ignition || `1-${n}`]]
+    .concat(t.door ? [['Door', t.door]] : [])
+    .concat(t.trunk ? [['Trunk', t.trunk]] : [])
+    .concat(t.glove ? [['Glove box', t.glove]] : []);
+  const head = Array.from({ length: n }, (_, i) => `<th>${i + 1}</th>`).join('');
+  const body = rows.map(([label, spec]) => {
+    const on = positionSet(spec);
+    return `<tr><th>${label}</th>${Array.from({ length: n }, (_, i) =>
+      `<td class="${on.has(i + 1) ? 'on' : ''}"></td>`).join('')}</tr>`;
+  }).join('');
+  const partial = !t.door && !t.trunk;
+  return `<h2>Tumbler locations</h2>
+    <div class="card" style="padding:10px">
+      <div class="tumwrap"><table class="tum"><tr><th></th>${head}</tr>${body}</table></div>
+      ${partial ? `<div class="muted tiny" style="margin-top:8px">Ignition shown across all
+        ${n} spaces. Door and trunk positions are not recorded &mdash; add them in Edit once
+        you have decoded one.</div>` : ''}
+    </div>`;
+}
+
+/* A car with two code series — an ignition series and a separate door series —
+   gets a block each, the way the spec sheet prints it. */
+function basicsHtml(l) {
+  const many = !!(l.series && l.series.length);
+  const blocks = (many ? l.series : [l]).map(sx => specList([
+    ['Code series', sx.codeSeries], ['Spaces', sx.spaces], ['Depths', sx.depths],
+    ['Ignition', sx.ignition], ['MACS', sx.macs],
+    /* Cut type is a property of the car, not of a series — print it once. */
+    ...(many ? [] : [['Cut type', sx.cutMethod]])
+  ], { empty: 'Nothing to cut on this one.' })).join('');
+  return blocks + (many ? specList([['Cut type', l.cutMethod], ['Decode', l.decode]]) : '');
+}
+
+/* "TOY44H (H chip 2013+)" or "DeLorean (Lotus/Renault-derived)" -> the profile
+   name alone, without splitting a parenthetical in half. */
+const shortKeyway = (kw) => String(kw || '').replace(/\s*\([^)]*\)/g, '').split('/')[0].trim()
+  || String(kw || '').trim();
+
+/* Only what the record actually says. Deriving a Lishi number from the blank
+   name looks clever and gets it wrong — the blank name and the keyway profile
+   are not the same string (a Camry's blank is TOY44H, its Lishi is TOY48). */
+function decodersFor(v) {
+  const d = (v.lock || {}).decode;
+  return d ? [['Method', d]] : [];
+}
+
 function RENDER_vehicle(id) {
   const v = Store.vehicles().find(x => x.id === id);
   const host = $('#vehicleBody');
   if (!v) { host.innerHTML = '<div class="empty">Vehicle not found.</div>'; return; }
 
-  const r = v.remotes || [];
-  const b = v.blanks || {}, t = v.transponder || {}, l = v.lock || {}, p = v.programming || {};
+  const gens = generationsOf(v);
+  const p = v.programming || {};
 
-  host.innerHTML = `
-    <div class="card">
-      <div class="yr tiny muted">${v.yearStart}${v.yearEnd !== v.yearStart ? '&ndash;' + v.yearEnd : ''}</div>
-      <div style="font-size:20px;font-weight:700;margin:2px 0 8px">${esc(v.make)} ${esc(v.model)}</div>
-      <div class="chips">
-        ${v.custom ? '<span class="badge info">Your record</span>' : ''}
-        <span class="badge ${v.verified ? 'ok' : 'warn'}">${v.verified ? 'Verified by you' : 'Unverified seed data'}</span>
-        ${p.pinRequired && /yes/i.test(p.pinRequired) ? '<span class="badge err">PIN required</span>' : ''}
-      </div>
+  const header = `
+    <div class="vsticky">
+    <div class="vhead">
+      <div class="vhead-name">${esc(v.make)} ${esc(v.model)}</div>
+      ${gens.length > 1
+        ? `<select class="vgen" id="vehGen" aria-label="Generation">${gens.map(g =>
+            `<option value="${esc(g.id)}"${g.id === v.id ? ' selected' : ''}>${yearSpan(g)}</option>`).join('')}</select>`
+        : `<span class="vgen static">${yearSpan(v)}</span>`}
     </div>
+    <div class="chips" style="margin:0 0 10px">
+      ${v.custom ? '<span class="badge info">Your record</span>' : ''}
+      <span class="badge ${v.verified ? 'ok' : 'warn'}">${v.verified ? 'Verified by you' : 'Unverified seed data'}</span>
+      ${p.pinRequired && /yes/i.test(p.pinRequired) ? '<span class="badge err">PIN required</span>' : ''}
+    </div>
+    <div class="tabs" role="tablist">${VEH_TABS.map(([k, label]) =>
+      `<button class="tab${vehTab === k ? ' on' : ''}" role="tab" data-vtab="${k}">${label}</button>`).join('')}</div>
+    </div>`;
 
-    ${v.verified ? '' : `<div class="notice warn"><strong>Verify before you cut.</strong>
-      This came with the app as starter data. Confirm the blank and chip against the vehicle or
-      your machine's database, then mark it verified in Edit so it stops nagging you.</div>`}
+  const body = vehTab === 'keymaking' ? vehKeymakingHtml(v)
+    : vehTab === 'tips' ? vehTipsHtml(v)
+    : vehTab === 'parts' ? vehPartsHtml(v)
+    : vehOverviewHtml(v);
 
-    <h2>Key blank</h2>
-    ${specList([['Keyway', b.keyway, 'mono'], ['Ilco', b.ilco, 'mono'], ['Silca', b.silca, 'mono'],
-                ['JMA', b.jma, 'mono'], ['OEM P/N', b.oem, 'mono']],
-               { empty: 'No blank recorded for this one.' })}
-
-    <h2>Transponder</h2>
-    ${specList([['Chip', t.chip], ['System', t.system], ['Cloneable', t.cloneable]])}
-
-    <h2>Remotes / fobs</h2>
-    ${r.length
-      ? r.map(x => specList([['Type', x.type], ['FCC ID', x.fcc, 'mono'],
-                             ['Part no.', x.pn, 'mono'], ['Buttons', x.buttons]],
-                            { empty: 'Fob details not recorded.' })).join('')
-      : '<div class="card muted tiny">No fob data on file.</div>'}
-
-    <h2>Lock &amp; cutting</h2>
-    ${specList([['Code series', l.codeSeries], ['Spaces', l.spaces], ['Depths', l.depths],
-                ['Cut type', l.cutMethod], ['Decode', l.decode]],
-               { empty: 'Nothing to cut on this one.' })}
-
-    <h2>Programming</h2>
-    ${specList([['OBD', p.obd], ['Onboard', p.onboard], ['All keys lost', p.allKeysLost],
-                ['PIN', p.pinRequired], ['Notes', p.notes]])}
-
-    <h2>On the vehicle</h2>
-    ${specList([['OBD port', v.obdPort], ['Entry', v.doorUnlock], ['Notes', v.notes]])}
-
+  host.innerHTML = header + `<div class="tabbody">${body}</div>` + `
     <div class="stack" style="margin-top:16px">
       <button class="btn" data-editveh="${esc(v.id)}">Edit this record</button>
       <button class="btn" data-jobfrom="${esc(v.id)}">Start a job for this vehicle</button>
       ${v.custom && !SEED_VEHICLES.some(s => s.id === v.id)
         ? `<button class="btn danger" data-delveh="${esc(v.id)}">Delete this record</button>` : ''}
     </div>`;
-};
+
+  const gen = $('#vehGen');
+  if (gen) gen.addEventListener('change', () => go('vehicle', gen.value));
+}
+
+/* ---- tab 1: overview ---- */
+function vehOverviewHtml(v) {
+  const b = v.blanks || {}, t = v.transponder || {}, l = v.lock || {}, r = v.remotes || [];
+  const dec = decodersFor(v);
+  const ser0 = (l.series && l.series[0]) || l;
+  const missing = [!ser0.ignition && 'ignition retainer', !ser0.macs && 'MACS'].filter(Boolean);
+
+  return `
+    ${v.verified ? '' : `<div class="notice warn"><strong>Verify before you cut.</strong>
+      This came with the app as starter data. Confirm the blank and chip against the vehicle or
+      your machine's database, then mark it verified in Edit so it stops nagging you.</div>`}
+
+    <h2>The basics</h2>
+    ${basicsHtml(l)}
+    ${missing.length ? `<div class="card muted tiny" style="margin-top:-6px">No ${missing.join(' or ')}
+      on file. Add it in Edit and it will be here next time.</div>` : ''}
+
+    ${tumblerGridHtml(l)}
+
+    <h2>The keys</h2>
+    ${specList([['Keyway', b.keyway, 'mono'], ['Ilco', b.ilco, 'mono'], ['Silca', b.silca, 'mono'],
+                ['JMA', b.jma, 'mono'], ['OEM P/N', b.oem, 'mono']],
+               { empty: 'No mechanical key on this one.' })}
+    ${b.keyway ? `<button class="btn btn-sm ghost" data-blankfor="${esc(b.keyway)}"
+      style="margin-top:-6px">Open ${esc(shortKeyway(b.keyway))} in the blank directory</button>` : ''}
+
+    <h2>The transponder</h2>
+    ${specList([['Chip', t.chip], ['System', t.system], ['Cloneable', t.cloneable]])}
+
+    <h2>The remotes</h2>
+    ${r.length
+      ? r.map(x => specList([['Type', x.type], ['FCC ID', x.fcc, 'mono'],
+                             ['Part no.', x.pn, 'mono'], ['Buttons', x.buttons]],
+                            { empty: 'Fob details not recorded.' })).join('')
+      : '<div class="card muted tiny">No fob data on file.</div>'}
+
+    <h2>Decoders</h2>
+    ${dec.length ? specList(dec) : ''}
+    <div class="card muted tiny">Which reader you reach for is your call and your kit &mdash;
+    put it in the decode method in Edit and it will be on this card next time.</div>`;
+}
+
+/* ---- tab 2: keymaking ---- */
+function vehKeymakingHtml(v) {
+  const l = v.lock || {}, p = v.programming || {}, t = v.transponder || {};
+  const pinBad = p.pinRequired && /yes/i.test(p.pinRequired);
+
+  return `
+    <div class="method">
+      <div class="method-h">Method 1 &middot; Decode the lock</div>
+      <div class="card">
+        ${l.decode ? `<p style="margin:0 0 8px">${esc(l.decode)}</p>`
+                   : '<p class="muted tiny" style="margin:0 0 8px">No decode method recorded yet.</p>'}
+        ${l.spaces && l.depths ? `<div class="muted tiny" style="margin-top:8px">${esc(l.spaces)} spaces,
+          ${esc(l.depths)} depths${l.macs ? `, MACS ${esc(l.macs)}` : ''}. Progression the gaps once you
+          have most of the cuts.</div>` : ''}
+      </div>
+    </div>
+
+    <div class="method">
+      <div class="method-h">Method 2 &middot; Originate by code</div>
+      ${(l.series && l.series.length ? l.series : [l]).map(sx => specList(
+        [['Code series', sx.codeSeries], ['Spaces', sx.spaces], ['Depths', sx.depths],
+         ['MACS', sx.macs], ['Cut type', sx.cutMethod || l.cutMethod]],
+        { empty: 'No code series on file for this one.' })).join('')}
+      ${l.series && l.series.length > 1 ? `<div class="card muted tiny">Two code series on this car.
+        Read the code off the lock before you cut &mdash; they do not share a MACS.</div>` : ''}
+    </div>
+
+    <div class="method">
+      <div class="method-h">Method 3 &middot; Program the key</div>
+      ${pinBad ? `<div class="notice warn"><strong>PIN required.</strong> ${esc(p.pinRequired)}
+        Get it before you take the old key out of the equation.</div>` : ''}
+      ${specList([['OBD', p.obd], ['Onboard', p.onboard], ['All keys lost', p.allKeysLost],
+                  ['PIN', p.pinRequired], ['Chip', t.chip], ['Notes', p.notes]],
+                 { empty: 'No programming procedure recorded.' })}
+    </div>
+
+    <div class="method">
+      <div class="method-h">On the vehicle</div>
+      ${specList([['OBD port', v.obdPort], ['Entry', v.doorUnlock], ['Notes', v.notes]])}
+    </div>`;
+}
+
+/* ---- tab 3: tips ---- */
+function vehTipsHtml(v) {
+  const tips = Store.tipsFor(v.id);
+  const total = Object.values(tips).reduce((n, list) => n + list.length, 0);
+
+  return `
+    <div class="notice info tiny">Your own notes from your own jobs, saved on this device
+    ${total ? ` — ${total} on this vehicle` : ''}. They ride along in the Settings backup.</div>
+    ${TIP_CATS.map(cat => {
+      const list = tips[cat] || [];
+      const open = vehTipOpen === cat;
+      return `<div class="tipcat">
+        <div class="tipcat-h">
+          <span>${esc(cat)}</span>
+          <button class="btn btn-sm ghost" data-tipadd="${esc(cat)}">${open ? 'Cancel' : '+ Add'}</button>
+        </div>
+        ${open ? `<form class="card tipform" data-tipcat="${esc(cat)}">
+          <textarea name="text" rows="3" placeholder="What worked, what to watch for" autofocus></textarea>
+          <button type="submit" class="btn primary btn-sm" style="margin-top:8px">Save tip</button>
+        </form>` : ''}
+        ${list.length ? list.map(tp => `<div class="card tip">
+            <div>${esc(tp.text)}</div>
+            <div class="tip-f">
+              <span class="muted tiny">${new Date(tp.at).toLocaleDateString()}</span>
+              <button class="btn btn-sm ghost" data-tipdel="${esc(tp.id)}"
+                data-tipdelcat="${esc(cat)}">Delete</button>
+            </div>
+          </div>`).join('')
+          : '<div class="card muted tiny">Nothing here yet.</div>'}
+      </div>`;
+    }).join('')}`;
+}
+
+/* ---- tab 4: parts ---- */
+function vehPartsHtml(v) {
+  const b = v.blanks || {}, t = v.transponder || {}, r = v.remotes || [];
+  const rows = [];
+  if (b.keyway || b.ilco) rows.push(['Mechanical key', [b.keyway, b.ilco, b.silca, b.jma]
+    .filter(x => x && x !== '—').join(' · ')]);
+  if (b.oem) rows.push(['OEM part no.', b.oem]);
+  if (t.chip) rows.push(['Transponder', t.chip]);
+  if (t.cloneable) rows.push(['Cloneable', t.cloneable]);
+  r.forEach((x, i) => {
+    const val = [x.type, x.buttons, x.fcc, x.pn].filter(Boolean).join(' · ');
+    if (val) rows.push([r.length > 1 ? `Remote ${i + 1}` : 'Remote', val]);
+  });
+
+  return `
+    <h2>What this job takes</h2>
+    ${rows.length ? specList(rows) : '<div class="card muted tiny">Nothing recorded to carry yet.</div>'}
+    <div class="notice info tiny">Part numbers are only here when they are known. A missing row
+    means it has not been confirmed &mdash; look it up rather than reading the gap as "none".
+    Start a job below and the quote builder in Jobs picks the vehicle up from here.</div>`;
+}
 
 /* ---- vehicle editor (same view, swapped body) ---- */
 function editVehicle(id, prefill) {
@@ -317,8 +533,19 @@ function editVehicle(id, prefill) {
       <div class="card">
         ${F('codeSeries', 'Code series', l.codeSeries)}
         <div class="row">${F('spaces', 'Spaces', l.spaces)}${F('depths', 'Depths', l.depths)}</div>
+        <div class="row">${F('ignition', 'Ignition retainer', l.ignition, 'Active retainer')}${F('macs', 'MACS', l.macs, '3')}</div>
         ${F('cutMethod', 'Cut type', l.cutMethod)}
         ${F('decode', 'Decode method', l.decode)}
+        <div class="row">
+          ${F('tumIgnition', 'Ignition tumblers', (l.tumblers || {}).ignition, '1-10')}
+          ${F('tumDoor', 'Door tumblers', (l.tumblers || {}).door, '1-8')}
+        </div>
+        <div class="row">
+          ${F('tumTrunk', 'Trunk tumblers', (l.tumblers || {}).trunk, '3-10')}
+          ${F('tumGlove', 'Glove box tumblers', (l.tumblers || {}).glove)}
+        </div>
+        <div class="tiny muted">Tumbler positions take a range or a list &mdash; <span class="mono">1-8</span>
+        or <span class="mono">1,3,5,7</span>. Leave a lock blank and its row stays off the grid.</div>
       </div>
       <h2>Programming</h2>
       <div class="card">
@@ -362,7 +589,16 @@ function editVehicle(id, prefill) {
       transponder: { chip: f.chip, system: f.system, cloneable: f.cloneable },
       remotes: (f.rfcc || f.rpn || f.rtype || f.rbuttons)
         ? [{ type: f.rtype, fcc: f.rfcc, pn: f.rpn, buttons: f.rbuttons }] : (v.remotes || []),
-      lock: { codeSeries: f.codeSeries, spaces: f.spaces, depths: f.depths, cutMethod: f.cutMethod, decode: f.decode },
+      lock: {
+        codeSeries: f.codeSeries, spaces: f.spaces, depths: f.depths,
+        cutMethod: f.cutMethod, decode: f.decode,
+        ignition: f.ignition, macs: f.macs,
+        tumblers: (f.tumIgnition || f.tumDoor || f.tumTrunk || f.tumGlove)
+          ? { ignition: f.tumIgnition, door: f.tumDoor, trunk: f.tumTrunk, glove: f.tumGlove } : null,
+        /* The form edits the primary series; a seeded second series is carried
+           through rather than quietly dropped by saving the record. */
+        series: (v.lock && v.lock.series) || null
+      },
       programming: { obd: f.obd, onboard: f.onboard, allKeysLost: f.allKeysLost, pinRequired: f.pinRequired, notes: f.pnotes },
       obdPort: f.obdPort, doorUnlock: f.doorUnlock, notes: f.notes,
       verified: true
@@ -791,6 +1027,7 @@ function RENDER_settings() {
   $('#setStats').innerHTML = `<dl class="spec">
     <dt>Seed data</dt><dd>${SEED_VEHICLES.length} vehicles &middot; ${SEED_BLANKS.length} blanks &middot; v${esc(SEED_VERSION)}</dd>
     <dt>Your edits</dt><dd>${ov} vehicle record(s) &middot; ${Object.keys(Store.blankOverrides()).length} blank record(s)</dd>
+    <dt>Your tips</dt><dd>${Store.tipCount()}</dd>
     <dt>Jobs</dt><dd>${Store.jobs().length}</dd>
     <dt>BCM rows</dt><dd>${Store.bcmRows().length}</dd>
   </dl>`;
@@ -826,7 +1063,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -851,6 +1088,26 @@ document.addEventListener('click', (e) => {
     return;
   }
   /* --- blank directory --- */
+  if (t.dataset.vtab)    { vehTab = t.dataset.vtab; vehTipOpen = ''; RENDER_vehicle(vehShown); return; }
+  if (t.dataset.tipadd)  {
+    vehTipOpen = vehTipOpen === t.dataset.tipadd ? '' : t.dataset.tipadd;
+    RENDER_vehicle(vehShown);
+    return;
+  }
+  if (t.dataset.tipdel)  {
+    if (confirm('Delete this tip?')) Store.deleteTip(vehShown, t.dataset.tipdelcat, t.dataset.tipdel);
+    RENDER_vehicle(vehShown);
+    return;
+  }
+  if (t.dataset.blankfor) {
+    /* Jump to the blank whose keyway names the same profile as this vehicle. */
+    const want = keyWords(t.dataset.blankfor);
+    const hit = Store.blanks().find(b => keyWords(b.keyway).some(w => want.includes(w)));
+    blankUI.detail = hit ? hit.id : null;
+    blankUI.q = hit ? '' : t.dataset.blankfor.split('/')[0].trim();
+    go('blanks');
+    return;
+  }
   if (t.dataset.bgroup)  { blankUI.group = t.dataset.bgroup; blankUI.open = {}; RENDER_blanks(); return; }
   if (t.dataset.bopen)   { const k = t.dataset.bopen; blankUI.open[k] = !blankUI.open[k]; RENDER_blanks(); return; }
   if (t.dataset.bid)     { blankUI.detail = t.dataset.bid; RENDER_blanks(); return; }
@@ -951,9 +1208,9 @@ function boot() {
     } catch (err) { alert('Import failed: ' + err.message); }
   });
   $('#wipeBtn').addEventListener('click', () => {
-    if (!confirm('Erase every edit, job and BCM row on this device? Export a backup first.')) return;
+    if (!confirm('Erase every edit, tip, job and BCM row on this device? Export a backup first.')) return;
     if (!confirm('Last chance. This cannot be undone.')) return;
-    ['vehicles', 'blanks', 'jobs', 'bcm', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
+    ['vehicles', 'blanks', 'jobs', 'bcm', 'tips', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
     RENDER_settings();
   });
 
@@ -964,5 +1221,17 @@ function boot() {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
 }
+
+/* The tip form is rebuilt on every tab render, so its submit is delegated. */
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('.tipform');
+  if (!f) return;
+  e.preventDefault();
+  const text = (f.elements.text.value || '').trim();
+  if (!text) return;
+  Store.addTip(vehShown, f.dataset.tipcat, text);
+  vehTipOpen = '';
+  RENDER_vehicle(vehShown);
+});
 
 document.addEventListener('DOMContentLoaded', boot);
