@@ -56,12 +56,15 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 48 keyways across autos, powersports and equipment, all
+for the blank directory — 49 keyways across autos, powersports and equipment, all
 editable.
 
-The seed ships 81 vehicle platforms. Where a fob's FCC ID or OEM part number was
-not something the data could state confidently, the field is left blank rather
-than filled with a plausible guess — an empty field costs you a lookup, a wrong
+The seed ships 135 vehicle platforms, with Toyota / Lexus / Scion carried in depth
+(66 records, every nameplate split at its chip-generation boundaries, no year gaps).
+Other makes are covered at the platform level rather than generation by generation.
+
+Where a fob's FCC ID or OEM part number was not something the data could state
+confidently, the field is left blank rather than filled with a plausible guess — an empty field costs you a lookup, a wrong
 one costs you a returned fob.
 
 ## Nissan BCM → PIN

@@ -473,24 +473,6 @@ const SEED_VEHICLES = [
     obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
   },
   {
-    id: 'toyota-4runner-2010-2023', make: 'Toyota', model: '4Runner', yearStart: 2010, yearEnd: 2023, body: 'suv',
-    blanks: { keyway: 'TOY44D / TOY44H by year', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
-    transponder: { chip: 'G chip early, H chip 2013+', system: 'Toyota immobilizer', cloneable: 'G yes, H no' },
-    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '3B / 4B' }],
-    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
-    programming: { obd: 'Yes', onboard: 'Limited', allKeysLost: 'OBD + 16-min wait on H', pinRequired: 'No', notes: 'Long production run — confirm G vs H by the key head stamp.' },
-    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
-  },
-  {
-    id: 'toyota-sienna-2011-2020', make: 'Toyota', model: 'Sienna', yearStart: 2011, yearEnd: 2020, body: 'van',
-    blanks: { keyway: 'TOY44D / TOY44H by year', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
-    transponder: { chip: 'G early, H 2013+', system: 'Toyota immobilizer', cloneable: 'G yes, H no' },
-    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '5B / 6B w/ sliding doors' }],
-    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
-    programming: { obd: 'Yes', onboard: 'Limited', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
-    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
-  },
-  {
     id: 'lexus-rx-2010-2015', make: 'Lexus', model: 'RX 350', yearStart: 2010, yearEnd: 2015, body: 'suv',
     blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '89904-48191' },
     transponder: { chip: 'G chip smart key', system: 'Lexus smart access', cloneable: 'No' },
@@ -809,6 +791,516 @@ const SEED_VEHICLES = [
     lock: { codeSeries: 'Polaris', spaces: 6, depths: 4, cutMethod: 'Edge cut', decode: 'Impression or decode the ignition' },
     programming: { obd: 'n/a', onboard: 'n/a', allKeysLost: 'Cut by code or impression', pinRequired: 'No', notes: 'No immobilizer on most. Fast, high-margin work — worth stocking the blanks.' },
     obdPort: 'n/a', doorUnlock: 'n/a', verified: false
+  },
+
+  /* ===== TOYOTA — cars ===== */
+  {
+    id: 'toyota-camry-1997-2001', make: 'Toyota', model: 'Camry', yearStart: 1997, yearEnd: 2001, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43', silca: 'TOY43', jma: 'TOYO-21', oem: '' },
+    transponder: { chip: 'None on most; 4C on late builds', system: 'Pre-immobilizer / early 4C', cloneable: '4C clones easily' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: 'Aftermarket or dealer add-on' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43, or impression' },
+    programming: { obd: 'n/a on non-chip', onboard: 'n/a', allKeysLost: 'Cut by code or decode the door', pinRequired: 'No', notes: 'Fast money — no chip, no tool. Confirm with a chip sniffer before you quote a programming fee.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43 or wedge and reach', verified: false
+  },
+  {
+    id: 'toyota-camry-2002-2006', make: 'Toyota', model: 'Camry', yearStart: 2002, yearEnd: 2006, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C', system: 'Toyota immobilizer', cloneable: 'Yes — 4C is the easy one' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT14T', pn: '', buttons: '3B / 4B separate fob' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes — ignition-cycle procedure', allKeysLost: 'OBD, or ECU reset on some', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-camry-2018-2024', make: 'Toyota', model: 'Camry', yearStart: 2018, yearEnd: 2024, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBC', pn: '', buttons: '4B / 5B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48 on the door' },
+    programming: { obd: 'Yes with an H-capable tool', onboard: 'No', allKeysLost: 'OBD + 16-min security wait', pinRequired: 'No', notes: 'TNGA platform. Cheap clone tools will not touch it.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-corolla-1998-2002', make: 'Toyota', model: 'Corolla', yearStart: 1998, yearEnd: 2002, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43', silca: 'TOY43', jma: 'TOYO-21', oem: '' },
+    transponder: { chip: 'None on most', system: 'Pre-immobilizer', cloneable: 'n/a' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: 'Dealer add-on if fitted' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43 or impression' },
+    programming: { obd: 'n/a', onboard: 'n/a', allKeysLost: 'Cut by code or decode', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-corolla-2003-2008', make: 'Toyota', model: 'Corolla', yearStart: 2003, yearEnd: 2008, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C / 4D-67 dot on later', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT14T', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes on chip trims', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Base trims of these years often have no chip at all — check before quoting.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-corolla-2020-2025', make: 'Toyota', model: 'Corolla', yearStart: 2020, yearEnd: 2025, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBC', pn: '', buttons: '3B / 4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes with an H-capable tool', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-avalon-2005-2012', make: 'Toyota', model: 'Avalon', yearStart: 2005, yearEnd: 2012, body: 'car',
+    blanks: { keyway: 'TOY48', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer / smart entry', cloneable: 'Dot yes, G needs a G cloner' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14AAB', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims only', allKeysLost: 'OBD', pinRequired: 'No', notes: 'One of the earliest Toyota smart-key platforms in the US.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-avalon-2013-2018', make: 'Toyota', model: 'Avalon', yearStart: 2013, yearEnd: 2018, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B / 5B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-yaris-2007-2018', make: 'Toyota', model: 'Yaris', yearStart: 2007, yearEnd: 2018, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on later', system: 'Toyota immobilizer', cloneable: 'Dot yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ4-29T', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes on blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Some base trims shipped with no immobilizer.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-yaris-ia-2016-2020', make: 'Toyota', model: 'Yaris iA / Yaris sedan', yearStart: 2016, yearEnd: 2020, body: 'car',
+    blanks: { keyway: 'MAZ24', ilco: 'MAZ24R-PT', silca: 'MAZ24R', jma: 'MAZ-16.P', oem: '' },
+    transponder: { chip: 'ID49 / Hitag Pro (Mazda)', system: 'Mazda immobilizer', cloneable: 'No' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'MAZ24', spaces: 8, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi MAZ24' },
+    programming: { obd: 'Yes — use the Mazda menu, not Toyota', onboard: 'No', allKeysLost: 'OBD as a Mazda 2', pinRequired: 'No', notes: 'GOTCHA: this is a rebadged Mazda 2. Toyota blanks and Toyota software will both fail you.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi MAZ24', verified: false
+  },
+  {
+    id: 'toyota-prius-2004-2009', make: 'Toyota', model: 'Prius', yearStart: 2004, yearEnd: 2009, body: 'car',
+    blanks: { keyway: 'TOY43 / TOY48 by trim', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot', system: 'Toyota immobilizer / early smart entry', cloneable: 'Yes' },
+    remotes: [{ type: 'prox', fcc: 'MOZB21TG', pn: '', buttons: '3B smart key (option)' }],
+    lock: { codeSeries: 'TOY43 / TOY48', spaces: 8, depths: 4, cutMethod: 'Edge or laser by trim', decode: 'Lishi TOY43 or TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Smart-key trims have no conventional ignition.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi by trim', verified: false
+  },
+  {
+    id: 'toyota-prius-2016-2022', make: 'Toyota', model: 'Prius', yearStart: 2016, yearEnd: 2022, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA / HYQ14FLA', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48 on the door' },
+    programming: { obd: 'Yes with an H-capable tool', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: 'No mechanical ignition — the blade only opens the door.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-matrix-2003-2013', make: 'Toyota', model: 'Matrix', yearStart: 2003, yearEnd: 2013, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C / 4D-67 dot by year', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Corolla mechanicals. Pontiac Vibe of the same years is the same car.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-solara-2004-2008', make: 'Toyota', model: 'Camry Solara', yearStart: 2004, yearEnd: 2008, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT14T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-venza-2009-2015', make: 'Toyota', model: 'Venza', yearStart: 2009, yearEnd: 2015, body: 'suv',
+    blanks: { keyway: 'TOY48', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer / smart entry', cloneable: 'Dot yes' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14AAB', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-chr-2018-2022', make: 'Toyota', model: 'C-HR', yearStart: 2018, yearEnd: 2022, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBC', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-86-2017-2024', make: 'Toyota', model: '86 / GR86', yearStart: 2017, yearEnd: 2024, body: 'car',
+    blanks: { keyway: 'SUB4', ilco: 'SUB4-PT', silca: 'SUB4', jma: 'SUBA-6.P', oem: '' },
+    transponder: { chip: 'Subaru ID47 / Hitag3', system: 'Subaru immobilizer', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: '', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'SUB4', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi SUB4' },
+    programming: { obd: 'Yes — work it as a Subaru', onboard: 'No', allKeysLost: 'OBD as Subaru BRZ', pinRequired: 'Tool-dependent', notes: 'GOTCHA: built by Subaru. Subaru blank, Subaru software. Same car as the BRZ.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi SUB4', verified: false
+  },
+  {
+    id: 'toyota-supra-2020-2025', make: 'Toyota', model: 'GR Supra', yearStart: 2020, yearEnd: 2025, body: 'car',
+    blanks: { keyway: 'HU100R', ilco: 'BMW1', silca: 'HU100R', jma: 'TP00BM-20.P', oem: 'BMW-style fob' },
+    transponder: { chip: 'BMW FEM/BDC', system: 'BMW immobilizer', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: '', pn: '', buttons: '3B BMW-style' }],
+    lock: { codeSeries: 'HU100R', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi HU100R' },
+    programming: { obd: 'BMW procedure — often bench', onboard: 'No', allKeysLost: 'BMW FEM/BDC work, ISN required', pinRequired: 'ISN', notes: 'GOTCHA: this is a BMW Z4 underneath. Toyota tooling will not see it. Quote it as a BMW or refer it out.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi HU100R', verified: false
+  },
+  /* ===== TOYOTA — trucks and SUVs ===== */
+  {
+    id: 'toyota-tacoma-1995-2004', make: 'Toyota', model: 'Tacoma', yearStart: 1995, yearEnd: 2004, body: 'truck',
+    blanks: { keyway: 'TOY43 / TR47', ilco: 'TOY43', silca: 'TOY43', jma: 'TOYO-21', oem: '' },
+    transponder: { chip: 'None on most', system: 'Pre-immobilizer', cloneable: 'n/a' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: 'Dealer add-on if fitted' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43 or impression' },
+    programming: { obd: 'n/a', onboard: 'n/a', allKeysLost: 'Cut by code or decode the ignition', pinRequired: 'No', notes: 'No chip. Quick job, and these are still everywhere.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43 or wedge and reach', verified: false
+  },
+  {
+    id: 'toyota-tacoma-2005-2015', make: 'Toyota', model: 'Tacoma', yearStart: 2005, yearEnd: 2015, body: 'truck',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer', cloneable: 'Dot yes, G needs a G cloner' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes on blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Base work trucks of these years often have no chip at all.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-tundra-2000-2006', make: 'Toyota', model: 'Tundra', yearStart: 2000, yearEnd: 2006, body: 'truck',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43', silca: 'TOY43', jma: 'TOYO-21', oem: '' },
+    transponder: { chip: 'None to 4C by year', system: 'Pre-immobilizer / early 4C', cloneable: '4C yes' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: 'Add-on' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes on chip trims', onboard: 'Yes', allKeysLost: 'Cut by code, or OBD if chipped', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-tundra-2007-2013', make: 'Toyota', model: 'Tundra', yearStart: 2007, yearEnd: 2013, body: 'truck',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer', cloneable: 'Dot yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes on blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-tundra-2022-2025', make: 'Toyota', model: 'Tundra', yearStart: 2022, yearEnd: 2025, body: 'truck',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBX', pn: '', buttons: '4B / 5B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes with a current H-capable tool', onboard: 'No', allKeysLost: 'OBD + security wait; newest builds may need dealer', pinRequired: 'No', notes: 'Newest generation — check your tool covers it before you commit to the job.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-4runner-1996-2002', make: 'Toyota', model: '4Runner', yearStart: 1996, yearEnd: 2002, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43', silca: 'TOY43', jma: 'TOYO-21', oem: '' },
+    transponder: { chip: 'None on most', system: 'Pre-immobilizer', cloneable: 'n/a' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: 'Add-on' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43 or impression' },
+    programming: { obd: 'n/a', onboard: 'n/a', allKeysLost: 'Cut by code or decode', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-4runner-2003-2009', make: 'Toyota', model: '4Runner', yearStart: 2003, yearEnd: 2009, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT14T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-4runner-2013-2024', make: 'Toyota', model: '4Runner', yearStart: 2013, yearEnd: 2024, body: 'suv',
+    blanks: { keyway: 'TOY44H', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '89785-0D140' },
+    transponder: { chip: '8A / H chip', system: 'Toyota immobilizer / smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '3B / 4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-highlander-2001-2007', make: 'Toyota', model: 'Highlander', yearStart: 2001, yearEnd: 2007, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C / 4D-67 dot by year', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT14T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-highlander-2008-2013', make: 'Toyota', model: 'Highlander', yearStart: 2008, yearEnd: 2013, body: 'suv',
+    blanks: { keyway: 'TOY48', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer / smart entry', cloneable: 'Dot yes' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14AAB', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-highlander-2020-2024', make: 'Toyota', model: 'Highlander', yearStart: 2020, yearEnd: 2024, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBC', pn: '', buttons: '4B / 5B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-rav4-2001-2005', make: 'Toyota', model: 'RAV4', yearStart: 2001, yearEnd: 2005, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-rav4-2006-2012', make: 'Toyota', model: 'RAV4', yearStart: 2006, yearEnd: 2012, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer', cloneable: 'Dot yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-rav4-2019-2025', make: 'Toyota', model: 'RAV4', yearStart: 2019, yearEnd: 2025, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBC', pn: '', buttons: '3B / 4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes with an H-capable tool', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: 'TNGA platform, highest-volume Toyota in the US right now.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-sequoia-2001-2007', make: 'Toyota', model: 'Sequoia', yearStart: 2001, yearEnd: 2007, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C / 4D-67 dot by year', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT14T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-sequoia-2008-2022', make: 'Toyota', model: 'Sequoia', yearStart: 2008, yearEnd: 2022, body: 'suv',
+    blanks: { keyway: 'TOY48', ilco: 'TOY44D-PT / TOY44H-PT by year', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: 'Dot to 2010, G 2011-2012, H 2013+', system: 'Toyota smart entry', cloneable: 'Dot/G yes, H no' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B / 5B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims early', allKeysLost: 'OBD; 16-min wait on H', pinRequired: 'No', notes: 'Long run spanning all three chip generations — check the key head stamp.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-landcruiser-2008-2021', make: 'Toyota', model: 'Land Cruiser', yearStart: 2008, yearEnd: 2021, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT / TOY44H-PT by year', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: 'G to 2012, H 2013+', system: 'Toyota smart entry', cloneable: 'No on H' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: 'High-value vehicle. Verify ownership carefully on an AKL call.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-fjcruiser-2007-2014', make: 'Toyota', model: 'FJ Cruiser', yearStart: 2007, yearEnd: 2014, body: 'suv',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer', cloneable: 'Dot yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-sienna-2004-2010', make: 'Toyota', model: 'Sienna', yearStart: 2004, yearEnd: 2010, body: 'van',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '4B / 5B w/ sliding doors' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Frequent lockout call — the sliding door is often the easier entry.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'toyota-sienna-2021-2024', make: 'Toyota', model: 'Sienna', yearStart: 2021, yearEnd: 2024, body: 'van',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBX', pn: '', buttons: '5B / 6B w/ sliding doors' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes with a current H-capable tool', onboard: 'No', allKeysLost: 'OBD + security wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-4runner-2010-2012', make: 'Toyota', model: '4Runner', yearStart: 2010, yearEnd: 2012, body: 'suv',
+    blanks: { keyway: 'TOY44G', ilco: 'TOY44G-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-72 G chip', system: 'Toyota immobilizer', cloneable: 'Yes with a G-capable cloner' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B / 4B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Yes on blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: 'G chip years only — 2013 on is the H chip and a different job.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-sienna-2011-2012', make: 'Toyota', model: 'Sienna', yearStart: 2011, yearEnd: 2012, body: 'van',
+    blanks: { keyway: 'TOY44G', ilco: 'TOY44G-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-72 G chip', system: 'Toyota immobilizer / smart entry', cloneable: 'Yes with a G-capable cloner' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14ADR', pn: '', buttons: '5B / 6B w/ sliding doors' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: 'G chip years only.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'toyota-sienna-2013-2020', make: 'Toyota', model: 'Sienna', yearStart: 2013, yearEnd: 2020, body: 'van',
+    blanks: { keyway: 'TOY44H', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '89785-0D140' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Toyota smart entry', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '5B / 6B w/ sliding doors' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: 'Very common family-van lockout. Sliding door is often the easier entry.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  /* ===== LEXUS ===== */
+  {
+    id: 'lexus-es-2007-2012', make: 'Lexus', model: 'ES 350', yearStart: 2007, yearEnd: 2012, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Lexus smart access', cloneable: 'Dot yes' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14AAB', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Camry underneath.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-es-2013-2018', make: 'Lexus', model: 'ES 350', yearStart: 2013, yearEnd: 2018, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip', system: 'Lexus smart access', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-is-2006-2013', make: 'Lexus', model: 'IS 250 / IS 350', yearStart: 2006, yearEnd: 2013, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Lexus smart access', cloneable: 'Dot yes' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14AAB', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-is-2014-2020', make: 'Lexus', model: 'IS', yearStart: 2014, yearEnd: 2020, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip', system: 'Lexus smart access', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-rx-2004-2009', make: 'Lexus', model: 'RX 330 / RX 350', yearStart: 2004, yearEnd: 2009, body: 'suv',
+    blanks: { keyway: 'TOY48 / TOY43 by trim', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot', system: 'Lexus smart access', cloneable: 'Yes' },
+    remotes: [{ type: 'prox', fcc: 'HYQ12BBX', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'Blade trims', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-rx-2016-2022', make: 'Lexus', model: 'RX 350', yearStart: 2016, yearEnd: 2022, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip (AES)', system: 'Lexus smart access', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA / HYQ14FBB', pn: '', buttons: '4B / 5B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-gx460-2010-2023', make: 'Lexus', model: 'GX 460', yearStart: 2010, yearEnd: 2023, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT / TOY44H-PT by year', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: 'G to 2012, H 2013+', system: 'Lexus smart access', cloneable: 'No on H' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait on H', pinRequired: 'No', notes: '4Runner platform underneath.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-lx570-2008-2021', make: 'Lexus', model: 'LX 570', yearStart: 2008, yearEnd: 2021, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT / TOY44H-PT by year', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: 'G to 2012, H 2013+', system: 'Lexus smart access', cloneable: 'No on H' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: 'Land Cruiser platform. High value — verify ownership on AKL.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-nx-2015-2021', make: 'Lexus', model: 'NX 200t / NX 300', yearStart: 2015, yearEnd: 2021, body: 'suv',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44H-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '8A / H chip', system: 'Lexus smart access', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14FBA', pn: '', buttons: '4B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD + 16-min wait', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-gs-2006-2011', make: 'Lexus', model: 'GS 300 / GS 350', yearStart: 2006, yearEnd: 2011, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: '4D-67 dot', system: 'Lexus smart access', cloneable: 'Yes' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14AAB', pn: '', buttons: '4B smart key' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+  {
+    id: 'lexus-ls460-2007-2017', make: 'Lexus', model: 'LS 460', yearStart: 2007, yearEnd: 2017, body: 'car',
+    blanks: { keyway: 'TOY48 (emergency blade)', ilco: 'TOY44D-PT / TOY44H-PT by year', silca: 'TOY48', jma: 'TP00TOYO-15.P', oem: '' },
+    transponder: { chip: 'Dot to 2010, G 2011-2012, H 2013+', system: 'Lexus smart access', cloneable: 'No on H' },
+    remotes: [{ type: 'prox', fcc: 'HYQ14ACX', pn: '', buttons: '4B / 5B' }],
+    lock: { codeSeries: 'TOY48', spaces: 10, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi TOY48' },
+    programming: { obd: 'Yes', onboard: 'No', allKeysLost: 'OBD; 16-min wait on H', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY48', verified: false
+  },
+
+  /* ===== SCION ===== */
+  {
+    id: 'scion-tc-2005-2016', make: 'Scion', model: 'tC', yearStart: 2005, yearEnd: 2016, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4D-67 dot; G on 2011+', system: 'Toyota immobilizer', cloneable: 'Dot yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: 'Scion is Toyota — work it in the Toyota menu.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'scion-xb-xd-2004-2015', make: 'Scion', model: 'xB / xD', yearStart: 2004, yearEnd: 2015, body: 'car',
+    blanks: { keyway: 'TOY43', ilco: 'TOY43-PT', silca: 'TOY43', jma: 'TOYO-21.P', oem: '' },
+    transponder: { chip: '4C / 4D-67 dot by year', system: 'Toyota immobilizer', cloneable: 'Yes' },
+    remotes: [{ type: 'fob', fcc: 'GQ43VT20T', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'TOY43 8-cut', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi TOY43' },
+    programming: { obd: 'Yes', onboard: 'Yes', allKeysLost: 'OBD', pinRequired: 'No', notes: '' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi TOY43', verified: false
+  },
+  {
+    id: 'scion-frs-2013-2016', make: 'Scion', model: 'FR-S', yearStart: 2013, yearEnd: 2016, body: 'car',
+    blanks: { keyway: 'SUB4', ilco: 'SUB4-PT', silca: 'SUB4', jma: 'SUBA-6.P', oem: '' },
+    transponder: { chip: 'Subaru ID47 / Hitag3', system: 'Subaru immobilizer', cloneable: 'No' },
+    remotes: [{ type: 'prox', fcc: '', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'SUB4', spaces: 8, depths: 4, cutMethod: 'Edge cut', decode: 'Lishi SUB4' },
+    programming: { obd: 'Yes — work it as a Subaru', onboard: 'No', allKeysLost: 'OBD as Subaru BRZ', pinRequired: 'Tool-dependent', notes: 'GOTCHA: Subaru build. Subaru blank and Subaru software, not Toyota.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi SUB4', verified: false
+  },
+  {
+    id: 'scion-ia-2016-2018', make: 'Scion', model: 'iA', yearStart: 2016, yearEnd: 2018, body: 'car',
+    blanks: { keyway: 'MAZ24', ilco: 'MAZ24R-PT', silca: 'MAZ24R', jma: 'MAZ-16.P', oem: '' },
+    transponder: { chip: 'ID49 / Hitag Pro (Mazda)', system: 'Mazda immobilizer', cloneable: 'No' },
+    remotes: [{ type: 'fob', fcc: '', pn: '', buttons: '3B' }],
+    lock: { codeSeries: 'MAZ24', spaces: 8, depths: 4, cutMethod: 'Laser / sidewinder', decode: 'Lishi MAZ24' },
+    programming: { obd: 'Yes — Mazda menu', onboard: 'No', allKeysLost: 'OBD as a Mazda 2', pinRequired: 'No', notes: 'GOTCHA: rebadged Mazda 2, same as the Yaris iA that replaced it.' },
+    obdPort: 'Driver side, under dash', doorUnlock: 'Lishi MAZ24', verified: false
   }
 ];
 
@@ -852,6 +1344,9 @@ const SEED_BLANKS = [
   { id:'toy48', keyway:'TOY48', ilco:'TOY44D', ilcoChip:'TOY44D-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'—',
     cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus','Scion'],
     notes:'Dot / G chip era. The G chip is stamped "G" on the head.' },
+  { id:'toy44g', keyway:'TOY44G', ilco:'TOY44G', ilcoChip:'TOY44G-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'—',
+    cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus','Scion'],
+    notes:'G chip era, roughly 2010-2012. Same TOY48 keyway as the dot and H blanks — only the chip differs, so the blade cuts the same and the wrong box still will not start the car.' },
   { id:'toy44h', keyway:'TOY44H', ilco:'TOY44H', ilcoChip:'TOY44H-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'—',
     cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus'],
     notes:'H chip, 2013+. Same TOY48 keyway, different chip — do not mix the boxes up.' },
