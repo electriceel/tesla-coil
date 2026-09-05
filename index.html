@@ -27,29 +27,28 @@
 
   <!-- ============ LOOKUP ============ -->
   <section class="view active" id="view-lookup">
-    <h2>Year / make / model</h2>
-    <div class="card">
-      <div class="row" style="margin-bottom:10px">
+    <div class="toolbar">
+      <div class="row">
         <select id="makeSel" aria-label="Make"><option value="">All makes</option></select>
         <select id="yearSel" aria-label="Year"><option value="">Any year</option></select>
       </div>
       <input id="lookupQ" type="search" placeholder="Search model, blank, chip or FCC ID" aria-label="Search">
-      <button class="btn ghost btn-sm" id="lookupClear" style="width:100%;margin-top:10px" hidden>Clear filters</button>
+      <button class="btn ghost btn-sm" id="lookupClear" style="width:100%;margin-top:8px" hidden>Clear filters</button>
     </div>
-    <div class="tiny muted" id="lookupCount" style="margin-bottom:6px"></div>
+    <div class="countline" id="lookupCount"></div>
     <div id="lookupResults"></div>
     <button class="btn ghost" id="addVehBtn" style="margin-top:12px">+ Add a vehicle to your database</button>
   </section>
 
   <!-- ============ VEHICLE ============ -->
   <section class="view" id="view-vehicle">
-    <button class="btn btn-sm ghost" data-go="lookup" style="margin-bottom:10px">&lsaquo; Back to lookup</button>
+    <button class="back" data-go="lookup">&lsaquo; Back to lookup</button>
     <div id="vehicleBody"></div>
   </section>
 
   <!-- ============ MASTER KEYING ============ -->
   <section class="view" id="view-master">
-    <button class="btn btn-sm ghost" data-go="tools" style="margin-bottom:10px">&lsaquo; Back to tools</button>
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
     <div id="masterBody"></div>
   </section>
 
@@ -75,26 +74,45 @@
   <!-- ============ BLANKS ============ -->
   <section class="view" id="view-blanks">
     <h2>Key blank directory</h2>
-    <div class="card">
+    <div class="toolbar">
       <input id="blankQ" type="search" placeholder="Keyway, Ilco, Silca, JMA, Strattec or make" aria-label="Search blanks">
+      <div class="chips tight" id="blankGroupChips" style="margin-top:10px"></div>
     </div>
-    <div class="chips" id="blankGroupChips" style="margin-bottom:10px"></div>
-    <div class="tiny muted" id="blankCount" style="margin-bottom:6px"></div>
+    <div class="countline" id="blankCount"></div>
     <div id="blankDir"></div>
     <button class="btn ghost" id="addBlankBtn" style="margin-top:12px">+ Add a blank</button>
   </section>
 
   <!-- ============ TOOLS ============ -->
   <section class="view" id="view-tools">
-    <h2>Master keying</h2>
-    <div class="card tap vres" data-go="master">
-      <div style="flex:1;min-width:0">
-        <div class="nm">Schlage &amp; Kwikset master key system</div>
-        <div class="sub">Progress a change key schedule from a top master key, with the pinning chart for every lock.</div>
-      </div>
-      <div class="go">&rsaquo;</div>
+    <h2>Tools</h2>
+    <div class="tiles">
+      <button class="tile" data-go="master">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3.2"/><path d="M9.4 9.4L19 19M16 16l2-2M13 13l1.6-1.6"/><circle cx="17.5" cy="6.5" r="1.8"/></svg></span>
+        <span class="tile-nm">Master keying</span>
+        <span class="tile-sub">Schlage &amp; Kwikset. Schedules, pinning charts, cross-key audit.</span>
+      </button>
+      <button class="tile" data-go="bcm">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M10 3v3M14 3v3M10 18v3M14 18v3M3 10h3M3 14h3M18 10h3M18 14h3"/></svg></span>
+        <span class="tile-nm">Nissan BCM</span>
+        <span class="tile-sub">Look up a PIN in the table you loaded.</span>
+      </button>
+      <button class="tile" data-go="quote">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+        <span class="tile-nm">Quote builder</span>
+        <span class="tile-sub">Total a job before you say a number.</span>
+      </button>
+      <button class="tile" data-go="hex">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L4 12l4 7M16 5l4 7-4 7M13.5 4l-3 16"/></svg></span>
+        <span class="tile-nm">Hex / decimal</span>
+        <span class="tile-sub">Convert either way.</span>
+      </button>
     </div>
+  </section>
 
+  <!-- ============ NISSAN BCM ============ -->
+  <section class="view" id="view-bcm">
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
     <h2>Nissan BCM &rarr; PIN</h2>
     <form class="card" id="bcmForm">
       <div class="field">
@@ -113,13 +131,11 @@
       <span class="mono">bcm,pin</span>, optional third column for a note. It does not guess.
       A wrong PIN costs you an attempt on the BCM, so the app would rather say "not in your table".
     </div>
+  </section>
 
-    <h2>Hex / decimal</h2>
-    <div class="card">
-      <div class="field"><label>Value</label><input id="hexIn" class="mono" autocomplete="off" placeholder="4F2A or 20266"></div>
-    </div>
-    <div id="hexOut"></div>
-
+  <!-- ============ QUOTE BUILDER ============ -->
+  <section class="view" id="view-quote">
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
     <h2>Quote builder</h2>
     <form class="card" id="quoteForm">
       <div class="row">
@@ -134,6 +150,16 @@
       <button class="btn primary" type="submit">Total</button>
     </form>
     <div id="qOut"></div>
+  </section>
+
+  <!-- ============ HEX / DECIMAL ============ -->
+  <section class="view" id="view-hex">
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
+    <h2>Hex / decimal</h2>
+    <div class="card">
+      <div class="field"><label>Value</label><input id="hexIn" class="mono" autocomplete="off" placeholder="4F2A or 20266"></div>
+    </div>
+    <div id="hexOut"></div>
   </section>
 
   <!-- ============ JOBS ============ -->
@@ -182,11 +208,11 @@
 </main>
 
 <nav class="nav">
-  <button data-go="lookup" class="on"><span class="ic">&#128663;</span>Lookup</button>
-  <button data-go="vin"><span class="ic">&#35;</span>VIN</button>
-  <button data-go="blanks"><span class="ic">&#128273;</span>Blanks</button>
-  <button data-go="tools"><span class="ic">&#128295;</span>Tools</button>
-  <button data-go="jobs"><span class="ic">&#128203;</span>Jobs</button>
+  <button data-go="lookup" class="on"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5h18M5.5 13.5l1.6-5a2 2 0 011.9-1.4h6a2 2 0 011.9 1.4l1.6 5"/><path d="M3 13.5V18h18v-4.5"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>Lookup</button>
+  <button data-go="vin"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 6v12M8 6v12M12 6v12M16.5 6v12M20 6v12" opacity=".95"/></svg>VIN</button>
+  <button data-go="blanks"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="3.6"/><path d="M9.6 12H21M18 12v3.2M14.5 12v2.6"/></svg>Blanks</button>
+  <button data-go="tools"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 3.5a5 5 0 00-6.1 6.6L3.6 15a2 2 0 102.8 2.8l4.9-4.8a5 5 0 006.6-6.1l-2.7 2.7-2.4-.6-.6-2.4z"/></svg>Tools</button>
+  <button data-go="jobs"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="4" width="15" height="17" rx="2.2"/><path d="M9 3h6v3H9z" fill="currentColor" stroke="none"/><path d="M8.5 11.5h7M8.5 15.5h4.5"/></svg>Jobs</button>
 </nav>
 
 <script src="assets/js/data.js"></script>

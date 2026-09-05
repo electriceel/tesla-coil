@@ -8,7 +8,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
 /* ======================= routing ======================= */
-const VIEWS = ['lookup', 'vehicle', 'vin', 'blanks', 'tools', 'master', 'jobs', 'settings'];
+const VIEWS = ['lookup', 'vehicle', 'vin', 'blanks', 'tools', 'master', 'bcm', 'quote', 'hex',
+               'jobs', 'settings'];
 let current = 'lookup';
 
 let vehShown = '';
@@ -789,7 +790,7 @@ function renderBlankDetail(id) {
   const dash = (v) => (!v || v === '—') ? '&mdash;' : esc(v);
 
   $('#blankDir').innerHTML = `
-    <button class="btn btn-sm ghost" data-bback="1" style="margin-bottom:10px">&lsaquo; Back to directory</button>
+    <button class="back" data-bback="1">&lsaquo; Back to directory</button>
     <div class="card">
       <div style="font-size:22px;font-weight:700" class="mono">${esc(b.keyway)}</div>
       <div class="chips" style="margin-top:8px">
@@ -1042,7 +1043,7 @@ function mkFullFormHtml(sys) {
   const alloc = mkAlloc();
   return `
     <div class="field"><label>System depth</label>
-      <div class="chips">${[2, 3, 4].map(n =>
+      <div class="chips tight">${[2, 3, 4].map(n =>
         `<button type="button" class="chip${mkUI.levels === n ? ' on' : ''}" data-mklevels="${n}">${n} levels</button>`).join('')}</div>
     </div>
     <div class="tiny muted" style="margin:6px 0 12px">${names.join(' &rsaquo; ')}</div>
@@ -1182,7 +1183,7 @@ function RENDER_master() {
 
     <form class="card" id="mkForm">
       <div class="field"><label>System type</label>
-        <div class="chips">
+        <div class="seg">
           <button type="button" class="chip${mkUI.mode === 'single' ? ' on' : ''}" data-mkmode="single">Single master</button>
           <button type="button" class="chip${mkUI.mode === 'full' ? ' on' : ''}" data-mkmode="full">Full system</button>
           <button type="button" class="chip${mkUI.mode === 'extend' ? ' on' : ''}" data-mkmode="extend">Existing master</button>
@@ -1476,12 +1477,15 @@ function mkScheduleText(r) {
 }
 
 /* ======================= tools ======================= */
-function RENDER_tools() {
+/* Tools is a launcher now, so it has nothing of its own to draw. */
+function RENDER_tools() {}
+
+function RENDER_bcm() {
   const rows = Store.bcmRows();
   $('#bcmCount').textContent = rows.length
     ? `${rows.length} row${rows.length === 1 ? '' : 's'} loaded`
     : 'No conversion table loaded';
-};
+}
 
 function bcmLookup() {
   const code = ($('#bcmInput').value || '').trim().toUpperCase().replace(/\s+/g, '');
@@ -1653,6 +1657,11 @@ const RENDER = {
   tools: (...a) => RENDER_tools(...a),
   jobs: (...a) => RENDER_jobs(...a),
   master: (...a) => RENDER_master(...a),
+  bcm: (...a) => RENDER_bcm(...a),
+  /* The quote and hex screens are pure markup — the listeners bound at boot do
+     the work, so there is nothing to render on arrival. */
+  quote: () => {},
+  hex: () => {},
   settings: (...a) => RENDER_settings(...a)
 };
 
@@ -1806,11 +1815,11 @@ function boot() {
       const text = await pickFile('.csv,.txt,text/csv,text/plain');
       const n = importBcmCsv(text, true);
       alert(`Imported ${n} row(s).`);
-      RENDER_tools();
+      RENDER_bcm();
     } catch (err) { alert(err.message); }
   });
   $('#bcmClear').addEventListener('click', () => {
-    if (confirm('Clear the loaded BCM table?')) { Store.setBcmRows([]); RENDER_tools(); $('#bcmOut').innerHTML = ''; }
+    if (confirm('Clear the loaded BCM table?')) { Store.setBcmRows([]); RENDER_bcm(); $('#bcmOut').innerHTML = ''; }
   });
   $('#hexIn').addEventListener('input', runHexDec);
   $('#quoteForm').addEventListener('submit', (e) => { e.preventDefault(); runQuote(); });
