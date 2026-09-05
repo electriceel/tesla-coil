@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="KeyPro Field">
+  <rect width="512" height="512" rx="112" fill="#0d1117"/>
+  <g fill="none" stroke="#ffb020" stroke-width="34" stroke-linecap="round">
+    <circle cx="186" cy="326" r="74"/>
+    <path d="M238 274 L392 120"/>
+    <path d="M330 182 L372 224"/>
+    <path d="M372 140 L406 174"/>
+  </g>
+  <circle cx="186" cy="326" r="22" fill="#0d1117"/>
+</svg>
