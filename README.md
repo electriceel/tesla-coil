@@ -58,6 +58,47 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
+**Master keying** — under Tools, in two shapes.
+
+*Single master* progresses a run of change keys under one master, by rotating constant
+(holds one chamber at the master depth, so no change key can turn into an unintended
+master) or total position (progresses every chamber, for the most changes a master will
+carry).
+
+*Existing master* is the job that actually comes up: a building already has a master
+and keys in the field, and needs six more changes. Give it the master and whatever keys
+you have decoded, and it reads the layout back off them — which chambers progress, which
+are held, and what step the system was cut on, including one-step systems that would be
+wrong to pin as two. Then it generates new changes inside that layout and **refuses any
+that would cross-key** — a new key that sits between the master and a key already in the
+field will open that lock, and nobody finds out until a tenant does. Rejections are
+counted and shown. If nothing safe is left, it says the system is full and needs a rekey
+rather than handing you another change.
+
+*Full system* builds the hierarchy — up to great grand master over grand master over
+master over change key, with standard key symbols (GGM, A, AA, AA1). The method is
+position allocation: each level owns a set of chambers and progresses only those,
+holding every other at its parent's depth. That is what keeps the levels from
+colliding, and the chamber assignment is yours to set. Every lock is pinned for its
+whole chain, so a chamber can carry three or four depths and a stack of master pins.
+
+Then it audits itself. Every key in the system is tried against every lock in it, and
+any key that opens a door above its level is reported by name — because "the allocation
+should prevent that" is not the same as having checked. The suite includes a
+deliberately broken system to prove the audit can fail, so a clean one means something.
+
+Schlage and Kwikset ship with their published depth range and MACS, and every one of
+those is editable for the cylinder in your hand; switching maker resets the range to
+that maker's. Each lock opens to a pinning chart — bottom pin and master pins per
+chamber — plus the count of bittings the pinning also passes, which is the number worth
+weighing before a system goes on a door that matters. Master pins under the
+two-increment minimum are flagged. Systems save by their inputs, not their output, so a
+reloaded system regenerates from the same math rather than carrying a stale schedule.
+
+Nothing in it is looked up. It is arithmetic on one physical fact: a deeper cut lets
+the stack sit lower, so the bottom pin is sized to the shallower of the two cuts and the
+master pin makes up the difference. The math has its own test suite separate from the UI — `node tests/master.test.js`.
+
 **Blanks** — a browsable key blank directory. It opens on five categories —
 automotive, powersports, fleet & equipment, residential, commercial — because 139
 blanks across 130-odd makes is not a list you read on arrival. From there, regroup

@@ -8,7 +8,7 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
 /* ======================= routing ======================= */
-const VIEWS = ['lookup', 'vehicle', 'vin', 'blanks', 'tools', 'jobs', 'settings'];
+const VIEWS = ['lookup', 'vehicle', 'vin', 'blanks', 'tools', 'master', 'jobs', 'settings'];
 let current = 'lookup';
 
 let vehShown = '';
@@ -883,6 +883,598 @@ function editBlank(id) {
   });
 }
 
+/* ======================= master keying ======================= */
+/* The form state, kept out of the DOM so a re-render never loses your inputs. */
+const mkUI = {
+  sysId: 'schlage', chambers: 6, min: 0, max: 9, macs: 7, step: 2,
+  tmk: '', method: 'rc', count: 12,
+  mode: 'single',            // 'single' | 'full' | 'extend'
+  existing: '',              // change keys already in the field, one per line
+  levels: 3, alloc: null, counts: [3, 4], openSym: {},
+  label: '', result: null, openKey: null, loadedId: null
+};
+
+function mkSystem() {
+  const base = MK_SYSTEMS[mkUI.sysId] || MK_SYSTEMS.schlage;
+  return { ...base, chambers: mkUI.chambers, min: mkUI.min, max: mkUI.max, macs: mkUI.macs, step: mkUI.step };
+}
+
+/* Switching manufacturer resets the specs to that maker's published ones —
+   carrying Schlage's 0-9 into a Kwikset job would quietly produce keys that
+   cannot be cut. */
+function mkPickSystem(id) {
+  const s = MK_SYSTEMS[id];
+  if (!s) return;
+  Object.assign(mkUI, { sysId: id, chambers: s.chambers, min: s.min, max: s.max, macs: s.macs, step: s.step, result: null });
+}
+
+/* ---- extending a master already in the field ---- */
+
+/* One bitting per line; blank lines and stray separators are the user typing,
+   not an error worth stopping for. */
+function mkExistingLines() {
+  return String(mkUI.existing || '').split(/[\n;]+/).map(l => l.trim()).filter(Boolean);
+}
+
+function mkExtendFormHtml(sys) {
+  return `
+    <div class="field"><label>The master you already have</label>
+      <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
+        placeholder="${Array(sys.chambers).fill(Math.min(sys.min + 2, sys.max)).join('-')}"
+        value="${esc(mkUI.tmk)}"></div>
+
+    <div class="field"><label>Change keys already in the field <span class="tiny muted">one per line, optional</span></label>
+      <textarea name="existing" rows="5" class="mono" inputmode="numeric"
+        placeholder="4-2-4-2-4&#10;6-2-6-2-6">${esc(mkUI.existing)}</textarea></div>
+    <div class="tiny muted" style="margin:-4px 0 12px">Decode or read what is already out there and
+      list it here. The tool works out how the system was laid out, keeps the new keys inside it, and
+      refuses any that would open a door already in the field. Leave it empty and it treats every
+      chamber as free.</div>
+
+    <div class="field"><label>New change keys wanted</label>
+      <input name="count" type="number" inputmode="numeric" min="1" max="200" value="${mkUI.count}"></div>`;
+}
+
+function mkExtendResultHtml(r) {
+  if (!r.ok) {
+    return `<div class="notice err"><strong>Cannot read that master.</strong><ul style="margin:6px 0 0 18px">
+      ${r.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+  }
+  const a = r.analysis;
+
+  return `
+    <h2>What the existing keys say</h2>
+    <div class="card">
+      <dl class="spec">
+        <dt>Master</dt><dd class="mono" style="font-size:17px;font-weight:700">${esc(formatBitting(r.master))}</dd>
+        <dt>Chambers that progress</dt>
+        <dd>${r.positions.map(p => p + 1).join(', ')}${a.progressing.length ? '' : ' (all — nothing to read from)'}</dd>
+        ${a.held.length ? `<dt>Chambers held</dt><dd>${a.held.map(p => p + 1).join(', ')}</dd>` : ''}
+        <dt>Step</dt><dd>${r.step} increment${r.step === 1 ? '' : 's'}</dd>
+        <dt>Keys read</dt><dd>${a.good.length} in the field</dd>
+      </dl>
+    </div>
+    ${a.notes.map(n => `<div class="notice info tiny">${esc(n)}</div>`).join('')}
+
+    ${a.rejected.length ? `<div class="notice warn tiny">
+      <strong>${a.rejected.length} line${a.rejected.length === 1 ? '' : 's'} could not be used:</strong>
+      <ul style="margin:6px 0 0 18px">${a.rejected.map(x =>
+        `<li class="mono">${esc(formatBitting(x.bitting))} &mdash; ${esc(x.why)}</li>`).join('')}</ul></div>` : ''}
+
+    <h2>New change keys</h2>
+    ${r.keys.length ? '' : `<div class="notice err"><strong>No safe change key left.</strong>
+      Every combination this master allows either duplicates a key in the field or would cross-key
+      with one. The system is full — it needs a rekey, not another change.</div>`}
+
+    ${r.exhausted && r.keys.length ? `<div class="notice warn tiny">Only ${r.keys.length} safe
+      change key${r.keys.length === 1 ? '' : 's'} left in this master, fewer than you asked for.</div>` : ''}
+
+    ${r.conflicts.length ? `<div class="notice ok tiny"><strong>${r.conflicts.length}${r.conflicts.length >= 12 ? '+' : ''}
+      combination${r.conflicts.length === 1 ? ' was' : 's were'} rejected for cross-keying.</strong>
+      They are legal cuts that would have opened a door already in the field:
+      ${r.conflicts.slice(0, 4).map(c =>
+        `<span class="mono">${esc(formatBitting(c.bitting))}</span>`).join(', ')}${r.conflicts.length > 4 ? ' and more' : ''}.</div>` : ''}
+
+    ${r.keys.map(k => mkKeyHtml({ ...k, subtitle: `chambers ${r.positions.map(p => p + 1).join(', ')}` },
+                                { tmk: r.master, system: r.system })).join('')}
+
+    ${r.existingLocks.length ? `<h2>Already in the field</h2>
+      <div class="card muted tiny">These are the keys you gave, shown so the new ones can be checked
+      against them by eye as well as by the tool.</div>
+      ${r.existingLocks.map(l => `<div class="card">
+        <div class="mono" style="font-weight:700">${esc(formatBitting(l.bitting))}</div>
+        <div class="tiny muted" style="margin-top:4px">bottom ${l.chart.map(c => c.bottom).join(' ')}
+          &middot; master ${l.chart.map(c => c.masters.length ? c.masters.join('+') : '-').join(' ')}</div>
+      </div>`).join('')}` : ''}
+
+    <div class="stack" style="margin-top:16px">
+      <button class="btn" data-mksave="1">Save this system</button>
+      <button class="btn ghost" data-mkcopy="1">Copy the whole schedule</button>
+    </div>`;
+}
+
+function mkExtendText(r) {
+  const out = [];
+  out.push(`${mkUI.label || 'Added to an existing master'} — ${r.system.name}`);
+  out.push(`Master  ${formatBitting(r.master)}`);
+  out.push(`Progressing chambers: ${r.positions.map(p => p + 1).join(', ')}   step ${r.step}`);
+  if (r.analysis.good.length) {
+    out.push('');
+    out.push('ALREADY IN THE FIELD');
+    r.analysis.good.forEach(b => out.push(`   ${formatBitting(b)}`));
+  }
+  out.push('');
+  out.push('NEW CHANGE KEYS');
+  r.keys.forEach(k => {
+    out.push(`CK${String(k.n).padStart(2, '0')}  ${formatBitting(k.bitting)}`);
+    out.push(`   bottom  ${k.chart.map(c => c.bottom).join(' ')}`);
+    out.push(`   master  ${k.chart.map(c => c.masters.length ? c.masters.join('+') : '-').join(' ')}`);
+  });
+  out.push('');
+  out.push(`${r.conflicts.length} combination(s) rejected for cross-keying with the field.`);
+  out.push('Verify against your pinning kit before you load a plug.');
+  return out.join('\n');
+}
+
+/* ---- full multi-level system ---- */
+
+function mkAlloc() {
+  const need = mkUI.levels - 1;
+  if (!mkUI.alloc || mkUI.alloc.length !== need
+      || mkUI.alloc.flat().some(p => p >= mkUI.chambers)) {
+    mkUI.alloc = defaultAllocation(mkUI.chambers, mkUI.levels);
+  }
+  return mkUI.alloc;
+}
+
+/* Moving a chamber to a level takes it off whatever level held it — a chamber
+   belongs to exactly one, which is what keeps the levels from colliding. */
+function mkAssign(level, pos) {
+  const alloc = mkAlloc().map(g => g.filter(p => p !== pos));
+  alloc[level] = alloc[level].concat([pos]).sort((a, b) => a - b);
+  mkUI.alloc = alloc;
+  mkUI.result = null;
+  RENDER_master();
+}
+
+function mkFullFormHtml(sys) {
+  const names = LEVEL_NAMES[mkUI.levels];
+  const alloc = mkAlloc();
+  return `
+    <div class="field"><label>System depth</label>
+      <div class="chips">${[2, 3, 4].map(n =>
+        `<button type="button" class="chip${mkUI.levels === n ? ' on' : ''}" data-mklevels="${n}">${n} levels</button>`).join('')}</div>
+    </div>
+    <div class="tiny muted" style="margin:6px 0 12px">${names.join(' &rsaquo; ')}</div>
+
+    <div class="field"><label>${esc(names[0])} bitting</label>
+      <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
+        placeholder="${Array(sys.chambers).fill(Math.min(sys.min + 2, sys.max)).join('-')}"
+        value="${esc(mkUI.tmk)}"></div>
+
+    <div class="field"><label>Which chambers each level progresses</label></div>
+    ${alloc.map((positions, g) => `
+      <div class="allocrow">
+        <div class="allocname">${esc(names[g + 1])}</div>
+        <div class="chips">${Array.from({ length: sys.chambers }, (_, p) =>
+          `<button type="button" class="chip sm${positions.includes(p) ? ' on' : ''}"
+             data-mkalloc="${g}" data-mkpos="${p}">${p + 1}</button>`).join('')}</div>
+      </div>`).join('')}
+    <div class="tiny muted" style="margin:2px 0 12px">Each chamber belongs to one level. The level
+      progresses those chambers and holds every other at its parent's depth &mdash; that is what
+      stops a change key reaching a door above it.</div>
+
+    ${alloc.map((_, g) => `
+      <div class="field"><label>${esc(names[g + 1])}s per parent</label>
+        <input name="count${g}" type="number" inputmode="numeric" min="1" max="60"
+          value="${(mkUI.counts && mkUI.counts[g]) || 3}"></div>`).join('')}`;
+}
+
+function mkFullResultHtml(r) {
+  if (!r.ok) {
+    return `<div class="notice err"><strong>Cannot build that.</strong><ul style="margin:6px 0 0 18px">
+      ${r.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+  }
+  const a = r.audit;
+  return `
+    <h2>The system</h2>
+    <div class="card">
+      <dl class="spec">
+        <dt>${esc(r.names[0])}</dt>
+        <dd class="mono" style="font-size:17px;font-weight:700">${esc(formatBitting(r.top))}</dd>
+        <dt>Levels</dt><dd>${esc(r.names.join(' › '))}</dd>
+        <dt>Keys</dt><dd>${r.keys.length} across the system</dd>
+        <dt>Locks</dt><dd>${r.locks.length}</dd>
+        <dt>System</dt><dd>${esc(r.system.name)} &middot; ${r.system.chambers} chambers &middot;
+          depths ${r.system.min}-${r.system.max} &middot; MACS ${r.system.macs}</dd>
+      </dl>
+    </div>
+
+    ${a.violations.length
+      ? `<div class="notice err"><strong>${a.violations.length} key${a.violations.length === 1 ? '' : 's'}
+          open${a.violations.length === 1 ? 's' : ''} a door it should not.</strong>
+          Do not cut this system.
+          <ul style="margin:6px 0 0 18px">${a.violations.slice(0, 8).map(v =>
+            `<li class="mono tiny">${esc(v.key)} ${esc(formatBitting(v.keyBitting))} opens lock
+              ${esc(v.lock)} ${esc(formatBitting(v.lockBitting))}</li>`).join('')}</ul></div>`
+      : `<div class="notice ok tiny"><strong>Cross-key audit clean.</strong> All ${a.checked}
+          key/lock pairs in this system were tried. Every key opens the doors below it and none
+          above it.</div>`}
+
+    <h2>Key schedule</h2>
+    ${mkTreeHtml(r.root, r, 0)}
+
+    <div class="stack" style="margin-top:16px">
+      <button class="btn" data-mksave="1">Save this system</button>
+      <button class="btn ghost" data-mkcopy="1">Copy the whole schedule</button>
+    </div>`;
+}
+
+/* One block per key, nested. A leaf carries its lock's pinning chart. */
+function mkTreeHtml(node, r, depth) {
+  const isLeaf = !node.children || !node.children.length;
+  const lock = isLeaf ? r.locks.find(l => l.symbol === node.symbol) : null;
+  const open = !!mkUI.openSym[node.symbol];
+  const name = r.names[node.depth];
+
+  return `<div class="card mktree" style="padding:0;overflow:hidden;margin-left:${depth * 10}px">
+    <button class="grp" data-mksym="${esc(node.symbol)}">
+      <span class="grp-name mono">${esc(node.symbol)} &nbsp; ${esc(formatBitting(node.bitting))}
+        <span class="grp-sub">${esc(name)}${lock
+          ? ` &middot; also passes ${lock.incidental}`
+          : ` &middot; ${node.children.length} below`}</span></span>
+      ${lock && lock.warnings.length ? '<span class="badge err">THIN</span>' : ''}
+      <span class="grp-x">${open ? '&minus;' : '+'}</span>
+    </button>
+    ${open ? `<div class="grp-body" style="padding:${isLeaf ? '10px' : '8px 6px 6px'}">
+      ${lock ? mkChartHtml(lock, r) : node.children.map(c => mkTreeHtml(c, r, depth + 1)).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+function mkChartHtml(lock, r) {
+  const chainKeys = lock.chain.map(sym => r.keys.find(k => k.symbol === sym)).filter(Boolean);
+  return `<div class="tumwrap"><table class="pinchart">
+      <tr><th>Chamber</th>${lock.chart.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+      ${chainKeys.map(k => `<tr><th>${esc(k.symbol)} cut</th>${k.bitting.map(d => `<td>${d}</td>`).join('')}</tr>`).join('')}
+      <tr><th>${esc(lock.symbol)} cut</th>${lock.bitting.map(d => `<td>${d}</td>`).join('')}</tr>
+      <tr class="sep"><th>Bottom pin</th>${lock.chart.map(c => `<td class="bot">${c.bottom}</td>`).join('')}</tr>
+      <tr><th>Master pins</th>${lock.chart.map(c =>
+        `<td class="${c.masters.length ? 'mas' : 'none'}">${c.masters.length ? c.masters.join('+') : '&mdash;'}</td>`).join('')}</tr>
+    </table></div>
+    <div class="tiny muted" style="margin-top:8px">${lock.keysThatOpen} keys turn this lock.
+      Bottom pin is the shallowest cut among them; each master pin is the step up to the next depth.
+      A dash means every key shares that chamber &mdash; one pin, no split. Top pins from your kit.</div>
+    ${lock.warnings.length ? `<div class="notice warn tiny" style="margin-top:8px">
+      ${lock.warnings.map(esc).join('<br>')}</div>` : ''}`;
+}
+
+function mkFullText(r) {
+  const out = [];
+  out.push(`${mkUI.label || 'Master key system'} — ${r.system.name}`);
+  out.push(r.names.join(' > '));
+  out.push(`${r.system.chambers} chambers, depths ${r.system.min}-${r.system.max}, MACS ${r.system.macs}`);
+  out.push(`Chamber allocation: ${r.alloc.map((g, i) =>
+    `${r.names[i + 1]} = ${g.map(p => p + 1).join(',')}`).join('; ')}`);
+  out.push('');
+  r.keys.forEach(k => out.push(`${'  '.repeat(k.depth)}${k.symbol.padEnd(8)} ${formatBitting(k.bitting)}`));
+  out.push('');
+  out.push('PINNING');
+  r.locks.forEach(l => {
+    out.push(`${l.symbol}  ${formatBitting(l.bitting)}   (opens to: ${l.chain.concat([l.symbol]).join(', ')})`);
+    out.push(`   bottom  ${l.chart.map(c => c.bottom).join(' ')}`);
+    out.push(`   master  ${l.chart.map(c => c.masters.length ? c.masters.join('+') : '-').join(' ')}`);
+  });
+  out.push('');
+  out.push(r.audit.violations.length
+    ? `WARNING: ${r.audit.violations.length} cross-key violations — do not cut this system.`
+    : `Cross-key audit clean over ${r.audit.checked} key/lock pairs.`);
+  out.push('Verify against your pinning kit before you load a plug.');
+  return out.join('\n');
+}
+
+function RENDER_master() {
+  const sys = mkSystem();
+  const saved = Store.mkSystems();
+
+  $('#masterBody').innerHTML = `
+    <h2>Master keying</h2>
+
+    <form class="card" id="mkForm">
+      <div class="field"><label>System type</label>
+        <div class="chips">
+          <button type="button" class="chip${mkUI.mode === 'single' ? ' on' : ''}" data-mkmode="single">Single master</button>
+          <button type="button" class="chip${mkUI.mode === 'full' ? ' on' : ''}" data-mkmode="full">Full system</button>
+          <button type="button" class="chip${mkUI.mode === 'extend' ? ' on' : ''}" data-mkmode="extend">Existing master</button>
+        </div>
+      </div>
+      <div class="tiny muted" style="margin:6px 0 12px">${
+        mkUI.mode === 'single' ? 'One master over a run of change keys, progressed by rotating constant or total position.'
+        : mkUI.mode === 'full' ? 'A hierarchy — grand master over masters over change keys — with each level owning its own chambers.'
+        : 'A master already in the field. Give it the keys you know about and it works out the layout, then adds changes that will not open a door already out there.'}</div>
+
+      <div class="field"><label>Manufacturer</label>
+        <select name="sysId">${Object.values(MK_SYSTEMS).map(s =>
+          `<option value="${s.id}"${mkUI.sysId === s.id ? ' selected' : ''}>${esc(s.name)} &mdash; ${esc(s.keyway)}</option>`).join('')}</select>
+      </div>
+      <div class="tiny muted" style="margin:-4px 0 10px">${esc(sys.note)}</div>
+
+      <div class="row">
+        <div class="field"><label>Chambers</label>
+          <input name="chambers" type="number" inputmode="numeric" min="4" max="7" value="${sys.chambers}"></div>
+        <div class="field"><label>MACS</label>
+          <input name="macs" type="number" inputmode="numeric" min="1" max="9" value="${sys.macs}"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Shallowest depth</label>
+          <input name="min" type="number" inputmode="numeric" min="0" max="9" value="${sys.min}"></div>
+        <div class="field"><label>Deepest depth</label>
+          <input name="max" type="number" inputmode="numeric" min="0" max="9" value="${sys.max}"></div>
+      </div>
+
+      ${mkUI.mode === 'full' ? mkFullFormHtml(sys)
+        : mkUI.mode === 'extend' ? mkExtendFormHtml(sys) : `
+        <div class="field"><label>Top master key (TMK)</label>
+          <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
+            placeholder="${Array(sys.chambers).fill(sys.min + 2 <= sys.max ? sys.min + 2 : sys.min).join('-')}"
+            value="${esc(mkUI.tmk)}"></div>
+
+        <div class="field"><label>Progression</label>
+          <select name="method">
+            <option value="rc"${mkUI.method === 'rc' ? ' selected' : ''}>Rotating constant — safer</option>
+            <option value="tpp"${mkUI.method === 'tpp' ? ' selected' : ''}>Total position — more changes</option>
+          </select></div>
+        <div class="tiny muted" style="margin:-4px 0 10px">${mkUI.method === 'rc'
+          ? 'One chamber is held at the master depth, so no change key can turn into an unintended master. The held chamber rotates by group — the first batch holds chamber 1, the next holds chamber 2, and so on.'
+          : 'Every chamber progresses. The most changes a master will carry, and the widest incidental exposure.'}</div>
+
+        <div class="field"><label>Change keys</label>
+          <input name="count" type="number" inputmode="numeric" min="1" max="500" value="${mkUI.count}"></div>`}
+
+      <div class="field"><label>Job / label</label>
+        <input name="label" autocomplete="off" placeholder="Marsh St duplex" value="${esc(mkUI.label)}"></div>
+
+      <button class="btn primary" type="submit">${
+        mkUI.mode === 'full' ? 'Build the system'
+        : mkUI.mode === 'extend' ? 'Add to this master' : 'Build the schedule'}</button>
+    </form>
+
+    ${mkUI.result
+      ? (mkUI.mode === 'full' ? mkFullResultHtml(mkUI.result)
+         : mkUI.mode === 'extend' ? mkExtendResultHtml(mkUI.result)
+         : mkResultHtml(mkUI.result))
+      : `<div class="notice info tiny">
+      Enter the master bitting you want the system built around. Everything below is
+      computed from it &mdash; nothing is looked up, so nothing is guessed. The depth
+      range and MACS start at the manufacturer's published figures; change them to
+      match the cylinder in your hand.</div>`}
+
+    ${saved.length ? `<h2>Saved systems</h2>${saved.map(s => `
+      <div class="card tap vres" data-mkload="${esc(s.id)}">
+        <div style="flex:1;min-width:0">
+          <div class="nm">${esc(s.label || 'Untitled system')}</div>
+          <div class="sub mono">${esc(s.tmk)} &middot; ${esc((MK_SYSTEMS[s.sysId] || {}).name || s.sysId)}
+            &middot; ${s.mode === 'full'
+              ? `${s.levels}-level system`
+              : s.mode === 'extend'
+              ? `existing master, +${s.count}`
+              : `${s.count} change key${s.count === 1 ? '' : 's'}`}</div>
+        </div>
+        <div class="go">&rsaquo;</div>
+      </div>`).join('')}` : ''}`;
+
+  const form = $('#mkForm');
+  form.elements.sysId.addEventListener('change', (e) => { mkPickSystem(e.target.value); RENDER_master(); });
+  if (form.elements.method) {
+    form.elements.method.addEventListener('change', (e) => { mkUI.method = e.target.value; RENDER_master(); });
+  }
+  form.addEventListener('submit', (e) => { e.preventDefault(); mkBuild(); });
+}
+
+function mkReadForm() {
+  const f = $('#mkForm');
+  if (!f) return;
+  const v = (n) => f.elements[n] ? f.elements[n].value : '';
+  const i = (n, d) => { const x = parseInt(v(n), 10); return Number.isFinite(x) ? x : d; };
+  Object.assign(mkUI, {
+    sysId: v('sysId') || mkUI.sysId,
+    chambers: i('chambers', mkUI.chambers), macs: i('macs', mkUI.macs),
+    min: i('min', mkUI.min), max: i('max', mkUI.max),
+    tmk: v('tmk'), method: v('method') || mkUI.method,
+    count: i('count', mkUI.count), label: v('label')
+  });
+  if (mkUI.mode === 'full') {
+    mkUI.counts = mkAlloc().map((_, g) => i('count' + g, (mkUI.counts && mkUI.counts[g]) || 3));
+  }
+  if (mkUI.mode === 'extend') mkUI.existing = v('existing');
+}
+
+/* One place that knows how each mode builds, so building and reloading a saved
+   system can never drift apart. */
+function mkBuildResult() {
+  const system = mkSystem();
+  if (mkUI.mode === 'full') {
+    return buildFullSystem({ system, tmk: mkUI.tmk, levels: mkUI.levels,
+                             alloc: mkAlloc(), counts: mkUI.counts });
+  }
+  if (mkUI.mode === 'extend') {
+    return extendSystem({ system, master: mkUI.tmk, existing: mkExistingLines(), count: mkUI.count });
+  }
+  return buildSystem({ system, tmk: mkUI.tmk, method: mkUI.method, count: mkUI.count });
+}
+
+function mkBuild() {
+  mkReadForm();
+  if (mkUI.min >= mkUI.max) {
+    mkUI.result = { ok: false, errors: ['The shallowest depth has to be less than the deepest.'] };
+    RENDER_master();
+    return;
+  }
+  mkUI.result = mkBuildResult();
+  mkUI.openKey = null;
+  mkUI.openSym = {};
+  /* Open the top key so the schedule is not a wall of closed rows. */
+  if (mkUI.mode === 'full' && mkUI.result.ok) mkUI.openSym[mkUI.result.root.symbol] = true;
+  RENDER_master();
+}
+
+function mkResultHtml(r) {
+  if (!r.ok) {
+    return `<div class="notice err"><strong>Cannot build that.</strong><ul style="margin:6px 0 0 18px">
+      ${r.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+  }
+
+  const short = r.keys.length < r.capacity;
+  const warned = r.keys.filter(k => k.warnings.length).length;
+
+  return `
+    <h2>The schedule</h2>
+    <div class="card">
+      <dl class="spec">
+        <dt>Master (TMK)</dt><dd class="mono" style="font-size:17px;font-weight:700">${esc(formatBitting(r.tmk))}</dd>
+        <dt>System</dt><dd>${esc(r.system.name)} &middot; ${r.system.chambers} chambers &middot;
+          depths ${r.system.min}-${r.system.max} &middot; MACS ${r.system.macs}</dd>
+        <dt>Progression</dt><dd>${r.method === 'rc' ? 'Rotating constant' : 'Total position'}</dd>
+        <dt>Change keys</dt><dd>${r.keys.length} shown${short ? ` of ${r.capacity} this master will carry` : ''}</dd>
+      </dl>
+    </div>
+
+    ${warned ? `<div class="notice warn tiny"><strong>${warned} lock${warned === 1 ? '' : 's'}
+      need${warned === 1 ? 's' : ''} a master pin under the ${r.system.step}-increment minimum.</strong>
+      Thin master pins shear under load and pick easily. Open the lock below to see which chamber.</div>` : ''}
+
+    <div class="notice info tiny">Every lock below is pinned to pass the master and its own change key.
+      A chamber holding two depths passes either one, so each lock also opens to bittings you did not
+      cut &mdash; the "also passes" count. That is master keying, not a fault in the schedule, but it is
+      the number to weigh before this goes on a door that matters.</div>
+
+    ${r.keys.map(k => mkKeyHtml(k, r)).join('')}
+
+    <div class="stack" style="margin-top:16px">
+      <button class="btn" data-mksave="1">Save this system</button>
+      <button class="btn ghost" data-mkcopy="1">Copy the whole schedule</button>
+    </div>`;
+}
+
+/* Change keys reach this card from two different builders. Only the
+   single-master one has a rotating constant, so anything else says what it
+   actually knows rather than reading `undefined + 1` out loud. */
+function mkKeySubtitle(k) {
+  if (k.subtitle) return k.subtitle;
+  return k.constant == null ? 'all chambers progress' : `chamber ${k.constant + 1} held`;
+}
+
+function mkKeyHtml(k, r) {
+  const open = mkUI.openKey === k.n;
+  const label = 'CK' + String(k.n).padStart(2, '0');
+  return `<div class="card" style="padding:0;overflow:hidden">
+    <button class="grp" data-mkopen="${k.n}">
+      <span class="grp-name mono">${label} &nbsp; ${esc(formatBitting(k.bitting))}
+        <span class="grp-sub">${esc(mkKeySubtitle(k))} &middot; also passes ${k.incidental}</span></span>
+      ${k.warnings.length ? '<span class="badge err">THIN</span>' : ''}
+      <span class="grp-x">${open ? '&minus;' : '+'}</span>
+    </button>
+    ${open ? `<div class="grp-body" style="padding:10px">
+      <div class="tumwrap"><table class="pinchart">
+        <tr><th>Chamber</th>${k.chart.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+        <tr><th>Master cut</th>${r.tmk.map(d => `<td>${d}</td>`).join('')}</tr>
+        <tr><th>${label} cut</th>${k.bitting.map(d => `<td>${d}</td>`).join('')}</tr>
+        <tr class="sep"><th>Bottom pin</th>${k.chart.map(c => `<td class="bot">${c.bottom}</td>`).join('')}</tr>
+        <tr><th>Master pin</th>${k.chart.map(c =>
+          `<td class="${c.masters.length ? 'mas' : 'none'}">${c.masters.length ? c.masters.join('+') : '&mdash;'}</td>`).join('')}</tr>
+      </table></div>
+      <div class="tiny muted" style="margin-top:8px">Bottom pin is the shallower of the two cuts; the master
+        pin makes up the difference to the deeper one. A dash means both keys share that chamber &mdash; one
+        pin, no split. Top pins come from your kit to fill the cylinder.</div>
+      ${k.warnings.length ? `<div class="notice warn tiny" style="margin-top:8px">
+        ${k.warnings.map(esc).join('<br>')}</div>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+function mkSave() {
+  mkReadForm();
+  if (!mkUI.result || !mkUI.result.ok) return;
+  const rec = {
+    id: mkUI.loadedId || uid(),
+    label: mkUI.label, sysId: mkUI.sysId,
+    chambers: mkUI.chambers, min: mkUI.min, max: mkUI.max, macs: mkUI.macs, step: mkUI.step,
+    tmk: mkUI.mode === 'full' ? formatBitting(mkUI.result.top)
+       : mkUI.mode === 'extend' ? formatBitting(mkUI.result.master)
+       : formatBitting(mkUI.result.tmk),
+    method: mkUI.method, count: mkUI.count,
+    mode: mkUI.mode, levels: mkUI.levels, alloc: mkAlloc(), counts: mkUI.counts,
+    existing: mkUI.existing,
+    savedAt: new Date().toISOString()
+  };
+  Store.saveMkSystem(rec);
+  mkUI.loadedId = rec.id;
+  RENDER_master();
+  alert('Saved. It is in the backup file too.');
+}
+
+function mkLoad(id) {
+  const rec = Store.mkSystems().find(x => x.id === id);
+  if (!rec) return;
+  Object.assign(mkUI, {
+    sysId: rec.sysId, chambers: rec.chambers, min: rec.min, max: rec.max,
+    macs: rec.macs, step: rec.step || 2, tmk: rec.tmk, method: rec.method,
+    count: rec.count, label: rec.label, loadedId: rec.id, openKey: null,
+    mode: rec.mode || 'single', levels: rec.levels || 3,
+    alloc: rec.alloc || null, counts: rec.counts || [3, 4], openSym: {},
+    existing: rec.existing || ''
+  });
+  /* Rebuild rather than store the schedule: a saved system is its inputs, so
+     the keys can never drift from the math that produced them. */
+  mkUI.result = mkBuildResult();
+  if (mkUI.mode === 'full' && mkUI.result.ok) mkUI.openSym[mkUI.result.root.symbol] = true;
+  RENDER_master();
+  window.scrollTo(0, 0);
+}
+
+function mkCopy() {
+  if (!mkUI.result || !mkUI.result.ok) return;
+  const text = mkUI.mode === 'full' ? mkFullText(mkUI.result)
+    : mkUI.mode === 'extend' ? mkExtendText(mkUI.result)
+    : mkScheduleText(mkUI.result);
+  const done = () => alert('Schedule copied.');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => mkCopyFallback(text));
+  } else mkCopyFallback(text);
+}
+
+/* No clipboard permission (or an old webview): show it so it can be selected
+   by hand rather than failing silently. */
+function mkCopyFallback(text) {
+  const host = $('#masterBody');
+  const box = document.createElement('div');
+  box.className = 'card';
+  box.innerHTML = '<div class="tiny muted" style="margin-bottom:6px">Select and copy:</div>'
+    + `<textarea rows="12" class="mono" readonly>${esc(text)}</textarea>`;
+  host.appendChild(box);
+  box.querySelector('textarea').select();
+}
+
+/* Plain text, because it has to survive being pasted into a text message to a
+   customer or a note on the job. */
+function mkScheduleText(r) {
+  const lines = [];
+  lines.push(`${mkUI.label || 'Master key system'} — ${r.system.name}`);
+  lines.push(`TMK  ${formatBitting(r.tmk)}`);
+  lines.push(`${r.system.chambers} chambers, depths ${r.system.min}-${r.system.max}, MACS ${r.system.macs}`);
+  lines.push(`${r.method === 'rc' ? 'Rotating constant' : 'Total position'} progression`);
+  lines.push('');
+  r.keys.forEach(k => {
+    lines.push(`CK${String(k.n).padStart(2, '0')}  ${formatBitting(k.bitting)}`);
+    lines.push(`   bottom  ${k.chart.map(c => c.bottom).join(' ')}`);
+    lines.push(`   master  ${k.chart.map(c => c.masters.length ? c.masters.join('+') : '-').join(' ')}`);
+  });
+  lines.push('');
+  lines.push('Bottom pin = shallower cut. Master pin makes up the difference.');
+  lines.push('Verify against your pinning kit before you load a plug.');
+  return lines.join('\n');
+}
+
 /* ======================= tools ======================= */
 function RENDER_tools() {
   const rows = Store.bcmRows();
@@ -1028,6 +1620,7 @@ function RENDER_settings() {
     <dt>Seed data</dt><dd>${SEED_VEHICLES.length} vehicles &middot; ${SEED_BLANKS.length} blanks &middot; v${esc(SEED_VERSION)}</dd>
     <dt>Your edits</dt><dd>${ov} vehicle record(s) &middot; ${Object.keys(Store.blankOverrides()).length} blank record(s)</dd>
     <dt>Your tips</dt><dd>${Store.tipCount()}</dd>
+    <dt>Master key systems</dt><dd>${Store.mkSystems().length}</dd>
     <dt>Jobs</dt><dd>${Store.jobs().length}</dd>
     <dt>BCM rows</dt><dd>${Store.bcmRows().length}</dd>
   </dl>`;
@@ -1059,11 +1652,12 @@ const RENDER = {
   blanks: (...a) => RENDER_blanks(...a),
   tools: (...a) => RENDER_tools(...a),
   jobs: (...a) => RENDER_jobs(...a),
+  master: (...a) => RENDER_master(...a),
   settings: (...a) => RENDER_settings(...a)
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -1088,6 +1682,41 @@ document.addEventListener('click', (e) => {
     return;
   }
   /* --- blank directory --- */
+  if (t.dataset.mkmode)  {
+    mkReadForm();
+    mkUI.mode = t.dataset.mkmode; mkUI.result = null; mkUI.openSym = {};
+    RENDER_master();
+    return;
+  }
+  if (t.dataset.mklevels) {
+    mkReadForm();
+    mkUI.levels = parseInt(t.dataset.mklevels, 10);
+    mkUI.alloc = null;                      // re-split the chambers for the new depth
+    mkUI.counts = Array(mkUI.levels - 1).fill(3);
+    mkUI.result = null;
+    RENDER_master();
+    return;
+  }
+  if (t.dataset.mkalloc) {
+    mkReadForm();
+    mkAssign(parseInt(t.dataset.mkalloc, 10), parseInt(t.dataset.mkpos, 10));
+    return;
+  }
+  if (t.dataset.mksym)   {
+    const k = t.dataset.mksym;
+    mkUI.openSym[k] = !mkUI.openSym[k];
+    RENDER_master();
+    return;
+  }
+  if (t.dataset.mkopen)  {
+    const n = parseInt(t.dataset.mkopen, 10);
+    mkUI.openKey = mkUI.openKey === n ? null : n;
+    RENDER_master();
+    return;
+  }
+  if (t.hasAttribute('data-mksave')) { mkSave(); return; }
+  if (t.hasAttribute('data-mkcopy')) { mkCopy(); return; }
+  if (t.dataset.mkload)  { mkLoad(t.dataset.mkload); return; }
   if (t.dataset.vtab)    { vehTab = t.dataset.vtab; vehTipOpen = ''; RENDER_vehicle(vehShown); return; }
   if (t.dataset.tipadd)  {
     vehTipOpen = vehTipOpen === t.dataset.tipadd ? '' : t.dataset.tipadd;
@@ -1208,9 +1837,9 @@ function boot() {
     } catch (err) { alert('Import failed: ' + err.message); }
   });
   $('#wipeBtn').addEventListener('click', () => {
-    if (!confirm('Erase every edit, tip, job and BCM row on this device? Export a backup first.')) return;
+    if (!confirm('Erase every edit, tip, job, key system and BCM row on this device? Export a backup first.')) return;
     if (!confirm('Last chance. This cannot be undone.')) return;
-    ['vehicles', 'blanks', 'jobs', 'bcm', 'tips', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
+    ['vehicles', 'blanks', 'jobs', 'bcm', 'tips', 'mk', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
     RENDER_settings();
   });
 

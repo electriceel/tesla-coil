@@ -47,6 +47,12 @@
     <div id="vehicleBody"></div>
   </section>
 
+  <!-- ============ MASTER KEYING ============ -->
+  <section class="view" id="view-master">
+    <button class="btn btn-sm ghost" data-go="tools" style="margin-bottom:10px">&lsaquo; Back to tools</button>
+    <div id="masterBody"></div>
+  </section>
+
   <!-- ============ VIN ============ -->
   <section class="view" id="view-vin">
     <h2>VIN decoder</h2>
@@ -80,6 +86,15 @@
 
   <!-- ============ TOOLS ============ -->
   <section class="view" id="view-tools">
+    <h2>Master keying</h2>
+    <div class="card tap vres" data-go="master">
+      <div style="flex:1;min-width:0">
+        <div class="nm">Schlage &amp; Kwikset master key system</div>
+        <div class="sub">Progress a change key schedule from a top master key, with the pinning chart for every lock.</div>
+      </div>
+      <div class="go">&rsaquo;</div>
+    </div>
+
     <h2>Nissan BCM &rarr; PIN</h2>
     <form class="card" id="bcmForm">
       <div class="field">
@@ -177,6 +192,7 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/models.js"></script>
 <script src="assets/js/vin.js"></script>
+<script src="assets/js/master.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
