@@ -275,6 +275,19 @@ function tumblerGridHtml(l) {
     </div>`;
 }
 
+/* A car with two code series — an ignition series and a separate door series —
+   gets a block each, the way the spec sheet prints it. */
+function basicsHtml(l) {
+  const many = !!(l.series && l.series.length);
+  const blocks = (many ? l.series : [l]).map(sx => specList([
+    ['Code series', sx.codeSeries], ['Spaces', sx.spaces], ['Depths', sx.depths],
+    ['Ignition', sx.ignition], ['MACS', sx.macs],
+    /* Cut type is a property of the car, not of a series — print it once. */
+    ...(many ? [] : [['Cut type', sx.cutMethod]])
+  ], { empty: 'Nothing to cut on this one.' })).join('');
+  return blocks + (many ? specList([['Cut type', l.cutMethod], ['Decode', l.decode]]) : '');
+}
+
 /* "TOY44H (H chip 2013+)" or "DeLorean (Lotus/Renault-derived)" -> the profile
    name alone, without splitting a parenthetical in half. */
 const shortKeyway = (kw) => String(kw || '').replace(/\s*\([^)]*\)/g, '').split('/')[0].trim()
@@ -335,7 +348,8 @@ function RENDER_vehicle(id) {
 function vehOverviewHtml(v) {
   const b = v.blanks || {}, t = v.transponder || {}, l = v.lock || {}, r = v.remotes || [];
   const dec = decodersFor(v);
-  const missing = [!l.ignition && 'ignition retainer', !l.macs && 'MACS'].filter(Boolean);
+  const ser0 = (l.series && l.series[0]) || l;
+  const missing = [!ser0.ignition && 'ignition retainer', !ser0.macs && 'MACS'].filter(Boolean);
 
   return `
     ${v.verified ? '' : `<div class="notice warn"><strong>Verify before you cut.</strong>
@@ -343,9 +357,7 @@ function vehOverviewHtml(v) {
       your machine's database, then mark it verified in Edit so it stops nagging you.</div>`}
 
     <h2>The basics</h2>
-    ${specList([['Code series', l.codeSeries], ['Spaces', l.spaces], ['Depths', l.depths],
-                ['Ignition', l.ignition], ['MACS', l.macs], ['Cut type', l.cutMethod]],
-               { empty: 'Nothing to cut on this one.' })}
+    ${basicsHtml(l)}
     ${missing.length ? `<div class="card muted tiny" style="margin-top:-6px">No ${missing.join(' or ')}
       on file. Add it in Edit and it will be here next time.</div>` : ''}
 
@@ -393,8 +405,12 @@ function vehKeymakingHtml(v) {
 
     <div class="method">
       <div class="method-h">Method 2 &middot; Originate by code</div>
-      ${specList([['Code series', l.codeSeries], ['Cut type', l.cutMethod]],
-                 { empty: 'No code series on file for this one.' })}
+      ${(l.series && l.series.length ? l.series : [l]).map(sx => specList(
+        [['Code series', sx.codeSeries], ['Spaces', sx.spaces], ['Depths', sx.depths],
+         ['MACS', sx.macs], ['Cut type', sx.cutMethod || l.cutMethod]],
+        { empty: 'No code series on file for this one.' })).join('')}
+      ${l.series && l.series.length > 1 ? `<div class="card muted tiny">Two code series on this car.
+        Read the code off the lock before you cut &mdash; they do not share a MACS.</div>` : ''}
     </div>
 
     <div class="method">
@@ -578,7 +594,10 @@ function editVehicle(id, prefill) {
         cutMethod: f.cutMethod, decode: f.decode,
         ignition: f.ignition, macs: f.macs,
         tumblers: (f.tumIgnition || f.tumDoor || f.tumTrunk || f.tumGlove)
-          ? { ignition: f.tumIgnition, door: f.tumDoor, trunk: f.tumTrunk, glove: f.tumGlove } : null
+          ? { ignition: f.tumIgnition, door: f.tumDoor, trunk: f.tumTrunk, glove: f.tumGlove } : null,
+        /* The form edits the primary series; a seeded second series is carried
+           through rather than quietly dropped by saving the record. */
+        series: (v.lock && v.lock.series) || null
       },
       programming: { obd: f.obd, onboard: f.onboard, allKeysLost: f.allKeysLost, pinRequired: f.pinRequired, notes: f.pnotes },
       obdPort: f.obdPort, doorUnlock: f.doorUnlock, notes: f.notes,

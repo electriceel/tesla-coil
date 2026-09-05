@@ -174,7 +174,9 @@ th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--fg3)}
 }
 .tum tr:first-child th{text-align:center;padding:2px 0}
 .tum td{width:30px;height:26px;border:1px solid var(--line);background:var(--bg3)}
-.tum td.on{background:var(--acc);border-color:var(--acc)}
+/* Filled cells keep a contrasting edge — a solid orange bar you cannot count
+   wafers in is not a tumbler map. */
+.tum td.on{background:var(--acc);border-color:var(--bg)}
 
 /* keymaking methods */
 .method{margin-bottom:16px}

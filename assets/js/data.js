@@ -40,7 +40,11 @@ const V = (o) => ({
     /* Ignition retainer style, MACS and per-lock tumbler positions are
        machine-book facts with no source we can cite at seed time, so they stay
        empty rather than guessed — fill them from your own equipment. */
-    ignition: o.ign || '', macs: o.mac || '', tumblers: o.tum || null
+    ignition: o.ign || '', macs: o.mac || '', tumblers: o.tum || null,
+    /* Some cars carry more than one code series — an ignition series and a
+       separate door/trunk series, each with its own MACS. When that is the
+       case they go here and the basics card shows a block per series. */
+    series: o.ser || null
   },
   programming: {
     obd: o.obd || '', onboard: o.on || '', allKeysLost: o.akl || '',
@@ -2315,6 +2319,41 @@ const SEED_VEHICLES = [
       obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
       note: 'Minivans of this era are constant lockout work and have nothing electronic in the key.',
       port: 'n/a (pre-OBD-II)', entry: 'Wedge and reach' }),
+
+  /* ---- AMC ------------------------------------------------------------
+     AMC was its own make until Chrysler bought it in 1987, so it belongs
+     under AMC rather than folded into Jeep. The Renault-built cars (Alliance,
+     Encore) run Renault locks; the AMC-built cars run AMC's own. */
+  V({ id: 'amc-alliance-1983-1987', mk: 'AMC', md: 'Alliance / Encore', y0: 1983, y1: 1987,
+      kw: 'RA4', il: '1970AM', si: 'RN-series', jm: 'RN-4', chip: 'None',
+      sys: 'None', clone: 'n/a', sp: 5, dp: 5, cut: 'Edge cut',
+      dec: 'Impression or decode — 5 wafers, shallow cuts',
+      ser: [
+        { codeSeries: 'B-E-G-H-J', spaces: 5, depths: 5, ignition: 'Active retainer', macs: 3 },
+        { codeSeries: 'K1-1000',   spaces: 5, depths: 5, ignition: 'Active retainer', macs: 2 }
+      ],
+      tum: { ignition: '1-5', door: '1-5', trunk: '1-5' },
+      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
+      note: 'Renault 9 and 11 built in Kenosha and badged AMC. Two code series — the B-E-G-H-J series and the K1-1000 series — so read the code before you cut, they are not the same MACS.',
+      port: 'n/a', entry: 'Wedge and reach, or the door lock — 5 wafers and no shield' }),
+  V({ id: 'amc-eagle-1980-1988', mk: 'AMC', md: 'Eagle', y0: 1980, y1: 1988, b: 'suv',
+      kw: 'AMC (pre-Chrysler) / Y151 on the last cars', il: 'Y151 on the last cars', si: '—', jm: '—', chip: 'None',
+      sys: 'None', clone: 'n/a', sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
+      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
+      note: '4WD wagon and sedan, the ancestor of the crossover. Chrysler bought AMC in 1987, so the last cars move onto Chrysler keyways (Y151); the earlier ones are on AMC own profile, which is NOT recorded here — match it by hand.',
+      port: 'n/a', entry: 'Wedge and reach' }),
+  V({ id: 'amc-concord-spirit-1979-1983', mk: 'AMC', md: 'Concord / Spirit', y0: 1979, y1: 1983,
+      kw: 'AMC (pre-Chrysler)', il: '—', si: '—', jm: '—', chip: 'None',
+      sys: 'None', clone: 'n/a', sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
+      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
+      note: 'The Hornet and Gremlin platform under new names. The blank profile is NOT recorded here — AMC used its own keyway before the Chrysler buyout and we have no catalog number worth trusting. Decode the lock or match the blank by hand.',
+      port: 'n/a', entry: 'Wedge and reach' }),
+  V({ id: 'amc-pacer-matador-1971-1980', mk: 'AMC', md: 'Pacer / Matador / Hornet / Gremlin / Ambassador', y0: 1971, y1: 1980,
+      kw: 'AMC (pre-Chrysler)', il: '—', si: '—', jm: '—', chip: 'None',
+      sys: 'None', clone: 'n/a', sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
+      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
+      note: 'The 1970s AMC line. The blank profile is NOT recorded — match it by hand. Anything this old has usually had the locks changed at least once, so decode rather than trust the year.',
+      port: 'n/a', entry: 'Wedge and reach — no shielding, and the vent windows on the early cars open by hand' }),
   V({ id: 'amc-jeep-vintage-1981-1990', mk: 'Jeep', md: 'AMC-era Jeep / Eagle / Wagoneer', y0: 1981, y1: 1990, b: 'suv',
       kw: 'AMC / Y151 after the Chrysler buyout', il: 'Y151', si: 'CY10', jm: 'CHR-1', chip: 'None',
       sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
