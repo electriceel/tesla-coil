@@ -1,220 +1,380 @@
-/* KeyPro Field — one-handed, glove-friendly, readable in a driveway at noon. */
+/* KeyPro Field — one-handed, glove-friendly, readable in a driveway at noon.
 
+   The design is built for the worst case it will actually meet: a phone held in
+   one hand, in sun, by someone whose other hand is holding a Lishi. That means
+   large tap targets, high contrast, and no ornament that costs legibility. */
+
+/* ============================ tokens ============================ */
 :root{
-  --bg:#0d1117; --bg2:#151b24; --bg3:#1d2530; --line:#2a3441;
-  --fg:#e8edf3; --fg2:#98a4b3; --fg3:#66727f;
-  --acc:#ffb020; --acc2:#ffb02022; --ok:#3ddc84; --warn:#ffb020; --err:#ff5c5c; --info:#5ab2ff;
-  --r:12px; --tap:52px;
+  /* neutrals — a real ramp rather than three greys, so surfaces can stack */
+  --bg:#0b0e13;  --surface:#141922; --surface2:#1c2230; --surface3:#242c3a;
+  --line:#262e3b; --line-strong:#3a4557;
+  --fg:#e9eef5;   --fg2:#9aa6b6;    --fg3:#6b7787;
+
+  /* brass, because that is what the job is */
+  --acc:#ffb224; --acc-fg:#1a1206; --acc-soft:#ffb2241f; --acc-line:#ffb22455;
+  --ok:#43d787; --warn:#ffb224; --err:#ff6b6b; --info:#5cb3ff;
+
+  /* space — one scale, used everywhere */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+  --r1:8px; --r2:12px; --r3:18px; --pill:999px;
+  --tap:52px;
+  --shadow:none;
+  --ring:0 0 0 3px var(--acc-soft);
   --safe-b:env(safe-area-inset-bottom,0px);
+  --header-h:57px;
+  color-scheme:dark;
 }
 [data-theme="light"]{
-  --bg:#f4f6f9; --bg2:#ffffff; --bg3:#e9edf3; --line:#d3dae3;
-  --fg:#11161d; --fg2:#4d5a6a; --fg3:#78838f;
-  --acc:#b4700a; --acc2:#b4700a18; --ok:#0f8a4a; --warn:#a8690a; --err:#c62828; --info:#0b62b8;
+  --bg:#f5f7fa;  --surface:#ffffff; --surface2:#eef1f6; --surface3:#e3e8ef;
+  --line:#e1e6ee; --line-strong:#c3ccd9;
+  --fg:#101620;   --fg2:#4e5a6b;    --fg3:#78838f;
+  --acc:#a25f06; --acc-fg:#ffffff; --acc-soft:#a25f0614; --acc-line:#a25f0644;
+  --ok:#0b7a41; --warn:#8f5504; --err:#c0342c; --info:#0a5fb4;
+  --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.04);
+  color-scheme:light;
 }
+
+/* ============================ reset ============================ */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 body{
   background:var(--bg); color:var(--fg);
-  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
-  min-height:100vh; padding-bottom:calc(74px + var(--safe-b)); overscroll-behavior-y:contain;
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  min-height:100vh; padding-bottom:calc(76px + var(--safe-b)); overscroll-behavior-y:contain;
+  -webkit-font-smoothing:antialiased;
 }
 button,input,select,textarea{font:inherit;color:inherit}
 /* class rules like .btn{display:flex} otherwise beat the UA [hidden] rule */
 [hidden]{display:none!important}
 a{color:var(--info)}
+:focus-visible{outline:none;box-shadow:var(--ring);border-radius:var(--r1)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
-/* ---- header ---- */
-.top{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px}
-.top h1{font-size:16px;font-weight:700;letter-spacing:.5px;flex:1}
-.top h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.top h1 small{display:block;font-size:10px;font-weight:500;color:var(--fg3);letter-spacing:1.5px;text-transform:uppercase}
-.logo{width:30px;height:30px;flex:none}
-.icon-btn{width:38px;height:38px;border:1px solid var(--line);background:var(--bg2);border-radius:10px;display:grid;place-items:center;font-size:16px;cursor:pointer}
+/* ============================ type ============================ */
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+.muted{color:var(--fg2)}
+.tiny{font-size:12.5px;line-height:1.5}
+/* section eyebrow — small, quiet, and never competing with the content */
+h2{
+  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;
+  color:var(--fg3);margin:var(--s5) 0 var(--s2);
+}
+h2:first-child{margin-top:var(--s1)}
+.tabbody>h2:first-child{margin-top:0}
 
-/* ---- layout ---- */
-main{padding:12px 14px 20px;max-width:760px;margin:0 auto}
+/* ============================ shell ============================ */
+.top{
+  position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line);
+  padding:var(--s2) var(--s4);display:flex;align-items:center;gap:var(--s3);
+}
+.top h1{
+  font-size:15px;font-weight:700;letter-spacing:.2px;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.top h1 small{
+  display:block;font-size:9.5px;font-weight:600;color:var(--fg3);
+  letter-spacing:1.6px;text-transform:uppercase;margin-top:1px;
+}
+.logo{width:28px;height:28px;flex:none}
+.icon-btn{
+  width:38px;height:38px;flex:none;border:1px solid var(--line);background:var(--surface);
+  border-radius:var(--r2);display:grid;place-items:center;color:var(--fg2);cursor:pointer;
+  transition:color .12s,border-color .12s;
+}
+.icon-btn:active{color:var(--acc);border-color:var(--acc-line)}
+
+main{padding:var(--s3) var(--s4) var(--s5);max-width:760px;margin:0 auto}
 .view{display:none}
 .view.active{display:block}
-h2{font-size:13px;text-transform:uppercase;letter-spacing:1.6px;color:var(--fg3);margin:18px 0 8px}
-h2:first-child{margin-top:4px}
 
-.card{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
-.card.tap{cursor:pointer}
-.card.tap:active{background:var(--bg3)}
-.muted{color:var(--fg2)}
-.tiny{font-size:12px}
-.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-
-/* ---- form controls ---- */
-.field{margin-bottom:10px}
-.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--fg3);margin-bottom:5px}
-input,select,textarea{
-  width:100%;min-height:var(--tap);background:var(--bg3);border:1px solid var(--line);
-  border-radius:10px;padding:12px 13px;outline:none
+/* ============================ surfaces ============================ */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
+  padding:var(--s4);margin-bottom:var(--s2);box-shadow:var(--shadow);
 }
-textarea{min-height:80px;resize:vertical}
-input:focus,select:focus,textarea:focus{border-color:var(--acc)}
+.card.tap{cursor:pointer;transition:border-color .12s,background .12s}
+.card.tap:active{background:var(--surface2);border-color:var(--line-strong)}
+.stack>*+*{margin-top:var(--s2)}
+.empty{
+  text-align:center;color:var(--fg3);padding:var(--s6) var(--s4);font-size:14px;
+  border:1px dashed var(--line);border-radius:var(--r2);
+}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ============================ controls ============================ */
+.field{margin-bottom:var(--s3)}
+.field label{
+  display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.1px;color:var(--fg3);margin-bottom:var(--s1);
+}
+input,select,textarea{
+  width:100%;min-height:var(--tap);background:var(--surface2);
+  border:1px solid var(--line);border-radius:var(--r1);padding:12px 13px;outline:none;
+  transition:border-color .12s,box-shadow .12s;
+}
+textarea{min-height:88px;resize:vertical;line-height:1.5}
+input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:var(--ring)}
 input::placeholder,textarea::placeholder{color:var(--fg3)}
-.row{display:flex;gap:8px}
+/* A select styled flat reads as a text field and nobody taps it, so the
+   chevron is drawn back on by hand. */
+select{
+  appearance:none;padding-right:34px;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
+                   linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 18px) calc(50% + 2px),calc(100% - 13px) calc(50% + 2px);
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+}
+.row{display:flex;gap:var(--s2)}
 .row>*{flex:1;min-width:0}
-.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
 
 .btn{
-  min-height:var(--tap);width:100%;border:1px solid var(--line);background:var(--bg3);
-  color:var(--fg);border-radius:10px;padding:12px 14px;font-weight:600;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:8px
+  min-height:var(--tap);width:100%;border:1px solid var(--line);background:var(--surface2);
+  color:var(--fg);border-radius:var(--r1);padding:12px 14px;font-weight:650;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:var(--s2);
+  transition:transform .08s,border-color .12s,background .12s;
 }
-.btn:active{transform:scale(.99)}
-.btn.primary{background:var(--acc);border-color:var(--acc);color:#12161c;font-weight:700}
-[data-theme="light"] .btn.primary{color:#fff}
-.btn.danger{color:var(--err);border-color:var(--err)}
+.btn:active{transform:scale(.985)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-fg);font-weight:750}
+.btn.danger{color:var(--err);border-color:color-mix(in srgb,var(--err) 45%,transparent);background:transparent}
 .btn.ghost{background:transparent}
+.btn.ghost:active{background:var(--surface2)}
 .btn:disabled{opacity:.45;pointer-events:none}
-.btn-sm{min-height:40px;font-size:13px;padding:8px 12px;width:auto}
+.btn-sm{min-height:40px;font-size:13px;padding:var(--s2) var(--s3);width:auto}
+/* Going back is navigation, not an action — it should not carry the weight of a
+   button you are meant to press. */
+.back{
+  display:inline-flex;align-items:center;gap:var(--s1);min-height:34px;
+  padding:var(--s1) var(--s2) var(--s1) 0;border:0;background:none;cursor:pointer;
+  color:var(--fg2);font-size:13px;font-weight:650;margin-bottom:var(--s1);
+}
+.back:active{color:var(--acc)}
 
-/* ---- chips / badges ---- */
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{border:1px solid var(--line);background:var(--bg3);border-radius:999px;padding:8px 13px;font-size:13px;cursor:pointer;white-space:nowrap}
-.chip.on{background:var(--acc);border-color:var(--acc);color:#12161c;font-weight:700}
-[data-theme="light"] .chip.on{color:#fff}
-.badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:6px;border:1px solid}
-.badge.ok{color:var(--ok);border-color:var(--ok)}
-.badge.warn{color:var(--warn);border-color:var(--warn)}
-.badge.err{color:var(--err);border-color:var(--err)}
-.badge.info{color:var(--info);border-color:var(--info)}
+.chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.chip{
+  border:1px solid var(--line);background:var(--surface2);border-radius:var(--pill);
+  padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:background .12s,border-color .12s,color .12s;
+}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--acc-fg);font-weight:750}
+.chip.sm{min-width:40px;padding:8px 0;text-align:center}
+/* A segmented filter row belongs on one line — wrapping four options onto two
+   rows makes them read as two groups instead of one choice. */
+.chips.tight{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.chips.tight::-webkit-scrollbar{display:none}
+.chips.tight .chip{padding:8px 13px;font-size:12.5px}
+/* Where every option must be visible at once — a choice you cannot see is a
+   choice nobody makes — the row divides the width instead of scrolling. */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.seg .chip{padding:9px 6px;text-align:center;font-size:12.5px;line-height:1.3;white-space:normal}
+
+.badge{
+  display:inline-block;font-size:9.5px;font-weight:750;letter-spacing:.9px;
+  text-transform:uppercase;padding:4px 8px;border-radius:var(--r1);border:1px solid;
+}
+.badge.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent)}
+.badge.warn{color:var(--warn);border-color:var(--acc-line)}
+.badge.err{color:var(--err);border-color:color-mix(in srgb,var(--err) 45%,transparent)}
+.badge.info{color:var(--info);border-color:color-mix(in srgb,var(--info) 45%,transparent)}
 .badge.dim{color:var(--fg3);border-color:var(--line)}
 
-/* ---- vehicle result ---- */
-.vres{display:flex;align-items:center;gap:12px}
-.vres .yr{font-size:11px;color:var(--fg3);letter-spacing:1px}
-.vres .nm{font-weight:700}
-.vres .sub{font-size:12px;color:var(--fg2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vres .go{color:var(--fg3);font-size:20px}
+.notice{
+  border-radius:var(--r2);padding:12px 14px;font-size:13px;line-height:1.55;
+  border:1px solid;margin-bottom:var(--s2);
+}
+.notice.warn{background:var(--acc-soft);border-color:var(--acc-line);color:var(--warn)}
+.notice.err{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 35%,transparent);color:var(--err)}
+.notice.ok{background:color-mix(in srgb,var(--ok) 8%,transparent);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
+.notice.info{background:color-mix(in srgb,var(--info) 8%,transparent);border-color:color-mix(in srgb,var(--info) 30%,transparent);color:var(--info)}
 
-.spec{display:grid;grid-template-columns:104px 1fr;gap:6px 12px;font-size:14px}
-.spec dt{color:var(--fg3);font-size:11px;text-transform:uppercase;letter-spacing:1px;padding-top:3px}
+.spec{display:grid;grid-template-columns:106px 1fr;gap:var(--s2) var(--s3);font-size:14px}
+.spec dt{
+  color:var(--fg3);font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;padding-top:3px;
+}
 .spec dd{word-break:break-word}
 
-.notice{border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.55;border:1px solid;margin-bottom:10px}
-.notice.warn{background:#ffb0200f;border-color:#ffb02040;color:var(--warn)}
-.notice.err{background:#ff5c5c0f;border-color:#ff5c5c40;color:var(--err)}
-.notice.ok{background:#3ddc840f;border-color:#3ddc8440;color:var(--ok)}
-.notice.info{background:#5ab2ff0f;border-color:#5ab2ff40;color:var(--info)}
-
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--fg3)}
+th,td{text-align:left;padding:10px var(--s2);border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--fg3)}
 .scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
-/* ---- bottom nav ---- */
+/* ============================ bottom nav ============================ */
 .nav{
-  position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);
-  background:var(--bg2);border-top:1px solid var(--line);padding-bottom:var(--safe-b)
+  position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;
+  grid-template-columns:repeat(5,1fr);
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);padding-bottom:var(--safe-b);
 }
-.nav button{background:none;border:0;padding:9px 2px 10px;color:var(--fg3);font-size:10px;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
-.nav button .ic{font-size:19px;line-height:1}
+.nav button{
+  background:none;border:0;padding:9px 2px 10px;color:var(--fg3);
+  font-size:10px;font-weight:650;letter-spacing:.3px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  position:relative;transition:color .12s;
+}
+.nav button .ic{width:22px;height:22px;display:block}
 .nav button.on{color:var(--acc)}
+/* the active mark reads at a glance without shouting */
+.nav button.on::before{
+  content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:26px;height:2px;border-radius:0 0 2px 2px;background:var(--acc);
+}
 
-.empty{text-align:center;color:var(--fg3);padding:34px 16px;font-size:14px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.stack>*+*{margin-top:8px}
+/* ============================ tool launcher ============================ */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:var(--s2)}
+.tile{
+  display:flex;flex-direction:column;gap:var(--s2);text-align:left;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
+  padding:var(--s4);cursor:pointer;min-height:118px;box-shadow:var(--shadow);
+  transition:border-color .12s,background .12s;
+}
+.tile:active{background:var(--surface2);border-color:var(--line-strong)}
+.tile-ic{
+  width:34px;height:34px;border-radius:var(--r1);display:grid;place-items:center;
+  background:var(--acc-soft);color:var(--acc);flex:none;
+}
+.tile-nm{font-weight:700;font-size:14.5px;line-height:1.25}
+.tile-sub{font-size:11.5px;color:var(--fg2);line-height:1.4;margin-top:-2px}
+.tile.wide{grid-column:1 / -1;flex-direction:row;align-items:center;min-height:0}
+.tile.wide .tile-body{flex:1;min-width:0}
+.tile.wide .tile-go{color:var(--fg3);font-size:20px}
 
-/* ---- blank directory ---- */
-.grp{width:100%;display:flex;align-items:center;gap:10px;background:none;border:0;
-  padding:14px;cursor:pointer;text-align:left;min-height:var(--tap)}
-.grp:active{background:var(--bg3)}
-.grp-name{flex:1;font-weight:600}
-.grp-n{font-size:11px;color:var(--fg3);background:var(--bg3);border-radius:999px;padding:2px 9px}
+/* ============================ lookup ============================ */
+.toolbar{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
+  padding:var(--s3);margin-bottom:var(--s3);box-shadow:var(--shadow);
+}
+.toolbar .row{margin-bottom:var(--s2)}
+.toolbar input[type="search"]{min-height:46px}
+.toolbar>*:last-child{margin-bottom:0}
+.countline{
+  font-size:11.5px;color:var(--fg3);letter-spacing:.4px;
+  margin:0 0 var(--s2) 2px;font-weight:600;
+}
+
+/* The lookup list is scanned, not read, so its rows are tighter than a card
+   you sit with — this is the difference between five results on screen and
+   seven. */
+.card.vres{padding:var(--s3) var(--s4)}
+.vres{display:flex;align-items:center;gap:var(--s3)}
+.vres .yr{font-size:10.5px;color:var(--fg3);letter-spacing:1px;font-weight:700}
+.vres .nm{font-weight:700;font-size:15px}
+.vres .sub{font-size:12px;color:var(--fg2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vres .yr+.nm{margin-top:1px}
+.vres .go{color:var(--fg3);font-size:20px}
+
+/* ============================ grouped rows ============================ */
+.grp{
+  width:100%;display:flex;align-items:center;gap:var(--s3);background:none;border:0;
+  padding:var(--s3) var(--s4);cursor:pointer;text-align:left;min-height:var(--tap);
+}
+.grp:active{background:var(--surface2)}
+.grp-name{flex:1;font-weight:700;min-width:0}
+.grp-name .grp-sub{
+  display:block;font-size:11px;font-weight:500;color:var(--fg3);
+  letter-spacing:.3px;margin-top:3px;
+}
+.grp-n{
+  font-size:11px;font-weight:700;color:var(--fg2);background:var(--surface2);
+  border-radius:var(--pill);padding:3px 9px;
+}
 .grp-x{color:var(--fg3);font-size:17px;width:14px;text-align:center}
-.grp-body{border-top:1px solid var(--line)}
-.brow{width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 10px;background:none;border:0;
-  border-bottom:1px solid var(--line);padding:11px 14px;cursor:pointer;text-align:left}
+.grp-body{border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface2) 45%,transparent)}
+.brow{
+  width:100%;display:grid;grid-template-columns:1fr auto;gap:2px var(--s3);
+  background:none;border:0;border-bottom:1px solid var(--line);
+  padding:12px var(--s4);cursor:pointer;text-align:left;
+}
 .brow:last-child{border-bottom:0}
-.brow:active{background:var(--bg3)}
+.brow:active{background:var(--surface2)}
 .brow-key{grid-column:1;grid-row:1;font-weight:700;font-size:14px}
 .brow-sub{grid-column:1;grid-row:2;font-size:11px;color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brow-cut{grid-column:2;grid-row:1/3;justify-self:end;align-self:center;font-size:10px;
-  text-transform:uppercase;letter-spacing:1px;color:var(--fg3);border:1px solid var(--line);
-  border-radius:6px;padding:3px 8px;white-space:nowrap}
+.brow-cut{
+  grid-column:2;grid-row:1/3;justify-self:end;align-self:center;font-size:9.5px;
+  font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--fg3);
+  border:1px solid var(--line);border-radius:var(--r1);padding:4px 8px;white-space:nowrap;
+}
+.brow-go{grid-column:2;grid-row:1/3;align-self:center;color:var(--fg3);font-size:18px;padding-left:var(--s1)}
 
-/* ---- nameplate groups in the lookup ---- */
-.grp-name .grp-sub{display:block;font-size:11px;font-weight:400;color:var(--fg3);letter-spacing:.5px;margin-top:2px}
-.brow-go{grid-column:2;grid-row:1/3;align-self:center;color:var(--fg3);font-size:18px;padding-left:4px}
-
-/* ---- vehicle record: sticky identity, tabs, spec grids ---- */
+/* ============================ vehicle record ============================ */
 /* Identity + tabs travel together, so there is one offset to get right and the
    record never leaves you unsure which generation you are reading. */
-.vsticky{position:sticky;top:58px;z-index:15;background:var(--bg)}
-.vhead{display:flex;align-items:center;gap:10px;padding:10px 0 8px}
-.vhead-name{flex:1;min-width:0;font-size:19px;font-weight:700;line-height:1.2}
-.vgen{width:auto;min-width:112px;min-height:40px;padding:6px 10px;font-weight:700;font-size:14px}
-.vgen.static{
-  display:grid;place-items:center;border:1px solid var(--line);
-  background:var(--bg3);border-radius:10px;
+.vsticky{
+  position:sticky;top:var(--header-h);z-index:15;background:var(--bg);
+  margin:0 calc(var(--s4) * -1);padding:0 var(--s4);
 }
+.vhead{display:flex;align-items:center;gap:var(--s3);padding:var(--s1) 0 var(--s2)}
+.vhead-name{flex:1;min-width:0;font-size:20px;font-weight:750;line-height:1.15;letter-spacing:-.2px}
+.vgen{width:auto;min-width:116px;min-height:40px;padding:6px 12px;font-weight:700;font-size:13.5px;border-radius:var(--r1)}
+.vgen.static{display:grid;place-items:center;border:1px solid var(--line);background:var(--surface2)}
 .tabs{
-  display:flex; gap:2px; border-bottom:1px solid var(--line); margin-bottom:12px;
-  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:var(--s4);
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
+.tabs::-webkit-scrollbar{display:none}
 .tab{
-  flex:1 0 auto; min-height:44px; padding:0 14px; border:0; background:none;
-  color:var(--fg2); font-weight:700; font-size:14px; cursor:pointer; white-space:nowrap;
-  border-bottom:3px solid transparent; margin-bottom:-1px;
+  flex:1 0 auto;min-height:44px;padding:0 var(--s4);border:0;background:none;
+  color:var(--fg2);font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s;
 }
 .tab.on{color:var(--acc);border-bottom-color:var(--acc)}
-.tabbody>h2:first-child{margin-top:0}
 
 /* tumbler map — a wafer grid, scrolls sideways rather than squeezing */
 .tumwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .tum{border-collapse:collapse;font-size:12px}
 .tum th{
-  color:var(--fg2);font-weight:700;padding:4px 8px;text-align:left;white-space:nowrap;
-  text-transform:uppercase;letter-spacing:.5px;font-size:10px;
+  color:var(--fg2);font-weight:700;padding:var(--s1) var(--s2);text-align:left;
+  white-space:nowrap;text-transform:uppercase;letter-spacing:.6px;font-size:9.5px;
 }
 .tum tr:first-child th{text-align:center;padding:2px 0}
-.tum td{width:30px;height:26px;border:1px solid var(--line);background:var(--bg3)}
+.tum td{width:30px;height:26px;border:1px solid var(--line);background:var(--surface2)}
 /* Filled cells keep a contrasting edge — a solid orange bar you cannot count
    wafers in is not a tumbler map. */
 .tum td.on{background:var(--acc);border-color:var(--bg)}
 
 /* keymaking methods */
-.method{margin-bottom:16px}
+.method{margin-bottom:var(--s4)}
 .method-h{
-  background:var(--bg3);border:1px solid var(--line);border-bottom:0;
-  border-radius:var(--r) var(--r) 0 0;padding:10px 14px;font-weight:700;font-size:14px;
+  background:var(--surface2);border:1px solid var(--line);border-bottom:0;
+  border-radius:var(--r2) var(--r2) 0 0;padding:11px var(--s4);font-weight:700;font-size:13.5px;
 }
-.method-h + .card,.method-h + .notice{border-radius:0 0 var(--r) var(--r);border-top:0}
+.method-h + .card,.method-h + .notice{border-radius:0 0 var(--r2) var(--r2);border-top:0}
 
 /* tips & tricks */
-.tipcat{margin-bottom:14px}
+.tipcat{margin-bottom:var(--s4)}
 .tipcat-h{
-  display:flex;align-items:center;gap:10px;padding:8px 0 6px;
-  border-bottom:1px solid var(--line);margin-bottom:8px;font-weight:700;font-size:14px;
+  display:flex;align-items:center;gap:var(--s3);padding:var(--s2) 0 var(--s1);
+  border-bottom:1px solid var(--line);margin-bottom:var(--s2);font-weight:700;font-size:13.5px;
 }
 .tipcat-h span{flex:1;min-width:0}
-.tipcat-h .btn{width:auto;flex:0 0 auto;min-height:36px;padding:0 12px}
-.tip-f{display:flex;align-items:center;gap:10px;margin-top:8px}
+.tipcat-h .btn{width:auto;flex:0 0 auto;min-height:36px;padding:0 var(--s3)}
+.tip-f{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s2)}
 .tip-f .muted{flex:1}
-.tip-f .btn{width:auto;min-height:34px;padding:0 12px}
+.tip-f .btn{width:auto;min-height:34px;padding:0 var(--s3)}
 
-/* ---- master key pinning chart ---- */
+/* ============================ master keying ============================ */
 .pinchart{border-collapse:collapse;font-size:13px;width:100%}
 .pinchart th{
-  color:var(--fg2);font-weight:700;text-align:left;white-space:nowrap;padding:5px 10px 5px 0;
-  font-size:10px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--fg2);font-weight:700;text-align:left;white-space:nowrap;
+  padding:5px var(--s3) 5px 0;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;
 }
-.pinchart tr:first-child th{text-align:center;padding:4px}
+.pinchart tr:first-child th{text-align:center;padding:var(--s1)}
 .pinchart td{
-  text-align:center;min-width:34px;padding:6px 4px;border:1px solid var(--line);
+  text-align:center;min-width:34px;padding:7px var(--s1);border:1px solid var(--line);
   font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+  font-variant-numeric:tabular-nums;
 }
-.pinchart tr.sep td,.pinchart tr.sep th{border-top:2px solid var(--fg3)}
-.pinchart td.bot{background:var(--bg3)}
-.pinchart td.mas{background:var(--acc);color:#12161c}
+.pinchart tr.sep td,.pinchart tr.sep th{border-top:2px solid var(--line-strong)}
+.pinchart td.bot{background:var(--surface2)}
+.pinchart td.mas{background:var(--acc);color:var(--acc-fg)}
 .pinchart td.none{color:var(--fg3)}
-.allocrow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.allocname{flex:0 0 96px;font-size:11px;font-weight:700;color:var(--fg2);text-transform:uppercase;letter-spacing:.5px}
-.chip.sm{min-width:38px;padding:7px 0;text-align:center}
-.mktree{border-left:3px solid var(--line)}
-.mktree .mktree{margin-bottom:6px}
+.allocrow{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s2)}
+.allocname{
+  flex:0 0 92px;font-size:10.5px;font-weight:700;color:var(--fg2);
+  text-transform:uppercase;letter-spacing:.6px;line-height:1.3;
+}
+.mktree{border-left:2px solid var(--line)}
+.mktree .mktree{margin-bottom:var(--s1)}

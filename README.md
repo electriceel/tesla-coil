@@ -99,6 +99,9 @@ Nothing in it is looked up. It is arithmetic on one physical fact: a deeper cut 
 the stack sit lower, so the bottom pin is sized to the shallower of the two cuts and the
 master pin makes up the difference. The math has its own test suite separate from the UI — `node tests/master.test.js`.
 
+**Tools** is a launcher, not a scroll — four tiles, each opening its own screen:
+master keying, Nissan BCM, the quote builder, and hex/decimal.
+
 **Blanks** — a browsable key blank directory. It opens on five categories —
 automotive, powersports, fleet & equipment, residential, commercial — because 139
 blanks across 130-odd makes is not a list you read on arrival. From there, regroup
