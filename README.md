@@ -23,8 +23,10 @@ assets/js/app.js        routing, rendering, forms
 
 ## What each tab does
 
-**Lookup** — filter by make chip, year, or free text across model, keyway, Ilco
-number, chip and FCC ID. Tap a result for the full record: blank (keyway / Ilco /
+**Lookup** — filter by make, year, or free text across model, keyway, Ilco number,
+chip and FCC ID. Results are grouped by nameplate: a model with several generations
+is one line showing its full year span and a count, which opens to the individual
+generations. Narrow to a few models and they open themselves. Tap a result for the full record: blank (keyway / Ilco /
 Silca / JMA / OEM P/N), transponder and whether it clones, fobs with FCC IDs,
 code series and cut type, OBD vs onboard vs all-keys-lost programming, whether a
 PIN is needed, OBD port location and an entry note.

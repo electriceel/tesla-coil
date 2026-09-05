@@ -30,12 +30,12 @@
     <h2>Year / make / model</h2>
     <div class="card">
       <div class="row" style="margin-bottom:10px">
+        <select id="makeSel" aria-label="Make"><option value="">All makes</option></select>
         <select id="yearSel" aria-label="Year"><option value="">Any year</option></select>
-        <button class="btn" id="lookupClear" style="max-width:96px">Clear</button>
       </div>
       <input id="lookupQ" type="search" placeholder="Search model, blank, chip or FCC ID" aria-label="Search">
+      <button class="btn ghost btn-sm" id="lookupClear" style="width:100%;margin-top:10px" hidden>Clear filters</button>
     </div>
-    <div class="chips" id="makeChips" style="margin-bottom:12px"></div>
     <div class="tiny muted" id="lookupCount" style="margin-bottom:6px"></div>
     <div id="lookupResults"></div>
     <button class="btn ghost" id="addVehBtn" style="margin-top:12px">+ Add a vehicle to your database</button>

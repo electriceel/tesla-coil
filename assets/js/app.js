@@ -34,6 +34,7 @@ const filter = { make: '', year: '', q: '' };
    unfiltered list is capped until they ask for the rest. */
 const LOOKUP_CAP = 60;
 let lookupShowAll = false;
+const lookupOpen = {};
 
 function allMakes() {
   return Array.from(new Set(Store.vehicles().map(v => v.make))).sort();
@@ -63,11 +64,17 @@ function RENDER_lookup() {
   for (let y = thisYear; y >= 1990; y--) years.push(y);
 
   /* Include the active make even when no vehicle record uses it yet — otherwise
-     arriving from a blank's make chip shows an empty list with no visible filter. */
+     arriving from a blank's make chip shows an empty list with no visible filter.
+     At 60+ makes this is a dropdown; a chip row filled the whole screen. */
   const makes = Array.from(new Set(allMakes().concat(filter.make ? [filter.make] : []))).sort();
-  $('#makeChips').innerHTML = ['<button class="chip' + (filter.make ? '' : ' on') + '" data-make="">All makes</button>']
-    .concat(makes.map(m => `<button class="chip${filter.make === m ? ' on' : ''}" data-make="${esc(m)}">${esc(m)}</button>`))
-    .join('');
+  const makeSel = $('#makeSel');
+  const wantMakes = makes.join('\u0000');
+  if (makeSel.dataset.built !== wantMakes) {
+    makeSel.innerHTML = '<option value="">All makes</option>' +
+      makes.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    makeSel.dataset.built = wantMakes;
+  }
+  makeSel.value = filter.make;
 
   const sel = $('#yearSel');
   if (sel.options.length <= 1) {
@@ -75,25 +82,74 @@ function RENDER_lookup() {
   }
   sel.value = filter.year;
   $('#lookupQ').value = filter.q;
+  $('#lookupClear').hidden = !(filter.make || filter.year || filter.q);
 
   const hits = matchVehicles();
-  const capped = !lookupShowAll && hits.length > LOOKUP_CAP;
-  const shown = capped ? hits.slice(0, LOOKUP_CAP) : hits;
+  const groups = groupByNameplate(hits);
+  const capped = !lookupShowAll && groups.length > LOOKUP_CAP;
+  const shown = capped ? groups.slice(0, LOOKUP_CAP) : groups;
+
+  /* Narrowed to a handful of models? Open them — the user has already chosen. */
+  const autoOpen = groups.length <= 3;
+
   $('#lookupCount').textContent = hits.length
-    ? `${hits.length} match${hits.length === 1 ? '' : 'es'}` + (capped ? ` \u00b7 showing ${LOOKUP_CAP}` : '')
+    ? `${hits.length} record${hits.length === 1 ? '' : 's'} in ${groups.length} model${groups.length === 1 ? '' : 's'}`
+      + (capped ? ` \u00b7 showing ${LOOKUP_CAP}` : '')
     : '';
-  $('#lookupResults').innerHTML = hits.length ? shown.map(v => `
+
+  $('#lookupResults').innerHTML = hits.length
+    ? shown.map(g => g.rows.length === 1 ? vehicleCardHtml(g.rows[0]) : nameplateHtml(g, autoOpen)).join('')
+      + (capped ? `<button class="btn ghost" data-showall="1">Show all ${groups.length} models</button>` : '')
+    : emptyLookupHtml();
+};
+
+/* One row per nameplate. A model with several generations collapses into a
+   single line that opens to show them, so 377 records read as ~260 models. */
+function groupByNameplate(list) {
+  const by = new Map();
+  list.forEach(v => {
+    const key = v.make + '|' + v.model;
+    if (!by.has(key)) by.set(key, { key, make: v.make, model: v.model, rows: [] });
+    by.get(key).rows.push(v);
+  });
+  return Array.from(by.values()).map(g => {
+    g.rows.sort((a, b) => b.yearStart - a.yearStart);          // newest generation first
+    g.y0 = Math.min(...g.rows.map(r => r.yearStart));
+    g.y1 = Math.max(...g.rows.map(r => r.yearEnd));
+    g.custom = g.rows.some(r => r.custom);
+    return g;
+  }).sort((a, b) => (a.make + a.model).localeCompare(b.make + b.model));
+}
+
+function vehicleCardHtml(v) {
+  return `
     <div class="card tap vres" data-vid="${esc(v.id)}">
       <div style="flex:1;min-width:0">
-        <div class="yr">${v.yearStart}${v.yearEnd !== v.yearStart ? '–' + v.yearEnd : ''}${v.custom ? ' &middot; YOURS' : ''}</div>
+        <div class="yr">${v.yearStart}${v.yearEnd !== v.yearStart ? '&ndash;' + v.yearEnd : ''}${v.custom ? ' &middot; YOURS' : ''}</div>
         <div class="nm">${esc(v.make)} ${esc(v.model)}</div>
         <div class="sub">${esc(nz(v.blanks && v.blanks.keyway))} &middot; ${esc(nz(v.transponder && v.transponder.chip))}</div>
       </div>
       <div class="go">&rsaquo;</div>
-    </div>`).join('') + (capped
-      ? `<button class="btn ghost" data-showall="1">Show all ${hits.length}</button>` : '')
-    : emptyLookupHtml();
-};
+    </div>`;
+}
+
+function nameplateHtml(g, autoOpen) {
+  const open = autoOpen || lookupOpen[g.key];
+  return `<div class="card" style="padding:0;overflow:hidden">
+    <button class="grp" data-lopen="${esc(g.key)}">
+      <span class="grp-name">${esc(g.make)} ${esc(g.model)}${g.custom ? ' &middot; YOURS' : ''}
+        <span class="grp-sub">${g.y0}&ndash;${g.y1}</span></span>
+      <span class="grp-n">${g.rows.length}</span>
+      <span class="grp-x">${open ? '&minus;' : '+'}</span>
+    </button>
+    ${open ? `<div class="grp-body">${g.rows.map(v => `
+      <button class="brow" data-vid="${esc(v.id)}">
+        <span class="brow-key">${v.yearStart}&ndash;${v.yearEnd}</span>
+        <span class="brow-sub">${esc(nz(v.blanks && v.blanks.keyway))} &middot; ${esc(nz(v.transponder && v.transponder.chip))}</span>
+        <span class="brow-go">&rsaquo;</span>
+      </button>`).join('')}</div>` : ''}
+  </div>`;
+}
 
 /* When the lookup finds nothing, the vPIC index can still say whether the thing
    exists. "Real vehicle, no key data yet" is a different answer from "no such
@@ -744,12 +800,12 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
-  if (t.dataset.make !== undefined) { filter.make = t.dataset.make; lookupShowAll = false; RENDER_lookup(); return; }
   if (t.dataset.showall)   { lookupShowAll = true; RENDER_lookup(); return; }
+  if (t.dataset.lopen)     { const k = t.dataset.lopen; lookupOpen[k] = !lookupOpen[k]; RENDER_lookup(); return; }
   if (t.dataset.vpic) {
     const [mk, md, y0, y1] = t.dataset.vpic.split('|');
     go('vehicle');
@@ -810,6 +866,7 @@ function boot() {
   $('#gearBtn').addEventListener('click', () => go('settings'));
 
   /* lookup */
+  $('#makeSel').addEventListener('change', (e) => { filter.make = e.target.value; lookupShowAll = false; RENDER_lookup(); });
   $('#yearSel').addEventListener('change', (e) => { filter.year = e.target.value; lookupShowAll = false; RENDER_lookup(); });
   $('#lookupQ').addEventListener('input', (e) => { filter.q = e.target.value; lookupShowAll = false; RENDER_lookup(); });
   $('#lookupClear').addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; lookupShowAll = false; RENDER_lookup(); });

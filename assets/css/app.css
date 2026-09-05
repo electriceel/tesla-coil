@@ -20,6 +20,8 @@ body{
   min-height:100vh; padding-bottom:calc(74px + var(--safe-b)); overscroll-behavior-y:contain;
 }
 button,input,select,textarea{font:inherit;color:inherit}
+/* class rules like .btn{display:flex} otherwise beat the UA [hidden] rule */
+[hidden]{display:none!important}
 a{color:var(--info)}
 
 /* ---- header ---- */
@@ -135,3 +137,7 @@ th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--fg3)}
 .brow-cut{grid-column:2;grid-row:1/3;justify-self:end;align-self:center;font-size:10px;
   text-transform:uppercase;letter-spacing:1px;color:var(--fg3);border:1px solid var(--line);
   border-radius:6px;padding:3px 8px;white-space:nowrap}
+
+/* ---- nameplate groups in the lookup ---- */
+.grp-name .grp-sub{display:block;font-size:11px;font-weight:400;color:var(--fg3);letter-spacing:.5px;margin-top:2px}
+.brow-go{grid-column:2;grid-row:1/3;align-self:center;color:var(--fg3);font-size:18px;padding-left:4px}
