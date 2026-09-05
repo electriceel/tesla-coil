@@ -342,21 +342,24 @@ function showVinMatches(make, model, year) {
 /* ======================= blank cross-reference directory ======================= */
 const blankUI = { q: '', group: 'make', open: {}, detail: null };
 
-/* "HD106/HO05" -> ["HD106","HO05"]; strips punctuation for loose matching. */
+/* Keyway strings carry qualifiers ("TOY44D / TOY44H by year", "NSN14 (emergency
+   blade)"), so compare whole words rather than substrings — a substring test
+   makes the B1 blank match every B1xx keyway. */
+const keyWords = (s) => String(s || '')
+  .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
 const bareTokens = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase())
   .filter(Boolean);
 
-/* Vehicles in the user's database that take this blank. */
+/* Vehicles in the user's database that take this blank: the keyway names the
+   same word, or the vehicle cites this blank's Ilco number. */
 function vehiclesForBlank(b) {
-  const keys = bareTokens(b.keyway);
-  const cats = [b.ilco, b.ilcoChip].flatMap(bareTokens);
+  const keys = new Set(keyWords(b.keyway));
+  const cats = new Set([b.ilco, b.ilcoChip].flatMap(bareTokens));
   return Store.vehicles().filter(v => {
     const vb = v.blanks || {};
-    const vKey = bareTokens(vb.keyway).concat(String(vb.keyway || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase());
-    const vCat = bareTokens(vb.ilco);
-    if (keys.some(k => vKey.some(x => x === k || x.includes(k)))) return true;
-    if (cats.length && vCat.some(c => cats.includes(c))) return true;
+    if (keyWords(vb.keyway).some(w => keys.has(w))) return true;
+    if (cats.size && bareTokens(vb.ilco).some(c => cats.has(c))) return true;
     return false;
   });
 }
