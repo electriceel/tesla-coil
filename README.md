@@ -59,12 +59,12 @@ import platforms to get you going; your database becomes the real one. The same 
 for the blank directory — 51 keyways across autos, powersports and equipment, all
 editable.
 
-The seed ships 260 vehicle records across 38 makes and 157 nameplates, every make
+The seed ships 299 vehicle records across 38 makes and 189 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
-programmatically: no overlapping year ranges, and the only gaps are two real North
-American production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014),
-noted in the records themselves.
+programmatically: no overlapping year ranges, and the only gaps are real North
+American production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014,
+Lexus GS 2012), each noted in the record so it does not read as missing data.
 
 Records are written in a compact form and expanded by `V()` at the top of
 `data.js` — short keys, one record per handful of lines. The object it returns is
