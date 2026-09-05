@@ -24,7 +24,10 @@ assets/js/app.js        routing, rendering, forms
 ## What each tab does
 
 **Lookup** — filter by make, year, or free text across model, keyway, Ilco number,
-chip and FCC ID. Results are grouped by nameplate: a model with several generations
+chip and FCC ID. The search box takes a job the way it arrives on the phone: type
+`2015 camry` or `camry 2015` and the year is read as a model year, so you land on
+the one generation rather than all five. Punctuation is ignored, so `f150` finds
+the F-150. Results are grouped by nameplate: a model with several generations
 is one line showing its full year span and a count, which opens to the individual
 generations. Narrow to a few models and they open themselves. Tap a result for the full record: blank (keyway / Ilco /
 Silca / JMA / OEM P/N), transponder and whether it clones, fobs with FCC IDs,

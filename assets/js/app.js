@@ -40,19 +40,42 @@ function allMakes() {
   return Array.from(new Set(Store.vehicles().map(v => v.make))).sort();
 }
 
+/* Punctuation-insensitive form, so "f150" finds "F-150" and "toy44h" finds
+   "TOY44H-PT". */
+const squash = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+function vehicleHaystack(v) {
+  return [
+    v.make, v.model, v.blanks && v.blanks.keyway, v.blanks && v.blanks.ilco,
+    v.blanks && v.blanks.silca, v.blanks && v.blanks.jma, v.blanks && v.blanks.oem,
+    v.transponder && v.transponder.chip, v.transponder && v.transponder.system,
+    (v.remotes || []).map(r => `${r.fcc} ${r.pn}`).join(' ')
+  ].join(' ');
+}
+
+/* A job comes in as "2015 Camry", so the search box has to take it that way:
+   any 19xx/20xx in the query is read as a model year, and the words left over
+   are matched independently, in any order. */
+function parseQuery(raw) {
+  const q = String(raw || '').trim().toLowerCase();
+  const years = (q.match(/\b(?:19|20)\d{2}\b/g) || []).map(Number);
+  const terms = q.replace(/\b(?:19|20)\d{2}\b/g, ' ').split(/\s+/).filter(Boolean);
+  return { years, terms };
+}
+
 function matchVehicles() {
-  const q = filter.q.trim().toLowerCase();
-  const yr = parseInt(filter.year, 10);
+  const { years, terms } = parseQuery(filter.q);
+  const dropdownYear = parseInt(filter.year, 10);
+  const covers = (v, y) => y >= v.yearStart && y <= v.yearEnd;
+
   return Store.vehicles().filter(v => {
     if (filter.make && v.make !== filter.make) return false;
-    if (yr && !(yr >= v.yearStart && yr <= v.yearEnd)) return false;
-    if (q) {
-      const hay = [
-        v.make, v.model, v.blanks && v.blanks.keyway, v.blanks && v.blanks.ilco,
-        v.blanks && v.blanks.oem, v.transponder && v.transponder.chip,
-        (v.remotes || []).map(r => `${r.fcc} ${r.pn}`).join(' ')
-      ].join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
+    if (dropdownYear && !covers(v, dropdownYear)) return false;
+    if (years.some(y => !covers(v, y))) return false;
+    if (terms.length) {
+      const hay = vehicleHaystack(v).toLowerCase();
+      const tight = squash(hay);
+      if (!terms.every(t => hay.includes(t) || tight.includes(squash(t)))) return false;
     }
     return true;
   }).sort((a, b) => (a.make + a.model).localeCompare(b.make + b.model) || b.yearStart - a.yearStart);
@@ -173,6 +196,19 @@ function emptyLookupHtml() {
 }
 
 /* ======================= vehicle detail ======================= */
+/* A spec list with the empty rows dropped. On records where a field was left
+   blank rather than guessed, a column of dashes buries the parts that do say
+   something — the Tesla was 7 dash-only rows out of 24. */
+function specList(pairs, opts) {
+  const rows = pairs.filter(([, val]) => {
+    const t = String(val == null ? '' : val).trim();
+    return t !== '' && t !== '\u2014';
+  });
+  if (!rows.length) return `<div class="card muted tiny">${esc((opts && opts.empty) || 'Not recorded.')}</div>`;
+  return `<div class="card"><dl class="spec">` + rows.map(([label, val, cls]) =>
+    `<dt>${label}</dt><dd${cls ? ` class="${cls}"` : ''}>${esc(val)}</dd>`).join('') + `</dl></div>`;
+}
+
 function RENDER_vehicle(id) {
   const v = Store.vehicles().find(x => x.id === id);
   const host = $('#vehicleBody');
@@ -197,53 +233,31 @@ function RENDER_vehicle(id) {
       your machine's database, then mark it verified in Edit so it stops nagging you.</div>`}
 
     <h2>Key blank</h2>
-    <div class="card"><dl class="spec">
-      <dt>Keyway</dt><dd class="mono">${esc(nz(b.keyway))}</dd>
-      <dt>Ilco</dt><dd class="mono">${esc(nz(b.ilco))}</dd>
-      <dt>Silca</dt><dd class="mono">${esc(nz(b.silca))}</dd>
-      <dt>JMA</dt><dd class="mono">${esc(nz(b.jma))}</dd>
-      <dt>OEM P/N</dt><dd class="mono">${esc(nz(b.oem))}</dd>
-    </dl></div>
+    ${specList([['Keyway', b.keyway, 'mono'], ['Ilco', b.ilco, 'mono'], ['Silca', b.silca, 'mono'],
+                ['JMA', b.jma, 'mono'], ['OEM P/N', b.oem, 'mono']],
+               { empty: 'No blank recorded for this one.' })}
 
     <h2>Transponder</h2>
-    <div class="card"><dl class="spec">
-      <dt>Chip</dt><dd>${esc(nz(t.chip))}</dd>
-      <dt>System</dt><dd>${esc(nz(t.system))}</dd>
-      <dt>Cloneable</dt><dd>${esc(nz(t.cloneable))}</dd>
-    </dl></div>
+    ${specList([['Chip', t.chip], ['System', t.system], ['Cloneable', t.cloneable]])}
 
     <h2>Remotes / fobs</h2>
-    ${r.length ? r.map(x => `<div class="card"><dl class="spec">
-      <dt>Type</dt><dd>${esc(nz(x.type))}</dd>
-      <dt>FCC ID</dt><dd class="mono">${esc(nz(x.fcc))}</dd>
-      <dt>Part no.</dt><dd class="mono">${esc(nz(x.pn))}</dd>
-      <dt>Buttons</dt><dd>${esc(nz(x.buttons))}</dd>
-    </dl></div>`).join('') : '<div class="card muted tiny">No fob data on file.</div>'}
+    ${r.length
+      ? r.map(x => specList([['Type', x.type], ['FCC ID', x.fcc, 'mono'],
+                             ['Part no.', x.pn, 'mono'], ['Buttons', x.buttons]],
+                            { empty: 'Fob details not recorded.' })).join('')
+      : '<div class="card muted tiny">No fob data on file.</div>'}
 
     <h2>Lock &amp; cutting</h2>
-    <div class="card"><dl class="spec">
-      <dt>Code series</dt><dd>${esc(nz(l.codeSeries))}</dd>
-      <dt>Spaces</dt><dd>${esc(nz(l.spaces))}</dd>
-      <dt>Depths</dt><dd>${esc(nz(l.depths))}</dd>
-      <dt>Cut type</dt><dd>${esc(nz(l.cutMethod))}</dd>
-      <dt>Decode</dt><dd>${esc(nz(l.decode))}</dd>
-    </dl></div>
+    ${specList([['Code series', l.codeSeries], ['Spaces', l.spaces], ['Depths', l.depths],
+                ['Cut type', l.cutMethod], ['Decode', l.decode]],
+               { empty: 'Nothing to cut on this one.' })}
 
     <h2>Programming</h2>
-    <div class="card"><dl class="spec">
-      <dt>OBD</dt><dd>${esc(nz(p.obd))}</dd>
-      <dt>Onboard</dt><dd>${esc(nz(p.onboard))}</dd>
-      <dt>All keys lost</dt><dd>${esc(nz(p.allKeysLost))}</dd>
-      <dt>PIN</dt><dd>${esc(nz(p.pinRequired))}</dd>
-      ${p.notes ? `<dt>Notes</dt><dd>${esc(p.notes)}</dd>` : ''}
-    </dl></div>
+    ${specList([['OBD', p.obd], ['Onboard', p.onboard], ['All keys lost', p.allKeysLost],
+                ['PIN', p.pinRequired], ['Notes', p.notes]])}
 
     <h2>On the vehicle</h2>
-    <div class="card"><dl class="spec">
-      <dt>OBD port</dt><dd>${esc(nz(v.obdPort))}</dd>
-      <dt>Entry</dt><dd>${esc(nz(v.doorUnlock))}</dd>
-      ${v.notes ? `<dt>Notes</dt><dd>${esc(v.notes)}</dd>` : ''}
-    </dl></div>
+    ${specList([['OBD port', v.obdPort], ['Entry', v.doorUnlock], ['Notes', v.notes]])}
 
     <div class="stack" style="margin-top:16px">
       <button class="btn" data-editveh="${esc(v.id)}">Edit this record</button>
@@ -391,16 +405,11 @@ function runVinDecode() {
     btn.disabled = true; btn.textContent = 'Asking NHTSA...';
     try {
       const o = await decodeVinOnline(d.vin);
-      $('#vinOnlineOut').innerHTML = `<div class="card"><dl class="spec">
-        <dt>Make</dt><dd>${esc(nz(o.make))}</dd>
-        <dt>Model</dt><dd>${esc(nz(o.model))}</dd>
-        <dt>Year</dt><dd>${esc(nz(o.year))}</dd>
-        <dt>Trim</dt><dd>${esc(nz([o.series, o.trim].filter(Boolean).join(' ')))}</dd>
-        <dt>Body</dt><dd>${esc(nz(o.bodyClass))}</dd>
-        <dt>Engine</dt><dd>${esc(nz(o.engine))}</dd>
-        <dt>Keyless</dt><dd>${esc(nz(o.keylessIgnition))}</dd>
-        <dt>Built at</dt><dd>${esc(nz(o.plant))}</dd>
-      </dl></div>`;
+      $('#vinOnlineOut').innerHTML = specList([
+        ['Make', o.make], ['Model', o.model], ['Year', o.year],
+        ['Trim', [o.series, o.trim].filter(Boolean).join(' ')], ['Body', o.bodyClass],
+        ['Engine', o.engine], ['Keyless', o.keylessIgnition], ['Built at', o.plant]
+      ], { empty: 'NHTSA returned no details for this VIN.' });
       btn.textContent = 'Refresh from NHTSA';
       showVinMatches(o.make, o.model, parseInt(o.year, 10));
     } catch (err) {
