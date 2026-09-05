@@ -197,3 +197,19 @@ th{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--fg3)}
 .tip-f{display:flex;align-items:center;gap:10px;margin-top:8px}
 .tip-f .muted{flex:1}
 .tip-f .btn{width:auto;min-height:34px;padding:0 12px}
+
+/* ---- master key pinning chart ---- */
+.pinchart{border-collapse:collapse;font-size:13px;width:100%}
+.pinchart th{
+  color:var(--fg2);font-weight:700;text-align:left;white-space:nowrap;padding:5px 10px 5px 0;
+  font-size:10px;text-transform:uppercase;letter-spacing:.5px;
+}
+.pinchart tr:first-child th{text-align:center;padding:4px}
+.pinchart td{
+  text-align:center;min-width:34px;padding:6px 4px;border:1px solid var(--line);
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;
+}
+.pinchart tr.sep td,.pinchart tr.sep th{border-top:2px solid var(--fg3)}
+.pinchart td.bot{background:var(--bg3)}
+.pinchart td.mas{background:var(--acc);color:#12161c}
+.pinchart td.none{color:var(--fg3)}

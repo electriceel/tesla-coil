@@ -58,6 +58,22 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
+**Master keying** — under Tools. Enter a top master key and it progresses a change
+key schedule and pins every lock in it. Schlage and Kwikset ship with their published
+depth range and MACS, and every one of those is editable for the cylinder in your hand.
+Two progressions: rotating constant, which holds one chamber at the master depth so no
+change key can turn into an unintended master, and total position, which progresses
+every chamber for the most changes a master will carry. Each lock opens to a pinning
+chart — bottom pin and master pin per chamber — plus the count of bittings the pinning
+also passes, which is the number worth weighing before a system goes on a door that
+matters. Master pins under the two-increment minimum are flagged. Systems save by their
+inputs, not their output, so a reloaded system regenerates from the same math rather
+than carrying a stale schedule.
+
+Nothing in it is looked up. It is arithmetic on one physical fact: a deeper cut lets
+the stack sit lower, so the bottom pin is sized to the shallower of the two cuts and the
+master pin makes up the difference. The math has its own test suite separate from the UI — `node tests/master.test.js`.
+
 **Blanks** — a browsable key blank directory. It opens on five categories —
 automotive, powersports, fleet & equipment, residential, commercial — because 139
 blanks across 130-odd makes is not a list you read on arrival. From there, regroup

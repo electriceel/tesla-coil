@@ -8,6 +8,7 @@ const K = {
   jobs:     NS + 'jobs',       // job log
   bcm:      NS + 'bcm',        // Nissan BCM -> PIN lookup rows the user imports
   tips:     NS + 'tips',       // your own tips & tricks, per vehicle per category
+  mk:       NS + 'mk',         // saved master-key systems
   prefs:    NS + 'prefs'
 };
 
@@ -103,6 +104,19 @@ const Store = {
       .reduce((n, veh) => n + Object.values(veh).reduce((m, list) => m + list.length, 0), 0);
   },
 
+  /* ---- master-key systems ----
+     A saved system is the inputs, not the output — the schedule regenerates
+     from them, so a stored system can never drift from the math. */
+  mkSystems() { return read(K.mk, []); },
+  saveMkSystem(rec) {
+    const all = Store.mkSystems();
+    const i = all.findIndex(x => x.id === rec.id);
+    if (i >= 0) all[i] = rec; else all.unshift(rec);
+    write(K.mk, all);
+    return rec;
+  },
+  deleteMkSystem(id) { write(K.mk, Store.mkSystems().filter(x => x.id !== id)); },
+
   /* ---- prefs ---- */
   prefs() { return read(K.prefs, { shop: '', phone: '', rate: '' }); },
   setPrefs(p) { return write(K.prefs, p); },
@@ -112,7 +126,8 @@ const Store = {
     return {
       app: 'keypro-field', schema: 1, exportedAt: new Date().toISOString(),
       vehicles: Store.overrides(), blanks: Store.blankOverrides(),
-      jobs: Store.jobs(), bcm: Store.bcmRows(), tips: Store.allTips(), prefs: Store.prefs()
+      jobs: Store.jobs(), bcm: Store.bcmRows(), tips: Store.allTips(),
+      mk: Store.mkSystems(), prefs: Store.prefs()
     };
   },
   importAll(obj, mode) {
@@ -123,6 +138,7 @@ const Store = {
       write(K.jobs, obj.jobs || []);
       write(K.bcm, obj.bcm || []);
       write(K.tips, obj.tips || {});
+      write(K.mk, obj.mk || []);
     } else {
       write(K.vehicles, { ...Store.overrides(), ...(obj.vehicles || {}) });
       write(K.blanks, { ...Store.blankOverrides(), ...(obj.blanks || {}) });
@@ -141,6 +157,8 @@ const Store = {
         });
       });
       write(K.tips, tips);
+      const haveMk = new Set(Store.mkSystems().map(m => m.id));
+      write(K.mk, Store.mkSystems().concat((obj.mk || []).filter(m => !haveMk.has(m.id))));
     }
     if (obj.prefs) Store.setPrefs({ ...Store.prefs(), ...obj.prefs });
   }
