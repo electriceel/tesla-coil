@@ -36,7 +36,11 @@ const V = (o) => ({
   remotes: (o.rem || []).map(r => ({ type: r[0], fcc: r[1], pn: r[2], buttons: r[3] })),
   lock: {
     codeSeries: o.cs || o.kw || '', spaces: o.sp || '', depths: o.dp || '',
-    cutMethod: o.cut || '', decode: o.dec || ''
+    cutMethod: o.cut || '', decode: o.dec || '',
+    /* Ignition retainer style, MACS and per-lock tumbler positions are
+       machine-book facts with no source we can cite at seed time, so they stay
+       empty rather than guessed — fill them from your own equipment. */
+    ignition: o.ign || '', macs: o.mac || '', tumblers: o.tum || null
   },
   programming: {
     obd: o.obd || '', onboard: o.on || '', allKeysLost: o.akl || '',
