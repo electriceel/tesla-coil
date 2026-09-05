@@ -2,516 +2,178 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Offline automotive locksmith reference: key blanks, transponders, fobs, cutting and programming by year/make/model, VIN decode, blank cross-reference and a job log.">
+<meta name="theme-color" content="#0d1117">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#050a0f">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json">
-<title>Tesla Square Wave</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--t:#00ffcc;--t2:#00ffcc44;--t3:#00ffcc18;--t4:#00ffcc0a;--bg:#050a0f;--bg2:#070f14;--bg3:#030810;--red:#ff4455;--amb:#ffaa00;--grn:#44ff88;--pur:#aa88ff}
-html{height:100%;-webkit-text-size-adjust:100%}
-body{background:var(--bg);color:var(--t);font-family:'Share Tech Mono',monospace;min-height:100%;padding:16px 12px 56px;overscroll-behavior:none}
-.hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.hdr-icon{font-size:26px}
-.hdr h1{font-family:'Orbitron',sans-serif;font-size:17px;letter-spacing:4px;text-transform:uppercase}
-.hdr .sub{font-size:8px;color:#005f50;letter-spacing:2px;margin-top:2px}
-.card{background:var(--bg2);border:1px solid #00ffcc1a;border-radius:12px;padding:14px;margin-bottom:10px}
-.card-label{font-size:8px;letter-spacing:3px;color:#00ffcc44;text-transform:uppercase;margin-bottom:10px}
-.btn{width:100%;font-family:'Share Tech Mono',monospace;font-size:14px;letter-spacing:2px;padding:17px;border:1.5px solid var(--t2);background:var(--t3);color:var(--t);border-radius:10px;cursor:pointer;text-transform:uppercase;margin-bottom:8px;display:block;touch-action:manipulation;-webkit-user-select:none;user-select:none;transition:background .12s,transform .1s}
-.btn:active{background:#00ffcc28;transform:scale(0.98)}
-.btn.on{border-color:var(--t);background:#00ffcc22}
-.btn.red{border-color:var(--red);color:var(--red);background:#ff445510}
-.btn.pur{border-color:var(--pur);color:var(--pur);background:#aa88ff10}
-.btn.pur.on{background:#aa88ff20;border-color:var(--pur)}
-.btn:disabled{opacity:0.3;pointer-events:none}
-.diag{border-radius:8px;padding:11px 13px;font-size:10px;line-height:1.7;margin-bottom:6px;border:1px solid;white-space:pre-wrap;word-break:break-word}
-.diag.idle{background:#070f14;border-color:#00ffcc15;color:#00ffcc55}
-.diag.ok{background:#061208;border-color:#44ff8833;color:var(--grn)}
-.diag.warn{background:#120e00;border-color:#ffaa0033;color:var(--amb)}
-.diag.err{background:#120408;border-color:#ff445533;color:var(--red)}
-.diag.pur{background:#0d0a18;border-color:#aa88ff33;color:var(--pur)}
-.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
-.tab{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:12px 4px;border:1px solid var(--t2);background:transparent;color:#00ffcc66;border-radius:8px;cursor:pointer;text-transform:uppercase;touch-action:manipulation;transition:all .12s;line-height:1.4;text-align:center}
-.tab.active{border-color:var(--t);background:var(--t3);color:var(--t)}
-.tab.pur-tab.active{border-color:var(--pur);background:#aa88ff12;color:var(--pur)}
-.steps{margin-bottom:10px}
-.step{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px;font-size:10px;color:#00ffcc88;line-height:1.6;counter-increment:step}
-.steps{counter-reset:step}
-.step::before{content:counter(step);font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;color:var(--pur);background:#aa88ff18;border:1px solid #aa88ff33;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.big-display{text-align:center;padding:8px 0 2px}
-.big-val{font-family:'Orbitron',sans-serif;font-size:68px;font-weight:700;line-height:1;color:var(--t);transition:color .1s;letter-spacing:2px}
-.big-val.silent{color:#00ffcc18}
-.big-sub{font-size:11px;color:#00ffcc55;margin-top:5px;letter-spacing:1px}
-.big-src{font-size:8px;letter-spacing:2px;margin-top:3px}
-.src-int{color:var(--pur)}.src-mic{color:var(--t)}.src-man{color:var(--amb)}
-.vu-wrap{height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;margin:8px 0 4px}
-.vu-bar{height:100%;width:0%;border-radius:4px;background:var(--t);transition:width .05s}
-.vu-bar.hot{background:var(--amb)}.vu-bar.clip{background:var(--red)}
-.arc-ring{width:96px;height:96px;border-radius:50%;border:3px solid var(--t2);margin:8px auto;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.arc-ring.act{border-color:var(--t);box-shadow:0 0 20px #00ffcc55;animation:pa .6s infinite alternate}
-.arc-ring.act-pur{border-color:var(--pur);box-shadow:0 0 20px #aa88ff55;animation:pp .6s infinite alternate}
-@keyframes pa{from{box-shadow:0 0 8px #00ffcc33}to{box-shadow:0 0 28px #00ffcc99}}
-@keyframes pp{from{box-shadow:0 0 8px #aa88ff33}to{box-shadow:0 0 28px #aa88ffaa}}
-.arc-lbl{font-size:8px;letter-spacing:2px;color:#00ffcc44;text-align:center;padding:0 6px}
-.arc-ring.act .arc-lbl{color:var(--t)}.arc-ring.act-pur .arc-lbl{color:var(--pur)}
-.piano-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:3px 0 5px}
-.piano{display:flex;height:52px;min-width:520px;gap:2px}
-.key{flex:1;border-radius:0 0 4px 4px;border:1px solid #00ffcc15;background:#0a1a14;min-width:12px;transition:background .08s}
-.key.black{background:var(--bg3);height:56%;margin:0 -4px;z-index:2;flex:0 0 9px}
-.key.lit{background:var(--t)!important;box-shadow:0 0 8px #00ffcc88}
-.key.lit-pur{background:var(--pur)!important;box-shadow:0 0 8px #aa88ff88}
-canvas{display:block;width:100%;border-radius:6px;background:var(--bg3)}
-#waveOut{height:52px}#waveIn{height:40px}
-.knob{margin-bottom:12px}
-.knob-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
-.knob-lbl{font-size:9px;letter-spacing:2px;color:#00ffcc77}
-.knob-val{font-size:13px;font-weight:700;color:var(--t);font-family:'Orbitron',sans-serif}
-input[type=range]{width:100%;height:34px;accent-color:var(--t);cursor:pointer;touch-action:manipulation}
-.tog-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #00ffcc08;margin-top:6px}
-.tog-lbl{font-size:9px;letter-spacing:2px;color:#00ffcc77}
-.tog{position:relative;width:44px;height:24px;display:inline-block;flex-shrink:0}
-.tog input{opacity:0;width:0;height:0}
-.tog-track{position:absolute;inset:0;background:#0a1a14;border:1px solid var(--t2);border-radius:12px;transition:background .2s}
-.tog input:checked+.tog-track{background:#00ffcc33;border-color:var(--t)}
-.tog-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#00ffcc55;transition:transform .2s,background .2s;pointer-events:none}
-.tog input:checked~.tog-thumb{transform:translateX(20px);background:var(--t)}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.stat{background:var(--bg3);border:1px solid var(--t4);border-radius:8px;padding:9px 10px;text-align:center}
-.stat-val{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:700;color:var(--t)}
-.stat-lbl{font-size:7px;color:#00ffcc44;letter-spacing:2px;margin-top:3px}
-.info{font-size:9px;color:#00ffcc44;line-height:1.7;margin-top:8px}
-#installBanner{display:none;background:#0a1a10;border:1px solid #44ff8833;border-radius:10px;padding:13px;margin-bottom:10px;font-size:10px;color:var(--grn);line-height:1.7}
-</style>
+<link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="assets/css/app.css">
+<title>KeyPro Field</title>
 </head>
 <body>
 
-<div id="installBanner">
-  &#9889; Install as app — open Chrome menu &rarr; "Add to Home screen"
-</div>
+<header class="top">
+  <img class="logo" src="assets/icons/icon.svg" alt="">
+  <h1>KeyPro Field<small>Locksmith reference</small></h1>
+  <button class="icon-btn" id="themeBtn" title="Light / dark" aria-label="Toggle light or dark"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 2a8 8 0 000 16z" fill="currentColor"/></svg></button>
+  <button class="icon-btn" id="gearBtn" title="Settings" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5.5h14M3 10h14M3 14.5h14"/><circle cx="7" cy="5.5" r="2" fill="var(--bg2)"/><circle cx="13" cy="10" r="2" fill="var(--bg2)"/><circle cx="7" cy="14.5" r="2" fill="var(--bg2)"/></svg></button>
+</header>
 
-<div class="hdr">
-  <div class="hdr-icon">&#9889;</div>
-  <div>
-    <h1>Tesla Square Wave</h1>
-    <div class="sub">audio source &rarr; square wave &rarr; bluetooth coil</div>
-  </div>
-</div>
+<main>
 
-<div class="card">
-  <div class="card-label">System Check</div>
-  <div id="dProto" class="diag idle">Checking...</div>
-  <div id="dOut"   class="diag idle">Output: connect coil as Bluetooth audio in Android Settings &rarr; Bluetooth</div>
-</div>
-
-<div class="card">
-  <div class="card-label">Audio Source</div>
-  <div class="tabs">
-    <button class="tab pur-tab active" id="tabInt" onclick="setMode('int')">&#127925;<br>Internal<br>Audio</button>
-    <button class="tab"               id="tabMic" onclick="setMode('mic')">&#127908;<br>Mic<br>Input</button>
-    <button class="tab"               id="tabMan" onclick="setMode('man')">&#9881;<br>Manual<br>Tone</button>
-  </div>
-
-  <div id="paneInt">
-    <div id="dInt" class="diag pur">Tap below to capture Spotify or any app audio.</div>
-    <div class="steps">
-      <div class="step">Tap "Capture Internal Audio" below</div>
-      <div class="step">A screen share prompt appears — tap "Start now"</div>
-      <div class="step">Look for "Share audio" toggle and turn it ON</div>
-      <div class="step">Switch to Spotify, play music, come back here</div>
+  <!-- ============ LOOKUP ============ -->
+  <section class="view active" id="view-lookup">
+    <h2>Year / make / model</h2>
+    <div class="card">
+      <div class="row" style="margin-bottom:10px">
+        <select id="yearSel" aria-label="Year"><option value="">Any year</option></select>
+        <button class="btn" id="lookupClear" style="max-width:96px">Clear</button>
+      </div>
+      <input id="lookupQ" type="search" placeholder="Search model, blank, chip or FCC ID" aria-label="Search">
     </div>
-    <button class="btn pur" id="btnInt" onclick="toggleInternal()">&#9654; Capture Internal Audio</button>
-    <div class="info">Requires Android 10+ and Chrome. If "Share audio" toggle doesn't appear, your device doesn't support this — use Mic mode with a cable from headphone out to mic in.</div>
-  </div>
+    <div class="chips" id="makeChips" style="margin-bottom:12px"></div>
+    <div class="tiny muted" id="lookupCount" style="margin-bottom:6px"></div>
+    <div id="lookupResults"></div>
+    <button class="btn ghost" id="addVehBtn" style="margin-top:12px">+ Add a vehicle to your database</button>
+  </section>
 
-  <div id="paneMic" style="display:none">
-    <div id="dMic" class="diag idle">Mic not started.</div>
-    <button class="btn" id="btnMic" onclick="toggleMic()">&#9654; Start Mic</button>
-    <div class="info">Point mic at your speaker, or use a 3.5mm cable from headphone out to mic in for best results.</div>
-  </div>
+  <!-- ============ VEHICLE ============ -->
+  <section class="view" id="view-vehicle">
+    <button class="btn btn-sm ghost" data-go="lookup" style="margin-bottom:10px">&lsaquo; Back to lookup</button>
+    <div id="vehicleBody"></div>
+  </section>
 
-  <div id="paneMan" style="display:none">
-    <div class="knob">
-      <div class="knob-hdr"><span class="knob-lbl">FREQUENCY</span><span class="knob-val" id="vManFreq">220 Hz</span></div>
-      <input type="range" id="manFreq" min="20" max="2000" value="220" step="1" oninput="updateManFreq()">
+  <!-- ============ VIN ============ -->
+  <section class="view" id="view-vin">
+    <h2>VIN decoder</h2>
+    <form class="card" id="vinForm">
+      <div class="field">
+        <label>17-character VIN <span class="mono" id="vinLen">0/17</span></label>
+        <input id="vinInput" class="mono" style="letter-spacing:2px;text-transform:uppercase"
+               autocapitalize="characters" autocomplete="off" spellcheck="false"
+               placeholder="1FTFW1ET5DFA12345">
+      </div>
+      <button class="btn primary" type="submit">Decode</button>
+    </form>
+    <div id="vinOut"></div>
+    <div class="notice info tiny" style="margin-top:12px">
+      The offline decode (WMI, model year, check digit) always works. The NHTSA lookup needs signal
+      and is the free government vPIC database &mdash; it will not give you a key code.
     </div>
-    <button class="btn" id="btnMan" onclick="toggleManual()">&#9654; Fire Arc</button>
-    <div class="info">Use this first to test your Bluetooth connection. If the coil arcs, the connection works.</div>
-  </div>
-</div>
+  </section>
 
-<button class="btn red" id="btnStop" onclick="stopAll()" disabled>&#9632; Stop Everything</button>
+  <!-- ============ BLANKS ============ -->
+  <section class="view" id="view-blanks">
+    <h2>Key blank cross-reference</h2>
+    <div class="card">
+      <input id="blankQ" type="search" placeholder="Keyway, Ilco, Silca, JMA, Strattec or make" aria-label="Search blanks">
+    </div>
+    <div id="blankTable"></div>
+  </section>
 
-<div class="card">
-  <div class="card-label">Output</div>
-  <div class="big-display">
-    <div class="big-val silent" id="bigVal">--</div>
-    <div class="big-sub" id="bigSub">-- Hz square wave</div>
-    <div class="big-src" id="bigSrc"></div>
-  </div>
-  <div class="vu-wrap"><div class="vu-bar" id="vuBar"></div></div>
-  <div class="arc-ring" id="arcRing"><div class="arc-lbl" id="arcLbl">STANDBY</div></div>
-  <div class="piano-scroll"><div class="piano" id="piano"></div></div>
-</div>
+  <!-- ============ TOOLS ============ -->
+  <section class="view" id="view-tools">
+    <h2>Nissan BCM &rarr; PIN</h2>
+    <form class="card" id="bcmForm">
+      <div class="field">
+        <label>BCM code <span class="tiny muted" id="bcmCount"></span></label>
+        <input id="bcmInput" class="mono" style="text-transform:uppercase" autocomplete="off" placeholder="e.g. 5B7D">
+      </div>
+      <button class="btn primary" type="submit">Look up PIN</button>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-sm ghost" type="button" id="bcmImport">Import table (CSV)</button>
+        <button class="btn btn-sm ghost" type="button" id="bcmClear">Clear table</button>
+      </div>
+    </form>
+    <div id="bcmOut"></div>
+    <div class="notice info tiny">
+      This tool looks up the conversion table <em>you</em> load &mdash; two columns,
+      <span class="mono">bcm,pin</span>, optional third column for a note. It does not guess.
+      A wrong PIN costs you an attempt on the BCM, so the app would rather say "not in your table".
+    </div>
 
-<div class="card">
-  <div class="card-label">Square Wave Output</div>
-  <canvas id="waveOut"></canvas>
-</div>
+    <h2>Hex / decimal</h2>
+    <div class="card">
+      <div class="field"><label>Value</label><input id="hexIn" class="mono" autocomplete="off" placeholder="4F2A or 20266"></div>
+    </div>
+    <div id="hexOut"></div>
 
-<div class="card" id="cardIn">
-  <div class="card-label">Input Signal</div>
-  <canvas id="waveIn"></canvas>
-</div>
+    <h2>Quote builder</h2>
+    <form class="card" id="quoteForm">
+      <div class="row">
+        <div class="field"><label>Service call</label><input id="qBase" type="number" inputmode="decimal" step="0.01" placeholder="85"></div>
+        <div class="field"><label>Trip</label><input id="qTrip" type="number" inputmode="decimal" step="0.01" placeholder="0"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Keys</label><input id="qKeys" type="number" inputmode="numeric" value="1"></div>
+        <div class="field"><label>Per key</label><input id="qPer" type="number" inputmode="decimal" step="0.01" placeholder="140"></div>
+      </div>
+      <div class="field"><label>Programming</label><input id="qProg" type="number" inputmode="decimal" step="0.01" placeholder="75"></div>
+      <button class="btn primary" type="submit">Total</button>
+    </form>
+    <div id="qOut"></div>
+  </section>
 
-<div class="card">
-  <div class="card-label">Settings</div>
-  <div class="knob">
-    <div class="knob-hdr"><span class="knob-lbl">OUTPUT VOLUME</span><span class="knob-val" id="vVol">80%</span></div>
-    <input type="range" id="vol" min="1" max="100" value="80" step="1" oninput="updateVol()">
-  </div>
-  <div class="knob">
-    <div class="knob-hdr"><span class="knob-lbl">DUTY CYCLE</span><span class="knob-val" id="vDuty">50%</span></div>
-    <input type="range" id="duty" min="5" max="95" value="50" step="1" oninput="updateDuty()">
-  </div>
-  <div class="knob" id="kGain">
-    <div class="knob-hdr"><span class="knob-lbl">INPUT GAIN</span><span class="knob-val" id="vGain">4x</span></div>
-    <input type="range" id="gain" min="1" max="20" value="4" step="1" oninput="updateGain()">
-  </div>
-  <div class="knob" id="kConf">
-    <div class="knob-hdr"><span class="knob-lbl">PITCH SENSITIVITY</span><span class="knob-val" id="vConf">15%</span></div>
-    <input type="range" id="confidence" min="5" max="50" value="15" step="1" oninput="updateConf()">
-  </div>
-  <div class="tog-row">
-    <span class="tog-lbl">GLIDE (smooth pitch)</span>
-    <label class="tog"><input type="checkbox" id="glide" checked><div class="tog-track"></div><div class="tog-thumb"></div></label>
-  </div>
-</div>
+  <!-- ============ JOBS ============ -->
+  <section class="view" id="view-jobs">
+    <div id="jobEditor"></div>
+    <div id="jobListWrap">
+      <h2>Job log</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="btn primary" id="newJobBtn">+ New job</button>
+        <button class="btn ghost" id="jobCsvBtn">Export CSV</button>
+      </div>
+      <div class="tiny muted" id="jobTotals" style="margin-bottom:8px"></div>
+      <div id="jobList"></div>
+    </div>
+  </section>
 
-<div class="card">
-  <div class="stats">
-    <div class="stat"><div class="stat-val" id="sNote">--</div><div class="stat-lbl">Note</div></div>
-    <div class="stat"><div class="stat-val" id="sFreq">--</div><div class="stat-lbl">Output Hz</div></div>
-    <div class="stat"><div class="stat-val" id="sDuty">50</div><div class="stat-lbl">Duty %</div></div>
-    <div class="stat"><div class="stat-val" id="sDb">--</div><div class="stat-lbl">Input dBFS</div></div>
-  </div>
-</div>
+  <!-- ============ SETTINGS ============ -->
+  <section class="view" id="view-settings">
+    <h2>Shop</h2>
+    <form class="card" id="setForm">
+      <div class="field"><label>Business name</label><input id="setShop" placeholder="On Spot Locksmith"></div>
+      <div class="field"><label>Phone</label><input id="setPhone" type="tel"></div>
+      <div class="field"><label>Default trip charge</label><input id="setRate" type="number" inputmode="decimal" step="0.01"></div>
+      <button class="btn primary" type="submit">Save</button>
+    </form>
 
-<script>
-if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-let deferredInstall=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;document.getElementById('installBanner').style.display='block';});
+    <h2>Data</h2>
+    <div class="card" id="setStats"></div>
+    <div class="stack">
+      <button class="btn" id="exportBtn">Export backup (JSON)</button>
+      <button class="btn" id="importBtn">Import backup</button>
+      <button class="btn danger" id="wipeBtn">Erase everything on this device</button>
+    </div>
 
-// ── Env ────────────────────────────────────────────────────────────────────
-function checkEnv(){
-  const secure=location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1';
-  const hasDisp=!!(navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia);
-  const hasMic=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
-  const hasAudio=!!(window.AudioContext||window.webkitAudioContext);
-  if(!secure){
-    diag('dProto','err','NOT HTTPS!\n'+location.protocol+'//'+location.hostname+'\n\nDeploy to GitHub Pages for HTTPS, then open that URL in Chrome.');
-    document.querySelectorAll('.btn').forEach(b=>b.disabled=true);
-    return;
-  }
-  let m='HTTPS OK\n'+(hasDisp?'Screen capture: available\n':'Screen capture: NOT available (need Chrome)\n')+(hasMic?'Microphone: available':'Microphone: not available');
-  diag('dProto',hasAudio?'ok':'err',m);
-  if(!hasDisp)document.getElementById('btnInt').disabled=true;
-  if(!hasMic)document.getElementById('btnMic').disabled=true;
-}
+    <h2>About</h2>
+    <div class="card tiny muted">
+      Everything lives in this browser's storage. No account, no server, no telemetry &mdash;
+      which also means clearing site data wipes it, so export a backup now and then.
+      Add to Home Screen and it runs with no signal.
+      <br><br>
+      The bundled vehicle data is a starting point, not a certified catalog. Confirm every blank,
+      chip and procedure against the vehicle or your machine before you cut or program.
+    </div>
+  </section>
 
-// ── Output (square wave via ScriptProcessor) ───────────────────────────────
-let outCtx=null,proc=null,gOut=null,outActive=false,curFreq=0,tgtFreq=0,phase=0;
+</main>
 
-function startOut(freq){
-  if(!outCtx||outCtx.state==='closed')outCtx=new(window.AudioContext||window.webkitAudioContext)();
-  if(outCtx.state==='suspended')outCtx.resume();
-  if(outActive){tgtFreq=freq;return;}
-  gOut=outCtx.createGain();gOut.gain.value=+document.getElementById('vol').value/100;
-  proc=outCtx.createScriptProcessor(2048,0,1);phase=0;
-  proc.onaudioprocess=e=>{
-    const out=e.outputBuffer.getChannelData(0);
-    const f=curFreq>0?curFreq:20;
-    const d=+document.getElementById('duty').value/100;
-    const step=f/outCtx.sampleRate;
-    for(let i=0;i<out.length;i++){out[i]=phase<d?1:-1;phase+=step;if(phase>=1)phase-=1;}
-  };
-  proc.connect(gOut);gOut.connect(outCtx.destination);
-  curFreq=freq;tgtFreq=freq;outActive=true;
-  diag('dOut','ok','Square wave \u2192 Bluetooth audio out\nIf coil silent: check it is connected as BT audio device in Android Settings.');
-}
+<nav class="nav">
+  <button data-go="lookup" class="on"><span class="ic">&#128663;</span>Lookup</button>
+  <button data-go="vin"><span class="ic">&#35;</span>VIN</button>
+  <button data-go="blanks"><span class="ic">&#128273;</span>Blanks</button>
+  <button data-go="tools"><span class="ic">&#128295;</span>Tools</button>
+  <button data-go="jobs"><span class="ic">&#128203;</span>Jobs</button>
+</nav>
 
-function stopOut(){
-  if(proc){try{proc.disconnect();}catch(e){}proc=null;}
-  if(gOut){try{gOut.disconnect();}catch(e){}gOut=null;}
-  outActive=false;curFreq=0;drawOut();
-}
-
-function setFreq(f){if(!outActive)return;tgtFreq=f;if(!document.getElementById('glide').checked)curFreq=f;}
-
-setInterval(()=>{
-  if(!outActive||tgtFreq===0)return;
-  const d=tgtFreq-curFreq;
-  if(Math.abs(d)<0.5){curFreq=tgtFreq;return;}
-  curFreq+=d*0.2;
-},16);
-
-// ── Input engine ───────────────────────────────────────────────────────────
-let inCtx=null,an=null,gIn=null,inStream=null,rafId=null,tbuf=null,silCount=0;
-let curMode='int';
-
-function startInput(stream,label,diagId){
-  if(inCtx){try{inCtx.close();}catch(e){}}
-  inCtx=new(window.AudioContext||window.webkitAudioContext)({sampleRate:44100});
-  if(inCtx.state==='suspended')inCtx.resume();
-  const atracks=stream.getAudioTracks();
-  if(atracks.length===0){
-    diag(diagId,'err','No audio tracks!\n\nFor internal audio: enable "Share audio" toggle in the screen share prompt.\nFor mic: allow microphone permission.');
-    return false;
-  }
-  const src=inCtx.createMediaStreamSource(stream);
-  gIn=inCtx.createGain();gIn.gain.value=+document.getElementById('gain').value;
-  an=inCtx.createAnalyser();an.fftSize=4096;an.smoothingTimeConstant=0.35;
-  src.connect(gIn);gIn.connect(an);
-  tbuf=new Float32Array(an.fftSize);silCount=0;
-  if(rafId)cancelAnimationFrame(rafId);
-  inLoop();
-  diag(diagId,'ok',label+'\nAudio track: '+(atracks[0].label||'unnamed'));
-  return true;
-}
-
-function stopInput(){
-  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
-  if(inStream){inStream.getTracks().forEach(t=>t.stop());inStream=null;}
-  if(inCtx){inCtx.close();inCtx=null;}
-  an=gIn=null;
-}
-
-function inLoop(){
-  if(!an)return;
-  rafId=requestAnimationFrame(inLoop);
-  an.getFloatTimeDomainData(tbuf);
-  drawIn();
-  let rms=0;for(let i=0;i<tbuf.length;i++)rms+=tbuf[i]*tbuf[i];rms=Math.sqrt(rms/tbuf.length);
-  const db=rms>0.00001?Math.round(20*Math.log10(rms)):-80;
-  document.getElementById('sDb').textContent=db;
-  const pct=Math.min(100,Math.round(rms*400));
-  const vu=document.getElementById('vuBar');vu.style.width=pct+'%';
-  vu.className='vu-bar'+(pct>90?' clip':pct>65?' hot':'');
-  const {f,c}=detectPitch(tbuf,inCtx.sampleRate);
-  if(f>0){
-    silCount=0;
-    const n=freqToNote(f);
-    setBig(n.name,f.toFixed(1)+' Hz | '+Math.round(c*100)+'% clear',false);
-    document.getElementById('sNote').textContent=n.name;
-    document.getElementById('sFreq').textContent=Math.round(f);
-    if(!outActive)startOut(f);else setFreq(f);
-    setArc(true);litKey(n.midi);
-  }else{
-    silCount++;
-    if(silCount>10){
-      stopOut();setArc(false);clearKeys();
-      setBig('--','-- Hz',true);
-      document.getElementById('sNote').textContent='--';
-      document.getElementById('sFreq').textContent='--';
-      if(silCount===11)diag(curMode==='int'?'dInt':'dMic','warn',
-        curMode==='int'?'No pitch detected.\nMake sure music is playing in Spotify.\nTry raising Input Gain.':'Silence — waiting for input.');
-    }
-  }
-}
-
-// ── Internal audio ─────────────────────────────────────────────────────────
-let intOn=false;
-async function toggleInternal(){
-  if(intOn){stopAll();return;}
-  diag('dInt','warn','Opening screen share prompt...\n\nIMPORTANT: enable "Share audio" or "Include system audio" toggle before tapping Start.');
-  try{
-    inStream=await navigator.mediaDevices.getDisplayMedia({
-      video:{width:1,height:1,frameRate:1},
-      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,sampleRate:44100}
-    });
-    inStream.getVideoTracks().forEach(t=>t.stop());
-    intOn=true;curMode='int';
-    document.getElementById('btnInt').textContent='\u23F8 Stop Capture';
-    document.getElementById('btnInt').classList.add('on');
-    document.getElementById('btnStop').disabled=false;
-    document.getElementById('bigSrc').textContent='SOURCE: INTERNAL AUDIO';
-    document.getElementById('bigSrc').className='big-src src-int';
-    const ok=startInput(inStream,'Internal audio active.\nSwitch to Spotify and play music.','dInt');
-    if(!ok){intOn=false;return;}
-    const at=inStream.getAudioTracks()[0];
-    if(at)at.onended=()=>{diag('dInt','warn','Screen share ended.');stopAll();};
-  }catch(e){
-    intOn=false;
-    let m='Capture failed: '+(e.name||'')+': '+(e.message||e);
-    if(e.name==='NotAllowedError')m+='\n\nYou dismissed the prompt — tap the button again and tap "Start now".';
-    else if(e.name==='NotSupportedError')m+='\n\nNot supported on this device. Use Mic mode with a cable.';
-    diag('dInt','err',m);
-  }
-}
-
-// ── Mic ────────────────────────────────────────────────────────────────────
-let micOn=false;
-async function toggleMic(){
-  if(micOn){stopAll();return;}
-  diag('dMic','warn','Requesting mic permission...');
-  try{
-    inStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false,channelCount:1}});
-    micOn=true;curMode='mic';
-    document.getElementById('btnMic').textContent='\u23F8 Pause Mic';
-    document.getElementById('btnMic').classList.add('on');
-    document.getElementById('btnStop').disabled=false;
-    document.getElementById('bigSrc').textContent='SOURCE: MICROPHONE';
-    document.getElementById('bigSrc').className='big-src src-mic';
-    startInput(inStream,'Microphone active.','dMic');
-  }catch(e){
-    let m='Mic failed: '+(e.name||'')+': '+(e.message||e);
-    if(e.name==='NotAllowedError')m+='\n\nTap Allow in the permission prompt.\nIf blocked: Chrome \u2192 Settings \u2192 Site Settings \u2192 Microphone.';
-    diag('dMic','err',m);
-  }
-}
-
-// ── Manual ─────────────────────────────────────────────────────────────────
-let manOn=false;
-function toggleManual(){
-  if(manOn){
-    stopOut();manOn=false;
-    document.getElementById('btnMan').textContent='\u25B6 Fire Arc';
-    document.getElementById('btnMan').classList.remove('on');
-    document.getElementById('btnStop').disabled=true;
-    setArc(false);clearKeys();setBig('--','-- Hz square wave',true);
-    document.getElementById('bigSrc').textContent='';
-    diag('dOut','idle','Stopped.');
-  }else{
-    const freq=+document.getElementById('manFreq').value;
-    curMode='man';startOut(freq);manOn=true;
-    document.getElementById('btnMan').textContent='\u23F8 Stop Arc';
-    document.getElementById('btnMan').classList.add('on');
-    document.getElementById('btnStop').disabled=false;
-    document.getElementById('bigSrc').textContent='SOURCE: MANUAL';
-    document.getElementById('bigSrc').className='big-src src-man';
-    setArc(true);
-    const n=freqToNote(freq);
-    setBig(n.name,freq+' Hz square wave',false);
-    document.getElementById('sFreq').textContent=Math.round(freq);
-    document.getElementById('sNote').textContent=n.name;
-    litKey(n.midi);
-  }
-}
-function updateManFreq(){
-  const f=+document.getElementById('manFreq').value;
-  document.getElementById('vManFreq').textContent=f+' Hz';
-  if(manOn){setFreq(f);const n=freqToNote(f);setBig(n.name,f+' Hz square wave',false);document.getElementById('sFreq').textContent=Math.round(f);document.getElementById('sNote').textContent=n.name;litKey(n.midi);}
-}
-
-// ── Stop all ───────────────────────────────────────────────────────────────
-function stopAll(){
-  stopInput();stopOut();
-  intOn=false;micOn=false;manOn=false;
-  document.getElementById('btnInt').textContent='\u25B6 Capture Internal Audio';
-  document.getElementById('btnInt').classList.remove('on');
-  document.getElementById('btnMic').textContent='\u25B6 Start Mic';
-  document.getElementById('btnMic').classList.remove('on');
-  document.getElementById('btnMan').textContent='\u25B6 Fire Arc';
-  document.getElementById('btnMan').classList.remove('on');
-  document.getElementById('btnStop').disabled=true;
-  setArc(false);clearKeys();setBig('--','-- Hz square wave',true);
-  document.getElementById('bigSrc').textContent='';
-  document.getElementById('vuBar').style.width='0%';
-  document.getElementById('sNote').textContent='--';
-  document.getElementById('sFreq').textContent='--';
-  document.getElementById('sDb').textContent='--';
-  diag('dOut','idle','Output stopped.');
-}
-
-// ── Mode ───────────────────────────────────────────────────────────────────
-function setMode(m){
-  stopAll();curMode=m;
-  document.getElementById('tabInt').className='tab pur-tab'+(m==='int'?' active':'');
-  document.getElementById('tabMic').className='tab'+(m==='mic'?' active':'');
-  document.getElementById('tabMan').className='tab'+(m==='man'?' active':'');
-  document.getElementById('paneInt').style.display=m==='int'?'':'none';
-  document.getElementById('paneMic').style.display=m==='mic'?'':'none';
-  document.getElementById('paneMan').style.display=m==='man'?'':'none';
-  document.getElementById('cardIn').style.display=m==='man'?'none':'';
-  document.getElementById('kGain').style.display=m==='man'?'none':'';
-  document.getElementById('kConf').style.display=m==='man'?'none':'';
-}
-
-// ── Controls ───────────────────────────────────────────────────────────────
-function updateVol(){const v=+document.getElementById('vol').value;document.getElementById('vVol').textContent=v+'%';if(gOut)gOut.gain.value=v/100;}
-function updateDuty(){document.getElementById('vDuty').textContent=document.getElementById('duty').value+'%';document.getElementById('sDuty').textContent=document.getElementById('duty').value;drawOut();}
-function updateGain(){const v=+document.getElementById('gain').value;document.getElementById('vGain').textContent=v+'x';if(gIn)gIn.gain.value=v;}
-function updateConf(){document.getElementById('vConf').textContent=document.getElementById('confidence').value+'%';}
-
-// ── Pitch ──────────────────────────────────────────────────────────────────
-const NMS=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-function detectPitch(buf,sr){
-  const N=buf.length,H=N>>1,thr=+document.getElementById('confidence').value/100;
-  let rms=0;for(let i=0;i<N;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/N);
-  if(rms<0.004)return{f:-1,c:0};
-  const ac=new Float32Array(H);
-  for(let lag=0;lag<H;lag++){let s=0;for(let i=0;i<H;i++)s+=buf[i]*buf[i+lag];ac[lag]=s;}
-  let d=0;while(d<H-1&&ac[d]>ac[d+1])d++;
-  let mv=-Infinity,mp=-1;for(let i=d;i<H;i++){if(ac[i]>mv){mv=ac[i];mp=i;}}
-  if(mp<1)return{f:-1,c:0};
-  const cl=ac[0]>0?ac[mp]/ac[0]:0;if(cl<thr)return{f:-1,c:cl};
-  const a=ac[mp-1],b=ac[mp],c2=mp<H-1?ac[mp+1]:b;
-  const dn=2*(2*b-c2-a);const sh=dn?(c2-a)/dn:0;
-  const freq=sr/(mp+sh);
-  if(freq<27||freq>4200)return{f:-1,c:cl};
-  return{f:freq,c:cl};
-}
-function freqToNote(f){const m=Math.round(69+12*Math.log2(f/440));return{midi:m,name:NMS[m%12]+(Math.floor(m/12)-1)};}
-
-// ── Canvas ─────────────────────────────────────────────────────────────────
-function sc(id){const c=document.getElementById(id),r=c.getBoundingClientRect();c.width=Math.round(r.width||300);c.height=Math.round(r.height||52);}
-function drawOut(){
-  const c=document.getElementById('waveOut'),x=c.getContext('2d'),W=c.width,H=c.height;
-  x.fillStyle='#030810';x.fillRect(0,0,W,H);
-  if(!outActive&&!manOn){x.strokeStyle='#00ffcc18';x.lineWidth=1;x.beginPath();x.moveTo(0,H/2);x.lineTo(W,H/2);x.stroke();return;}
-  const duty=+document.getElementById('duty').value/100;
-  const col=curMode==='int'?'#aa88ff':curMode==='man'?'#ffaa00':'#00ffcc';
-  x.strokeStyle=col;x.lineWidth=1.8;x.beginPath();
-  const cw=W/4;
-  for(let i=0;i<4;i++){
-    const x0=i*cw,x1=x0+cw*duty,x2=x0+cw,yH=H*.13,yL=H*.84;
-    if(i===0)x.moveTo(x0,yH);else x.lineTo(x0,yH);
-    x.lineTo(x1,yH);x.lineTo(x1,yL);x.lineTo(x2,yL);
-    if(i<3)x.lineTo(x2,yH);
-  }
-  x.stroke();
-}
-function drawIn(){
-  if(!tbuf)return;
-  const c=document.getElementById('waveIn'),x=c.getContext('2d'),W=c.width,H=c.height;
-  x.fillStyle='#030810';x.fillRect(0,0,W,H);
-  x.strokeStyle='#00ffcc18';x.lineWidth=0.5;x.beginPath();x.moveTo(0,H/2);x.lineTo(W,H/2);x.stroke();
-  x.strokeStyle=curMode==='int'?'#aa88ff':'#00ffcc';x.lineWidth=1.4;x.beginPath();
-  const step=tbuf.length/W;
-  for(let i=0;i<W;i++){const v=tbuf[Math.floor(i*step)];const y=H/2+v*H*.44;i===0?x.moveTo(i,y):x.lineTo(i,y);}
-  x.stroke();
-}
-setInterval(()=>{if(outActive||manOn)drawOut();},100);
-
-// ── Piano ──────────────────────────────────────────────────────────────────
-const BK=new Set([1,3,6,8,10]);
-function buildPiano(){const p=document.getElementById('piano');p.innerHTML='';for(let m=36;m<=84;m++){const k=document.createElement('div');k.className='key'+(BK.has(m%12)?' black':'');k.id='k'+m;p.appendChild(k);}}
-function litKey(m){clearKeys();const k=document.getElementById('k'+m);if(k)k.classList.add(curMode==='int'?'lit-pur':'lit');}
-function clearKeys(){document.querySelectorAll('.key.lit,.key.lit-pur').forEach(k=>{k.classList.remove('lit','lit-pur');});}
-
-// ── UI ─────────────────────────────────────────────────────────────────────
-function setArc(on){const r=document.getElementById('arcRing');r.className='arc-ring'+(on?(curMode==='int'?' act-pur':' act'):'');document.getElementById('arcLbl').textContent=on?'ARC FIRING':'STANDBY';}
-function setBig(v,s,silent){document.getElementById('bigVal').textContent=v;document.getElementById('bigVal').className='big-val'+(silent?' silent':'');document.getElementById('bigSub').textContent=s;}
-function diag(id,state,msg){const el=document.getElementById(id);el.className='diag '+state;el.textContent=msg;}
-
-// ── Init ───────────────────────────────────────────────────────────────────
-buildPiano();
-['waveOut','waveIn'].forEach(id=>{sc(id);const c=document.getElementById(id),x=c.getContext('2d');x.fillStyle='#030810';x.fillRect(0,0,c.width,c.height);});
-window.addEventListener('resize',()=>['waveOut','waveIn'].forEach(sc));
-updateVol();updateDuty();updateGain();updateConf();updateManFreq();
-checkEnv();
-</script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/vin.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>

@@ -12,14 +12,13 @@ runs with no signal, which is the point when you are under a truck in a canyon.
 ## Layout
 
 ```
-autopro/
-  index.html              app shell, all views
-  manifest.json  sw.js    PWA install + offline cache
-  assets/css/app.css      one stylesheet, dark + light
-  assets/js/data.js       SEED vehicle records, blank cross-ref, VIN WMI table
-  assets/js/vin.js        VIN check digit, year, WMI; NHTSA vPIC enrichment
-  assets/js/store.js      localStorage: your edits, jobs, BCM table, prefs
-  assets/js/app.js        routing, rendering, forms
+index.html              app shell, all views
+manifest.json  sw.js    PWA install + offline cache
+assets/css/app.css      one stylesheet, dark + light
+assets/js/data.js       SEED vehicle records, blank cross-ref, VIN WMI table
+assets/js/vin.js        VIN check digit, year, WMI; NHTSA vPIC enrichment
+assets/js/store.js      localStorage: your edits, jobs, BCM table, prefs
+assets/js/app.js        routing, rendering, forms
 ```
 
 ## What each tab does
@@ -74,12 +73,12 @@ and shop prefs; Import merges or replaces. Do this before you switch phones.
 
 ## Deploying
 
-It is static — copy `autopro/` anywhere that serves files over HTTPS (service workers
+It is static — copy the repo anywhere that serves files over HTTPS (service workers
 need a secure origin; `localhost` counts). Bump `CACHE` in `sw.js` on every deploy or
 installed clients keep serving the old bundle.
 
 Local check:
 
 ```
-python3 -m http.server 8080     # then open http://localhost:8080/autopro/
+python3 -m http.server 8080     # then open http://localhost:8080/
 ```
