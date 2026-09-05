@@ -24,7 +24,10 @@ assets/js/app.js        routing, rendering, forms
 ## What each tab does
 
 **Lookup** — filter by make, year, or free text across model, keyway, Ilco number,
-chip and FCC ID. Results are grouped by nameplate: a model with several generations
+chip and FCC ID. The search box takes a job the way it arrives on the phone: type
+`2015 camry` or `camry 2015` and the year is read as a model year, so you land on
+the one generation rather than all five. Punctuation is ignored, so `f150` finds
+the F-150. Results are grouped by nameplate: a model with several generations
 is one line showing its full year span and a count, which opens to the individual
 generations. Narrow to a few models and they open themselves. Tap a result for the full record: blank (keyway / Ilco /
 Silca / JMA / OEM P/N), transponder and whether it clones, fobs with FCC IDs,
@@ -36,8 +39,10 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
-**Blanks** — a browsable key blank directory. Group by make, by cut type (edge /
-laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
+**Blanks** — a browsable key blank directory. It opens on five categories —
+automotive, powersports, fleet & equipment, residential, commercial — because 139
+blanks across 130-odd makes is not a list you read on arrival. From there, regroup
+by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
 the full cross-reference, cut spec (spaces, depths), every make it serves, notes,
 and the vehicles in your own database that take it, each one a link straight to its
@@ -58,10 +63,18 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 60 keyways across autos, powersports and equipment, all
-editable.
+for the blank directory — 139 keyways, all editable: automotive, powersports,
+fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
+residential and commercial.
 
-The seed ships 377 vehicle records across 63 makes and 263 nameplates, every make
+The residential and commercial records are deliberately a separate category rather
+than more rows in the car list — it is different work, and the restricted systems
+in it (Everest, Primus, Medeco, Mul-T-Lock, Abloy, ASSA) are marked as restricted
+because that is the job, not a footnote: the blank comes from an authorized dealer
+against the end user on file, and the honest answer on site is to say so rather
+than promise a key. The USPS arrow lock record says do not service it at all.
+
+The seed ships 415 vehicle records across 69 makes and 307 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
@@ -73,8 +86,8 @@ missing data.
 ## Two kinds of data, and only one of them is sourced
 
 `assets/js/models.js` is a make / model / year index harvested from the NHTSA vPIC
-database (a free public federal API) for model years 1995-2026 — 1,611 models across
-51 makes. It is real, checkable reference data, and it says only which vehicles exist
+database (a free public federal API) for model years 1981-2026 — 2,301 models across
+62 makes. It is real, checkable reference data, and it says only which vehicles exist
 and when they were built.
 
 `assets/js/data.js` holds the key data — blanks, chips, fobs, cutting, programming.
