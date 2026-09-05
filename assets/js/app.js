@@ -92,9 +92,29 @@ function RENDER_lookup() {
       <div class="go">&rsaquo;</div>
     </div>`).join('') + (capped
       ? `<button class="btn ghost" data-showall="1">Show all ${hits.length}</button>` : '')
-    : `<div class="empty">No match in your database.<br><br>
-       <button class="btn btn-sm" data-newveh="1">Add this vehicle</button></div>`;
+    : emptyLookupHtml();
 };
+
+/* When the lookup finds nothing, the vPIC index can still say whether the thing
+   exists. "Real vehicle, no key data yet" is a different answer from "no such
+   vehicle", and only the first one is worth adding a record for. */
+function emptyLookupHtml() {
+  const hits = (typeof vpicSearch === 'function' && filter.q.trim()) ? vpicSearch(filter.q, 6) : [];
+  if (!hits.length) {
+    return `<div class="empty">No match in your database.<br><br>
+      <button class="btn btn-sm" data-newveh="1">Add this vehicle</button></div>`;
+  }
+  return `<div class="notice info">No key data on file for that yet &mdash; but these are real
+      vehicles, per the NHTSA database. Tap one to start a record with the years filled in.</div>` +
+    hits.map(h => `
+      <div class="card tap vres" data-vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}">
+        <div style="flex:1;min-width:0">
+          <div class="yr">${h.y0}&ndash;${h.y1} &middot; NHTSA</div>
+          <div class="nm">${esc(h.mk)} ${esc(h.md)}</div>
+          <div class="sub">No key data yet &mdash; tap to add</div>
+        </div><div class="go">+</div>
+      </div>`).join('');
+}
 
 /* ======================= vehicle detail ======================= */
 function RENDER_vehicle(id) {
@@ -178,24 +198,32 @@ function RENDER_vehicle(id) {
 };
 
 /* ---- vehicle editor (same view, swapped body) ---- */
-function editVehicle(id) {
+function editVehicle(id, prefill) {
   const blank = {
     id: '', make: '', model: '', yearStart: '', yearEnd: '', body: 'car',
     blanks: {}, transponder: {}, remotes: [{}], lock: {}, programming: {},
     obdPort: '', doorUnlock: '', notes: '', verified: true
   };
+  if (prefill) Object.assign(blank, prefill);
   const v = id ? (Store.vehicles().find(x => x.id === id) || blank) : blank;
   const b = v.blanks || {}, t = v.transponder || {}, l = v.lock || {}, p = v.programming || {};
   const r0 = (v.remotes && v.remotes[0]) || {};
-  const F = (name, label, val, ph = '') =>
-    `<div class="field"><label>${label}</label><input name="${name}" value="${esc(val || '')}" placeholder="${esc(ph)}"></div>`;
+  const F = (name, label, val, ph = '', list = '') =>
+    `<div class="field"><label>${label}</label><input name="${name}" value="${esc(val || '')}" ` +
+    `placeholder="${esc(ph)}"${list ? ` list="${list}"` : ''}></div>`;
 
   $('#vehicleBody').innerHTML = `
     <div class="notice info">Anything you save here lives on this device only. Export a backup from Settings.</div>
     <form id="vehForm">
       <h2>Vehicle</h2>
       <div class="card">
-        <div class="row">${F('make', 'Make', v.make, 'Toyota')}${F('model', 'Model', v.model, 'Camry')}</div>
+        <div class="row">
+          ${F('make', 'Make', v.make, 'Toyota', 'vpicMakes')}
+          ${F('model', 'Model', v.model, 'Camry', 'vpicModels')}
+        </div>
+        ${typeof VPIC_MODELS === 'undefined' ? '' : `
+          <datalist id="vpicMakes">${Object.keys(VPIC_MODELS).map(m => `<option value="${esc(m)}">`).join('')}</datalist>
+          <datalist id="vpicModels">${vpicModelsFor(v.make).map(m => `<option value="${esc(m)}">`).join('')}</datalist>`}
         <div class="row">${F('yearStart', 'Year from', v.yearStart, '2012')}${F('yearEnd', 'Year to', v.yearEnd, '2017')}</div>
       </div>
       <h2>Key blank</h2>
@@ -241,6 +269,14 @@ function editVehicle(id) {
         <button type="button" class="btn ghost" data-canceledit="${esc(id || '')}">Cancel</button>
       </div>
     </form>`;
+
+  const makeInput = $('#vehForm [name="make"]');
+  if (makeInput && typeof VPIC_MODELS !== 'undefined') {
+    makeInput.addEventListener('change', () => {
+      const dl = $('#vpicModels');
+      if (dl) dl.innerHTML = vpicModelsFor(makeInput.value).map(m => `<option value="${esc(m)}">`).join('');
+    });
+  }
 
   $('#vehForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -700,12 +736,18 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall]');
+  const t = e.target.closest('[data-go],[data-make],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
   if (t.dataset.make !== undefined) { filter.make = t.dataset.make; lookupShowAll = false; RENDER_lookup(); return; }
   if (t.dataset.showall)   { lookupShowAll = true; RENDER_lookup(); return; }
+  if (t.dataset.vpic) {
+    const [mk, md, y0, y1] = t.dataset.vpic.split('|');
+    go('vehicle');
+    editVehicle(null, { make: mk, model: md, yearStart: y0, yearEnd: y1 });
+    return;
+  }
   if (t.dataset.vid)       { go('vehicle', t.dataset.vid); return; }
   if (t.dataset.editveh)   { editVehicle(t.dataset.editveh); return; }
   if (t.dataset.newveh)    { go('vehicle'); editVehicle(null); return; }

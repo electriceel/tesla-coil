@@ -59,12 +59,31 @@ import platforms to get you going; your database becomes the real one. The same 
 for the blank directory — 51 keyways across autos, powersports and equipment, all
 editable.
 
-The seed ships 299 vehicle records across 38 makes and 189 nameplates, every make
+The seed ships 332 vehicle records across 38 makes and 221 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
-programmatically: no overlapping year ranges, and the only gaps are real North
-American production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014,
-Lexus GS 2012), each noted in the record so it does not read as missing data.
+programmatically against the NHTSA vPIC database: no overlapping year ranges, no
+record claiming years vPIC does not list, and the only gaps are real North American
+production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014, Chevrolet
+Blazer 2006-2018, Lexus GS 2012), each noted in the record so it does not read as
+missing data.
+
+## Two kinds of data, and only one of them is sourced
+
+`assets/js/models.js` is a make / model / year index harvested from the NHTSA vPIC
+database (a free public federal API) for model years 1995-2026 — 1,289 models across
+31 makes. It is real, checkable reference data, and it says only which vehicles exist
+and when they were built.
+
+`assets/js/data.js` holds the key data — blanks, chips, fobs, cutting, programming.
+That is not sourced from anywhere; it is written knowledge, flagged unverified, and
+it is the part to confirm before you cut.
+
+The app keeps the two apart on purpose. Search for a vehicle it has no key data for
+and it will tell you, from vPIC, whether the thing is real and what years it ran —
+"a real vehicle you have no record for" is a different answer from "no such vehicle",
+and only the first is worth starting a record for. The same index backs the make and
+model fields when you add one, so spelling stays consistent.
 
 Records are written in a compact form and expanded by `V()` at the top of
 `data.js` — short keys, one record per handful of lines. The object it returns is
