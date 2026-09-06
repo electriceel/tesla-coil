@@ -369,7 +369,9 @@ function vehOverviewHtml(v) {
                 ['JMA', b.jma, 'mono'], ['OEM P/N', b.oem, 'mono']],
                { empty: 'No mechanical key on this one.' })}
     ${b.keyway ? `<button class="btn btn-sm ghost" data-blankfor="${esc(b.keyway)}"
-      style="margin-top:-6px">Open ${esc(shortKeyway(b.keyway))} in the blank directory</button>` : ''}
+      style="margin-top:-6px">Open ${esc(shortKeyway(b.keyway))} in the blank directory</button>
+      <div class="tiny muted" style="margin:6px 2px 0">Silca and JMA cross-references live on the
+      blank record &mdash; one row per keyway, so there is only ever one answer to check.</div>` : ''}
 
     <h2>The transponder</h2>
     ${specList([['Chip', t.chip], ['System', t.system], ['Cloneable', t.cloneable]])}

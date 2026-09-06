@@ -98,12 +98,19 @@ reloaded system regenerates from the same math rather than carrying a stale sche
 Nothing in it is looked up. It is arithmetic on one physical fact: a deeper cut lets
 the stack sit lower, so the bottom pin is sized to the shallower of the two cuts and the
 master pin makes up the difference. The math has its own test suite separate from the UI — `node tests/master.test.js`.
-The seed data has one too — `node tests/data.test.js` — checking the mistakes that are
-easy to make by hand and impossible to see by eye in a 300 KB file: duplicate ids, a
-record entered twice, backwards or implausible years, HTML entities that would render
-as literal `&amp;`, stray non-ASCII characters, and residential or commercial keyways
-that match a vehicle — which is always two descriptions sharing an ordinary English
-word, and always reads as data.
+The seed data has two — `node tests/data.test.js` and `node tests/crossref.test.js`.
+
+The first checks the mistakes that are easy to make by hand and impossible to see by eye
+in a 300 KB file: duplicate ids, a record entered twice, backwards or implausible years,
+HTML entities that would render as literal `&amp;`, stray non-ASCII characters, and
+residential or commercial keyways that match a vehicle — which is always two descriptions
+sharing an ordinary English word, and always reads as data.
+
+The second checks that catalog cross-references do not contradict each other. Vehicle
+records name the keyway and the Ilco blank; **Silca and JMA live only on the blank record**,
+one authoritative row per keyway. They used to sit in both places and disagreed 25 times,
+with no way to tell from inside the file which side was right — so the duplicate came out
+rather than being made to agree on a number that could not be stood behind.
 
 **Tools** is a launcher, not a scroll — four tiles, each opening its own screen:
 master keying, Nissan BCM, the quote builder, and hex/decimal.
