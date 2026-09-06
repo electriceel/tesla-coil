@@ -378,3 +378,15 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 }
 .mktree{border-left:2px solid var(--line)}
 .mktree .mktree{margin-bottom:var(--s1)}
+
+/* ---- make index: the lookup's first screen ---- */
+.mkrow{
+  width:100%;display:flex;align-items:center;gap:var(--s3);background:none;border:0;
+  border-bottom:1px solid var(--line);padding:14px var(--s4);cursor:pointer;
+  text-align:left;min-height:var(--tap);color:inherit;
+}
+.mkrow:last-child{border-bottom:0}
+.mkrow:active{background:var(--surface2)}
+.mkrow-nm{flex:1;font-weight:650;font-size:15px}
+.mkrow-n{font-size:11px;color:var(--fg3);white-space:nowrap}
+.mkrow-go{color:var(--fg3);font-size:18px;line-height:1}

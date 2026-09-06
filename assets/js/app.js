@@ -112,6 +112,13 @@ function RENDER_lookup() {
   $('#lookupQ').value = filter.q;
   $('#lookupClear').hidden = !(filter.make || filter.year || filter.q);
 
+  /* Nothing chosen yet? Show the makes, not 500 vehicles. Picking a make is the
+     first thing you do on a real call, and a list you have to scroll past to
+     start is not a starting point. */
+  if (!filter.make && !filter.year && !parseQuery(filter.q).terms.length) {
+    return renderMakeIndex();
+  }
+
   const hits = matchVehicles();
   const groups = groupByNameplate(hits);
   const capped = !lookupShowAll && groups.length > LOOKUP_CAP;
@@ -125,11 +132,39 @@ function RENDER_lookup() {
       + (capped ? ` \u00b7 showing ${LOOKUP_CAP}` : '')
     : '';
 
-  $('#lookupResults').innerHTML = hits.length
-    ? shown.map(g => g.rows.length === 1 ? vehicleCardHtml(g.rows[0]) : nameplateHtml(g, autoOpen)).join('')
-      + (capped ? `<button class="btn ghost" data-showall="1">Show all ${groups.length} models</button>` : '')
-    : emptyLookupHtml();
+  $('#lookupResults').innerHTML =
+    (filter.make ? `<button class="back" data-allmakes="1">&lsaquo; All makes</button>` : '')
+    + (hits.length
+      ? shown.map(g => g.rows.length === 1 ? vehicleCardHtml(g.rows[0]) : nameplateHtml(g, autoOpen)).join('')
+        + (capped ? `<button class="btn ghost" data-showall="1">Show all ${groups.length} models</button>` : '')
+      : emptyLookupHtml());
 };
+
+/* The make index: every make with what it holds, so the first tap narrows 512
+   records to a couple of dozen. */
+function renderMakeIndex() {
+  const byMake = new Map();
+  Store.vehicles().forEach(v => {
+    if (!byMake.has(v.make)) byMake.set(v.make, { records: 0, models: new Set() });
+    const e = byMake.get(v.make);
+    e.records++;
+    e.models.add(v.model);
+  });
+  const rows = Array.from(byMake.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  const total = Store.vehicles().length;
+
+  $('#lookupCount').textContent =
+    `${rows.length} makes \u00b7 ${total} record${total === 1 ? '' : 's'}`;
+
+  $('#lookupResults').innerHTML = `<div class="card" style="padding:0;overflow:hidden">`
+    + rows.map(([make, e]) => `
+      <button class="mkrow" data-pickmake="${esc(make)}">
+        <span class="mkrow-nm">${esc(make)}</span>
+        <span class="mkrow-n">${e.models.size} model${e.models.size === 1 ? '' : 's'}</span>
+        <span class="mkrow-go">&rsaquo;</span>
+      </button>`).join('')
+    + `</div>`;
+}
 
 /* One row per nameplate. A model with several generations collapses into a
    single line that opens to show them, so 377 records read as ~260 models. */
@@ -154,7 +189,7 @@ function vehicleCardHtml(v) {
     <div class="card tap vres" data-vid="${esc(v.id)}">
       <div style="flex:1;min-width:0">
         <div class="yr">${v.yearStart}${v.yearEnd !== v.yearStart ? '&ndash;' + v.yearEnd : ''}${v.custom ? ' &middot; YOURS' : ''}</div>
-        <div class="nm">${esc(v.make)} ${esc(v.model)}</div>
+        <div class="nm">${esc(filter.make ? v.model : v.make + ' ' + v.model)}</div>
         <div class="sub">${esc(nz(v.blanks && v.blanks.keyway))} &middot; ${esc(nz(v.transponder && v.transponder.chip))}</div>
       </div>
       <div class="go">&rsaquo;</div>
@@ -165,7 +200,7 @@ function nameplateHtml(g, autoOpen) {
   const open = autoOpen || lookupOpen[g.key];
   return `<div class="card" style="padding:0;overflow:hidden">
     <button class="grp" data-lopen="${esc(g.key)}">
-      <span class="grp-name">${esc(g.make)} ${esc(g.model)}${g.custom ? ' &middot; YOURS' : ''}
+      <span class="grp-name">${esc(filter.make ? g.model : g.make + ' ' + g.model)}${g.custom ? ' &middot; YOURS' : ''}
         <span class="grp-sub">${g.y0}&ndash;${g.y1}</span></span>
       <span class="grp-n">${g.rows.length}</span>
       <span class="grp-x">${open ? '&minus;' : '+'}</span>
@@ -1677,7 +1712,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -1702,6 +1737,20 @@ document.addEventListener('click', (e) => {
     return;
   }
   /* --- blank directory --- */
+  if (t.dataset.pickmake) {
+    filter.make = t.dataset.pickmake;
+    lookupShowAll = false;
+    RENDER_lookup();
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (t.hasAttribute('data-allmakes')) {
+    filter.make = ''; filter.year = ''; filter.q = '';
+    lookupShowAll = false;
+    RENDER_lookup();
+    window.scrollTo(0, 0);
+    return;
+  }
   if (t.dataset.mkmode)  {
     mkReadForm();
     mkUI.mode = t.dataset.mkmode; mkUI.result = null; mkUI.openSym = {};
