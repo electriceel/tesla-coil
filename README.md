@@ -109,7 +109,7 @@ word, and always reads as data.
 master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on five categories —
-automotive, powersports, fleet & equipment, residential, commercial — because 225
+automotive, powersports, fleet & equipment, residential, commercial — because 226
 blanks across 200-odd makes is not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -132,7 +132,7 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 225 keyways, all editable: automotive, powersports,
+for the blank directory — 226 keyways, all editable: automotive, powersports,
 fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
 residential and commercial.
 
@@ -143,7 +143,7 @@ because that is the job, not a footnote: the blank comes from an authorized deal
 against the end user on file, and the honest answer on site is to say so rather
 than promise a key. The USPS arrow lock record says do not service it at all.
 
-The seed ships 478 vehicle records across 70 makes and 370 nameplates, every make
+The seed ships 512 vehicle records across 75 makes and 404 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
