@@ -1,6 +1,6 @@
 /* Cache-first for the shell so the app opens in a parking garage with no bars.
    Bump CACHE on every deploy or clients keep the old bundle. */
-const CACHE = 'keypro-v25';
+const CACHE = 'keypro-v26';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './assets/css/app.css',
