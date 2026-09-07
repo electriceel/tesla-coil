@@ -23,14 +23,14 @@ assets/js/app.js        routing, rendering, forms
 
 ## What each tab does
 
-**Vehicles** opens on the makes, not on 560-odd records — 66 rows, each saying how many
+**Vehicles** opens on the makes, not on 600-odd records — 94 rows, each saying how many
 models sit behind it, because picking a make is the first thing you do on a real call.
 Tap one to drill in; a link at the top comes back out. Searching or setting a year
 skips the index and goes straight to results across every make.
 
 **Moto** is the same screen for a different trade. Bikes, ATVs, side-by-sides,
 PWC and snowmobiles are separate work — separate blanks, separate tooling,
-separate money — and mixing 70 of them into 560 cars meant scrolling past
+separate money — and mixing 70 of them into 600 cars meant scrolling past
 Chevrolet to reach Ducati. Each tab keeps its own make, year and search, so
 checking a bike mid-job does not throw away the car you were part-way through.
 A record's Back button knows which catalog it came from, and a powersports
@@ -163,7 +163,7 @@ because that is the job, not a footnote: the blank comes from an authorized deal
 against the end user on file, and the honest answer on site is to say so rather
 than promise a key. The USPS arrow lock record says do not service it at all.
 
-The seed ships 632 records across 87 makes and 521 nameplates, every make
+The seed ships 683 records across 115 makes and 572 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
@@ -172,12 +172,27 @@ production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014, Chevro
 Blazer 2006-2018, Chevrolet TrailBlazer 2010-2020, Land Rover Defender 1999-2019,
 Acura MDX 2021), each noted in the record so it does not read as missing data.
 
+Commercial vehicles run from the light vans up: Class 8 tractors from
+Freightliner, Peterbilt, Kenworth, International, Mack, Volvo Truck and Western
+Star; medium duty from Hino, Fuso, Ford, GM and Ram; school, transit and
+charter buses; step vans, ambulance and fire bodies; and the yard equipment
+that comes with them. The recurring fact worth knowing before you drive out is
+that Class 8 has no transponder anywhere in it — the whole job is a five-cut
+wafer switch — but the ignition and the door are usually different keys, and a
+fleet yard is commonly keyed alike across every truck on it. Forklifts and golf
+carts go further: one key per brand across the entire fleet, so those are a
+stock item rather than a decode.
+
 The 70 powersports records are deliberately outside that audit. vPIC is a
 passenger-vehicle index: it lists a handful of motorcycle makes, but patchily
 enough that it has the Honda CBR for 1989-1990 only and Polaris snowmobiles for
 1999-2008. Checking bike years against it would report the index's gaps as our
 errors, so bikes are checked by hand and by the same overlap and duplicate rules
-as everything else, not against vPIC.
+as everything else, not against vPIC. Heavy commercial, buses, upfitted bodies
+and yard equipment are outside it for the same reason — but rather than dropping
+those rows, the audit sorts them into their own list, so the gap is labelled
+instead of hidden. That matters because Freightliner also builds the Sprinter,
+which vPIC indexes perfectly well and which stays in scope.
 
 Where a record's keyway, blank number or code series is blank, that is deliberate:
 nothing was written down that could not be stood behind. A wrong PIN burns a BCM

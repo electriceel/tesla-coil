@@ -48,7 +48,7 @@ check('no stray non-ASCII characters', !stray.length,
    `body` is not decoration any more: it routes a record to the Vehicles tab or
    the Moto tab. A typo here does not look like an error, it looks like a record
    that quietly went missing from both. */
-const BODIES = ['car', 'truck', 'suv', 'van', 'moto', 'equip'];
+const BODIES = ['car', 'truck', 'suv', 'van', 'bus', 'moto', 'equip'];
 const badBody = V.filter(v => !BODIES.includes(v.body));
 check('every vehicle has a known body style', !badBody.length,
   badBody.map(v => v.id + ':' + v.body).join(', '));
