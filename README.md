@@ -23,14 +23,14 @@ assets/js/app.js        routing, rendering, forms
 
 ## What each tab does
 
-**Vehicles** opens on the makes, not on 600-odd records — 94 rows, each saying how many
+**Vehicles** opens on the makes, not on 650-odd records — 96 rows, each saying how many
 models sit behind it, because picking a make is the first thing you do on a real call.
 Tap one to drill in; a link at the top comes back out. Searching or setting a year
 skips the index and goes straight to results across every make.
 
 **Moto** is the same screen for a different trade. Bikes, ATVs, side-by-sides,
 PWC and snowmobiles are separate work — separate blanks, separate tooling,
-separate money — and mixing 70 of them into 600 cars meant scrolling past
+separate money — and mixing 71 of them into 650 cars meant scrolling past
 Chevrolet to reach Ducati. Each tab keeps its own make, year and search, so
 checking a bike mid-job does not throw away the car you were part-way through.
 A record's Back button knows which catalog it came from, and a powersports
@@ -163,14 +163,15 @@ because that is the job, not a footnote: the blank comes from an authorized deal
 against the end user on file, and the honest answer on site is to say so rather
 than promise a key. The USPS arrow lock record says do not service it at all.
 
-The seed ships 683 records across 115 makes and 572 nameplates, every make
+The seed ships 727 records across 117 makes and 615 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
 record claiming years vPIC does not list, and the only gaps are real North American
 production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014, Chevrolet
 Blazer 2006-2018, Chevrolet TrailBlazer 2010-2020, Land Rover Defender 1999-2019,
-Acura MDX 2021), each noted in the record so it does not read as missing data.
+Acura MDX 2021, Acura NSX 2006-2015), each noted in the record so it does not read
+as missing data.
 
 Commercial vehicles run from the light vans up: Class 8 tractors from
 Freightliner, Peterbilt, Kenworth, International, Mack, Volvo Truck and Western
