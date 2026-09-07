@@ -8,8 +8,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
 /* ======================= routing ======================= */
-const VIEWS = ['lookup', 'vehicle', 'vin', 'blanks', 'tools', 'master', 'bcm', 'quote', 'hex',
-               'jobs', 'settings'];
+const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'master', 'bcm', 'quote',
+               'hex', 'jobs', 'settings'];
 let current = 'lookup';
 
 let vehShown = '';
@@ -33,8 +33,41 @@ function routeFromHash() {
   go(v || 'lookup', a ? decodeURIComponent(a) : undefined);
 }
 
-/* ======================= lookup ======================= */
+/* ======================= lookup =======================
+   Two catalogs, one renderer. Cars and bikes are different work — different
+   blanks, different tooling, different money — and mixing 70 motorcycle records
+   into 570 cars meant scrolling past Chevrolet to reach Ducati. Each tab keeps
+   its own make / year / search, so switching to check a bike does not throw away
+   the car you were part-way through. */
+const DOMAINS = {
+  auto: {
+    view: 'lookup', noun: 'vehicle', backLabel: 'Back to vehicles', firstYear: 1990,
+    sel: '#makeSel', year: '#yearSel', q: '#lookupQ', clear: '#lookupClear',
+    count: '#lookupCount', results: '#lookupResults'
+  },
+  moto: {
+    view: 'moto', noun: 'machine', backLabel: 'Back to moto', firstYear: 1965,
+    sel: '#motoMakeSel', year: '#motoYearSel', q: '#motoQ', clear: '#motoClear',
+    count: '#motoCount', results: '#motoResults'
+  }
+};
+/* `body: 'moto'` covers everything that is not a car: bikes, ATVs, side-by-sides,
+   PWC and snowmobiles. They share a parts shelf and a tool roll. */
+const domainOf = (v) => (v && v.body === 'moto') ? 'moto' : 'auto';
+let lookupDomain = 'auto';
+
 const filter = { make: '', year: '', q: '' };
+/* `filter` keeps its identity so every reference to it stays live; switching tabs
+   parks the current values here and brings the other tab's back. */
+const filterMem = { auto: { make: '', year: '', q: '' }, moto: { make: '', year: '', q: '' } };
+function setDomain(d) {
+  if (d === lookupDomain) return;
+  Object.assign(filterMem[lookupDomain], filter);
+  lookupDomain = d;
+  Object.assign(filter, filterMem[d]);
+  lookupShowAll = false;
+}
+const domainVehicles = (d) => Store.vehicles().filter(v => domainOf(v) === (d || lookupDomain));
 /* The seed is a few hundred records and grows as the user adds their own, so the
    unfiltered list is capped until they ask for the rest. */
 const LOOKUP_CAP = 60;
@@ -42,7 +75,7 @@ let lookupShowAll = false;
 const lookupOpen = {};
 
 function allMakes() {
-  return Array.from(new Set(Store.vehicles().map(v => v.make))).sort();
+  return Array.from(new Set(domainVehicles().map(v => v.make))).sort();
 }
 
 /* Punctuation-insensitive form, so "f150" finds "F-150" and "toy44h" finds
@@ -73,7 +106,7 @@ function matchVehicles() {
   const dropdownYear = parseInt(filter.year, 10);
   const covers = (v, y) => y >= v.yearStart && y <= v.yearEnd;
 
-  return Store.vehicles().filter(v => {
+  return domainVehicles().filter(v => {
     if (filter.make && v.make !== filter.make) return false;
     if (dropdownYear && !covers(v, dropdownYear)) return false;
     if (years.some(y => !covers(v, y))) return false;
@@ -86,16 +119,20 @@ function matchVehicles() {
   }).sort((a, b) => (a.make + a.model).localeCompare(b.make + b.model) || b.yearStart - a.yearStart);
 }
 
-function RENDER_lookup() {
+function RENDER_lookup() { setDomain('auto'); renderCatalog(); }
+function RENDER_moto()   { setDomain('moto'); renderCatalog(); }
+
+function renderCatalog() {
+  const D = DOMAINS[lookupDomain];
   const years = [];
   const thisYear = new Date().getFullYear() + 1;
-  for (let y = thisYear; y >= 1990; y--) years.push(y);
+  for (let y = thisYear; y >= D.firstYear; y--) years.push(y);
 
-  /* Include the active make even when no vehicle record uses it yet — otherwise
-     arriving from a blank's make chip shows an empty list with no visible filter.
+  /* Include the active make even when no record uses it yet — otherwise arriving
+     from a blank's make chip shows an empty list with no visible filter.
      At 60+ makes this is a dropdown; a chip row filled the whole screen. */
   const makes = Array.from(new Set(allMakes().concat(filter.make ? [filter.make] : []))).sort();
-  const makeSel = $('#makeSel');
+  const makeSel = $(D.sel);
   const wantMakes = makes.join('\u0000');
   if (makeSel.dataset.built !== wantMakes) {
     makeSel.innerHTML = '<option value="">All makes</option>' +
@@ -104,13 +141,13 @@ function RENDER_lookup() {
   }
   makeSel.value = filter.make;
 
-  const sel = $('#yearSel');
+  const sel = $(D.year);
   if (sel.options.length <= 1) {
     sel.innerHTML = '<option value="">Any year</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
   }
   sel.value = filter.year;
-  $('#lookupQ').value = filter.q;
-  $('#lookupClear').hidden = !(filter.make || filter.year || filter.q);
+  $(D.q).value = filter.q;
+  $(D.clear).hidden = !(filter.make || filter.year || filter.q);
 
   /* Nothing chosen yet? Show the makes, not 500 vehicles. Picking a make is the
      first thing you do on a real call, and a list you have to scroll past to
@@ -127,36 +164,37 @@ function RENDER_lookup() {
   /* Narrowed to a handful of models? Open them — the user has already chosen. */
   const autoOpen = groups.length <= 3;
 
-  $('#lookupCount').textContent = hits.length
+  $(D.count).textContent = hits.length
     ? `${hits.length} record${hits.length === 1 ? '' : 's'} in ${groups.length} model${groups.length === 1 ? '' : 's'}`
       + (capped ? ` \u00b7 showing ${LOOKUP_CAP}` : '')
     : '';
 
-  $('#lookupResults').innerHTML =
+  $(D.results).innerHTML =
     (filter.make ? `<button class="back" data-allmakes="1">&lsaquo; All makes</button>` : '')
     + (hits.length
       ? shown.map(g => g.rows.length === 1 ? vehicleCardHtml(g.rows[0]) : nameplateHtml(g, autoOpen)).join('')
         + (capped ? `<button class="btn ghost" data-showall="1">Show all ${groups.length} models</button>` : '')
       : emptyLookupHtml());
-};
+}
 
-/* The make index: every make with what it holds, so the first tap narrows 512
-   records to a couple of dozen. */
+/* The make index: every make with what it holds, so the first tap narrows a few
+   hundred records to a couple of dozen. */
 function renderMakeIndex() {
+  const D = DOMAINS[lookupDomain];
   const byMake = new Map();
-  Store.vehicles().forEach(v => {
+  domainVehicles().forEach(v => {
     if (!byMake.has(v.make)) byMake.set(v.make, { records: 0, models: new Set() });
     const e = byMake.get(v.make);
     e.records++;
     e.models.add(v.model);
   });
   const rows = Array.from(byMake.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  const total = Store.vehicles().length;
+  const total = domainVehicles().length;
 
-  $('#lookupCount').textContent =
+  $(D.count).textContent =
     `${rows.length} makes \u00b7 ${total} record${total === 1 ? '' : 's'}`;
 
-  $('#lookupResults').innerHTML = `<div class="card" style="padding:0;overflow:hidden">`
+  $(D.results).innerHTML = `<div class="card" style="padding:0;overflow:hidden">`
     + rows.map(([make, e]) => `
       <button class="mkrow" data-pickmake="${esc(make)}">
         <span class="mkrow-nm">${esc(make)}</span>
@@ -218,10 +256,14 @@ function nameplateHtml(g, autoOpen) {
    exists. "Real vehicle, no key data yet" is a different answer from "no such
    vehicle", and only the first one is worth adding a record for. */
 function emptyLookupHtml() {
-  const hits = (typeof vpicSearch === 'function' && filter.q.trim()) ? vpicSearch(filter.q, 6) : [];
+  /* The NHTSA index is passenger vehicles — it does not carry bikes, ATVs or
+     side-by-sides, so under Moto there is nothing honest to offer and the
+     fallback stays out of the way. */
+  const hits = (lookupDomain === 'auto' && typeof vpicSearch === 'function' && filter.q.trim())
+    ? vpicSearch(filter.q, 6) : [];
   if (!hits.length) {
     return `<div class="empty">No match in your database.<br><br>
-      <button class="btn btn-sm" data-newveh="1">Add this vehicle</button></div>`;
+      <button class="btn btn-sm" data-newveh="1">Add ${lookupDomain === 'moto' ? 'this machine' : 'this vehicle'}</button></div>`;
   }
   return `<div class="notice info">No key data on file for that yet &mdash; but these are real
       vehicles, per the NHTSA database. Tap one to start a record with the years filled in.</div>` +
@@ -236,6 +278,16 @@ function emptyLookupHtml() {
 }
 
 /* ======================= vehicle detail ======================= */
+/* One detail screen serves both catalogs, so its Back button has to say which
+   one it is going back to. */
+function syncVehBack() {
+  const btn = $('#vehBack');
+  if (!btn) return;
+  const D = DOMAINS[lookupDomain];
+  btn.dataset.go = D.view;
+  btn.innerHTML = '&lsaquo; ' + D.backLabel;
+}
+
 /* A spec list with the empty rows dropped. On records where a field was left
    blank rather than guessed, a column of dashes buries the parts that do say
    something — the Tesla was 7 dash-only rows out of 24. */
@@ -340,6 +392,10 @@ function decodersFor(v) {
 function RENDER_vehicle(id) {
   const v = Store.vehicles().find(x => x.id === id);
   const host = $('#vehicleBody');
+  /* Opening a record from search, a blank's cross-link or a job puts you in the
+     tab that record belongs to, so Back goes where you expect. */
+  if (v) setDomain(domainOf(v));
+  syncVehBack();
   if (!v) { host.innerHTML = '<div class="empty">Vehicle not found.</div>'; return; }
 
   const gens = generationsOf(v);
@@ -1697,6 +1753,7 @@ function pickFile(accept) {
 /* ======================= wiring ======================= */
 const RENDER = {
   lookup: (...a) => RENDER_lookup(...a),
+  moto: (...a) => RENDER_moto(...a),
   vehicle: (...a) => RENDER_vehicle(...a),
   vin: (...a) => RENDER_vin(...a),
   blanks: (...a) => RENDER_blanks(...a),
@@ -1716,8 +1773,8 @@ document.addEventListener('click', (e) => {
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
-  if (t.dataset.showall)   { lookupShowAll = true; RENDER_lookup(); return; }
-  if (t.dataset.lopen)     { const k = t.dataset.lopen; lookupOpen[k] = !lookupOpen[k]; RENDER_lookup(); return; }
+  if (t.dataset.showall)   { lookupShowAll = true; renderCatalog(); return; }
+  if (t.dataset.lopen)     { const k = t.dataset.lopen; lookupOpen[k] = !lookupOpen[k]; renderCatalog(); return; }
   if (t.dataset.vpic) {
     const [mk, md, y0, y1] = t.dataset.vpic.split('|');
     go('vehicle');
@@ -1726,10 +1783,10 @@ document.addEventListener('click', (e) => {
   }
   if (t.dataset.vid)       { go('vehicle', t.dataset.vid); return; }
   if (t.dataset.editveh)   { editVehicle(t.dataset.editveh); return; }
-  if (t.dataset.newveh)    { go('vehicle'); editVehicle(null); return; }
+  if (t.dataset.newveh)    { go('vehicle'); editVehicle(null, lookupDomain === 'moto' ? { body: 'moto' } : null); return; }
   if (t.hasAttribute('data-canceledit')) {
     const back = t.dataset.canceledit;
-    if (back) go('vehicle', back); else go('lookup');
+    if (back) go('vehicle', back); else go(DOMAINS[lookupDomain].view);
     return;
   }
   if (t.dataset.delveh) {
@@ -1740,14 +1797,14 @@ document.addEventListener('click', (e) => {
   if (t.dataset.pickmake) {
     filter.make = t.dataset.pickmake;
     lookupShowAll = false;
-    RENDER_lookup();
+    renderCatalog();
     window.scrollTo(0, 0);
     return;
   }
   if (t.hasAttribute('data-allmakes')) {
     filter.make = ''; filter.year = ''; filter.q = '';
     lookupShowAll = false;
-    RENDER_lookup();
+    renderCatalog();
     window.scrollTo(0, 0);
     return;
   }
@@ -1823,7 +1880,15 @@ document.addEventListener('click', (e) => {
     return;
   }
   /* A make chip on a blank detail jumps to the vehicle lookup filtered to it. */
-  if (t.dataset.bmake)   { filter.make = t.dataset.bmake; filter.q = ''; filter.year = ''; go('lookup'); return; }
+  if (t.dataset.bmake) {
+    const mk = t.dataset.bmake;
+    const d = Store.vehicles().some(v => v.make === mk && domainOf(v) === 'moto')
+           && !Store.vehicles().some(v => v.make === mk && domainOf(v) === 'auto') ? 'moto' : 'auto';
+    setDomain(d);
+    filter.make = mk; filter.q = ''; filter.year = '';
+    go(DOMAINS[d].view);
+    return;
+  }
 
   if (t.dataset.jobfrom)   { go('jobs'); editJob(null, t.dataset.jobfrom); return; }
   if (t.dataset.newjob)    { editJob(null); return; }
@@ -1847,11 +1912,18 @@ function boot() {
   $('#gearBtn').addEventListener('click', () => go('settings'));
 
   /* lookup */
-  $('#makeSel').addEventListener('change', (e) => { filter.make = e.target.value; lookupShowAll = false; RENDER_lookup(); });
-  $('#yearSel').addEventListener('change', (e) => { filter.year = e.target.value; lookupShowAll = false; RENDER_lookup(); });
-  $('#lookupQ').addEventListener('input', (e) => { filter.q = e.target.value; lookupShowAll = false; RENDER_lookup(); });
-  $('#lookupClear').addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; lookupShowAll = false; RENDER_lookup(); });
+  /* Both catalog toolbars are wired the same way; the domain config says which
+     elements belong to which tab. */
+  Object.values(DOMAINS).forEach(D => {
+    $(D.sel).addEventListener('change', (e) => { filter.make = e.target.value; lookupShowAll = false; renderCatalog(); });
+    $(D.year).addEventListener('change', (e) => { filter.year = e.target.value; lookupShowAll = false; renderCatalog(); });
+    $(D.q).addEventListener('input', (e) => { filter.q = e.target.value; lookupShowAll = false; renderCatalog(); });
+    $(D.clear).addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; lookupShowAll = false; renderCatalog(); });
+  });
   $('#addVehBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null); });
+  /* Adding from the Moto tab starts a moto record, so it lands back in the tab
+     you added it from rather than disappearing into the car list. */
+  $('#addMotoBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null, { body: 'moto' }); });
 
   /* vin */
   $('#vinForm').addEventListener('submit', (e) => { e.preventDefault(); runVinDecode(); });

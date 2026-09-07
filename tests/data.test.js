@@ -44,6 +44,31 @@ const stray = [...new Set([...src].filter(c => c.charCodeAt(0) > 127 && c !== '�
 check('no stray non-ASCII characters', !stray.length,
   stray.map(c => `${c} (U+${c.charCodeAt(0).toString(16).toUpperCase()})`).join(', '));
 
+/* ---- body style ----
+   `body` is not decoration any more: it routes a record to the Vehicles tab or
+   the Moto tab. A typo here does not look like an error, it looks like a record
+   that quietly went missing from both. */
+const BODIES = ['car', 'truck', 'suv', 'van', 'moto', 'equip'];
+const badBody = V.filter(v => !BODIES.includes(v.body));
+check('every vehicle has a known body style', !badBody.length,
+  badBody.map(v => v.id + ':' + v.body).join(', '));
+
+/* Powersports blanks name the makes they cover. Every one of those makes that
+   the seed carries at all has to sit in the Moto tab, or the blank's make chip
+   sends you to a tab with nothing in it. */
+const psMakes = new Set(B.filter(b => b.cat === 'Powersports')
+  .flatMap(b => b.makes || []));
+/* A make can legitimately sell both — Honda, BMW and Suzuki build cars too —
+   so this only flags a make whose every record is a bike yet is filed as a car. */
+const allMotoMakes = [...psMakes].filter(m => {
+  const rows = V.filter(v => v.make === m);
+  return rows.length && rows.every(v => /motorcycle|atv|scooter|snowmobile|side-by-side|moped/i.test(v.model)
+    || v.body === 'moto');
+});
+const misfiled = allMotoMakes.flatMap(m => V.filter(v => v.make === m && v.body !== 'moto'));
+check('powersports-only makes are filed under moto', !misfiled.length,
+  misfiled.map(v => v.id + ':' + v.body).join(', '));
+
 /* ---- categories ---- */
 const CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Residential', 'Commercial'];
 const badCat = B.filter(b => !CATS.includes(b.cat));
