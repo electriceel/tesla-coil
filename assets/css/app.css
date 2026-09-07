@@ -204,7 +204,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 /* ============================ bottom nav ============================ */
 .nav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;
-  grid-template-columns:repeat(5,1fr);
+  grid-template-columns:repeat(6,1fr);
   background:color-mix(in srgb,var(--surface) 92%,transparent);
   backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
   border-top:1px solid var(--line);padding-bottom:var(--safe-b);

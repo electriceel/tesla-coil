@@ -40,9 +40,24 @@
     <button class="btn ghost" id="addVehBtn" style="margin-top:12px">+ Add a vehicle to your database</button>
   </section>
 
+  <!-- ============ MOTO / POWERSPORTS ============ -->
+  <section class="view" id="view-moto">
+    <div class="toolbar">
+      <div class="row">
+        <select id="motoMakeSel" aria-label="Make"><option value="">All makes</option></select>
+        <select id="motoYearSel" aria-label="Year"><option value="">Any year</option></select>
+      </div>
+      <input id="motoQ" type="search" placeholder="Search model, blank, chip or system" aria-label="Search">
+      <button class="btn ghost btn-sm" id="motoClear" style="width:100%;margin-top:8px" hidden>Clear filters</button>
+    </div>
+    <div class="countline" id="motoCount"></div>
+    <div id="motoResults"></div>
+    <button class="btn ghost" id="addMotoBtn" style="margin-top:12px">+ Add a machine to your database</button>
+  </section>
+
   <!-- ============ VEHICLE ============ -->
   <section class="view" id="view-vehicle">
-    <button class="back" data-go="lookup">&lsaquo; Back to lookup</button>
+    <button class="back" id="vehBack" data-go="lookup">&lsaquo; Back to vehicles</button>
     <div id="vehicleBody"></div>
   </section>
 
@@ -208,7 +223,8 @@
 </main>
 
 <nav class="nav">
-  <button data-go="lookup" class="on"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5h18M5.5 13.5l1.6-5a2 2 0 011.9-1.4h6a2 2 0 011.9 1.4l1.6 5"/><path d="M3 13.5V18h18v-4.5"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>Lookup</button>
+  <button data-go="lookup" class="on"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5h18M5.5 13.5l1.6-5a2 2 0 011.9-1.4h6a2 2 0 011.9 1.4l1.6 5"/><path d="M3 13.5V18h18v-4.5"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>Vehicles</button>
+  <button data-go="moto"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="17" r="3.2"/><circle cx="19" cy="17" r="3.2"/><path d="M5 17h5l4.5-6H19"/><path d="M10.5 11h4.5l-2-3h-2.2"/><path d="M8 8h3"/></svg>Moto</button>
   <button data-go="vin"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 6v12M8 6v12M12 6v12M16.5 6v12M20 6v12" opacity=".95"/></svg>VIN</button>
   <button data-go="blanks"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="3.6"/><path d="M9.6 12H21M18 12v3.2M14.5 12v2.6"/></svg>Blanks</button>
   <button data-go="tools"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 3.5a5 5 0 00-6.1 6.6L3.6 15a2 2 0 102.8 2.8l4.9-4.8a5 5 0 006.6-6.1l-2.7 2.7-2.4-.6-.6-2.4z"/></svg>Tools</button>

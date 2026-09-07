@@ -23,10 +23,18 @@ assets/js/app.js        routing, rendering, forms
 
 ## What each tab does
 
-**Lookup** opens on the makes, not on 570-odd vehicles — 75 rows, each saying how many
+**Vehicles** opens on the makes, not on 560-odd records — 66 rows, each saying how many
 models sit behind it, because picking a make is the first thing you do on a real call.
 Tap one to drill in; a link at the top comes back out. Searching or setting a year
 skips the index and goes straight to results across every make.
+
+**Moto** is the same screen for a different trade. Bikes, ATVs, side-by-sides,
+PWC and snowmobiles are separate work — separate blanks, separate tooling,
+separate money — and mixing 70 of them into 560 cars meant scrolling past
+Chevrolet to reach Ducati. Each tab keeps its own make, year and search, so
+checking a bike mid-job does not throw away the car you were part-way through.
+A record's Back button knows which catalog it came from, and a powersports
+blank's make chip lands you in Moto rather than in an empty car list.
 
 Then filter by make, year, or free text across model, keyway, Ilco number,
 chip and FCC ID. The search box takes a job the way it arrives on the phone: type
@@ -155,7 +163,7 @@ because that is the job, not a footnote: the blank comes from an authorized deal
 against the end user on file, and the honest answer on site is to say so rather
 than promise a key. The USPS arrow lock record says do not service it at all.
 
-The seed ships 573 vehicle records across 75 makes and 462 nameplates, every make
+The seed ships 632 records across 87 makes and 521 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
@@ -163,6 +171,13 @@ record claiming years vPIC does not list, and the only gaps are real North Ameri
 production hiatuses (Ford Ranger 2012-2018, Chevrolet Colorado 2013-2014, Chevrolet
 Blazer 2006-2018, Chevrolet TrailBlazer 2010-2020, Land Rover Defender 1999-2019,
 Acura MDX 2021), each noted in the record so it does not read as missing data.
+
+The 70 powersports records are deliberately outside that audit. vPIC is a
+passenger-vehicle index: it lists a handful of motorcycle makes, but patchily
+enough that it has the Honda CBR for 1989-1990 only and Polaris snowmobiles for
+1999-2008. Checking bike years against it would report the index's gaps as our
+errors, so bikes are checked by hand and by the same overlap and duplicate rules
+as everything else, not against vPIC.
 
 Where a record's keyway, blank number or code series is blank, that is deliberate:
 nothing was written down that could not be stood behind. A wrong PIN burns a BCM
