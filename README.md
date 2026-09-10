@@ -28,6 +28,18 @@ models sit behind it, because picking a make is the first thing you do on a real
 Tap one to drill in; a link at the top comes back out. Searching or setting a year
 skips the index and goes straight to results across every make.
 
+**Tools > Lishi guide** is the tool roll, indexed the other way round. You are
+holding an HU101 and want to know what it opens; the guide answers that, grouped
+by make family and ordered by how much of your database each family covers, so
+the tools your hand reaches for most sit at the top. Every row joins live to the
+rest of the app: the cut type, spaces, depths and the blank to cut come off the
+blank row, and the vehicle list comes off the vehicle records, so nothing in the
+guide is a second copy that can drift. Tap a make to see just those records, or a
+keyway to jump into the directory. A test enforces the correspondence both ways
+— a tool named in a record with no row in the guide is a car you cannot reach
+from the tool in your hand, and a row no record mentions is a tool that lists
+nothing.
+
 **Moto** is the same screen for a different trade. Bikes, ATVs, side-by-sides,
 PWC and snowmobiles are separate work — separate blanks, separate tooling,
 separate money — and mixing 71 of them into 650 cars meant scrolling past

@@ -5401,4 +5401,86 @@ const VIN_YEAR = {
   '6':[2006,2036],'7':[2007,2037],'8':[2008,2038],'9':[2009,2039]
 };
 
-if (typeof module !== 'undefined') module.exports = { SEED_VEHICLES, SEED_BLANKS, WMI, VIN_YEAR, SEED_VERSION };
+/* --- Lishi decoder reference ---------------------------------------------- */
+/* One row per 2-in-1 tool. Deliberately thin: the keyway's cut type, spaces,
+   depths and catalog numbers already live on the blank row, and which cars a
+   tool opens already lives on the vehicle records, so both are joined at render
+   time rather than copied here. When those two files disagreed about the same
+   fact earlier in this project there was no way to tell from inside which side
+   was right — so this table carries only what is true of the TOOL.
+
+     id    row id            tool  tool name as Lishi sells it
+     fam   make family       kw    keyway(s) this tool reads
+     use   which lock it works on  note  what to know before you pick it up
+
+   Every tool named in a vehicle record has a row here and vice versa; a test
+   enforces it, because a guide that has drifted from the records is worse than
+   no guide. */
+const SEED_LISHI = [
+  { id: 'toy48', tool: 'TOY48', fam: 'Toyota / Lexus', kw: 'TOY48', use: 'Ignition and door',
+    note: 'The single most-used tool in the roll. Toyota wafers are shallow and close together, so read twice before you cut — a one-depth error on a TOY48 still turns the door and will not turn the ignition.' },
+  { id: 'toy43', tool: 'TOY43', fam: 'Toyota / Lexus', kw: 'TOY43', use: 'Ignition and door',
+    note: 'The other mainstream Toyota profile. Check which one the car takes before you commit — TOY43 and TOY48 will each enter the wrong lock far enough to feel promising.' },
+  { id: 'gm37', tool: 'GM37', fam: 'GM', kw: 'B102 / B106 / B44 / B45 / B62', use: 'Ignition and door',
+    note: 'Covers the whole GM 6-cut era including the VATS cars. On a VATS car the tool reads the cuts perfectly and the car still will not start — the resistor pellet is a separate problem, so read the pellet value before you quote.' },
+  { id: 'gm39', tool: 'GM39', fam: 'GM', kw: 'B111 / B106', use: 'Door, and the valet cylinder on prox cars',
+    note: 'For the 10-cut GM edge-cut locks. On prox trims there is no ignition cylinder at all — the valet blade cylinder in the door is the only thing to decode.' },
+  { id: 'hu100', tool: 'HU100', fam: 'GM', kw: 'HU100 / B116 / B119', use: 'Door',
+    note: 'The modern GM two-track tool, and the one you will reach for on anything with a blade tucked in the fob. The ignition on these is a knob or is shielded, so the driver door is the lock.' },
+  { id: 'b111', tool: 'B111', fam: 'GM', kw: 'B111', use: 'Ignition and door',
+    note: 'Sold under the keyway name rather than a GM-series number. Overlaps GM39 — if you already carry one, check before buying the other.' },
+  { id: 'nsn14', tool: 'NSN14', fam: 'Nissan / Infiniti', kw: 'NSN14', use: 'Ignition and door',
+    note: 'Enormous coverage across Nissan and Infiniti. Worth remembering that decoding the lock is the easy half on these — the BCM PIN is the job, and that is the BCM tool, not this one.' },
+  { id: 'da31', tool: 'DA31', fam: 'Nissan / Infiniti', kw: 'DA31', use: 'Ignition and door',
+    note: 'The other mainstream Nissan profile. Same BCM caveat as NSN14.' },
+  { id: 'dat17', tool: 'DAT17', fam: 'Nissan / Infiniti', kw: 'DAT17', use: 'Ignition and door',
+    note: 'Older Nissan and some Subaru. Shares ground with SUB4 — the two are easy to mix up in the roll.' },
+  { id: 'sub4', tool: 'SUB4', fam: 'Subaru', kw: 'SUB4', use: 'Ignition and door',
+    note: 'Covers most of the Subaru range. On the immobilized cars you still need the PIN, so decoding gets you a blade and not a running car.' },
+  { id: 'fo38', tool: 'FO38', fam: 'Ford', kw: 'H92 / H84 / H75', use: 'Ignition and door',
+    note: 'The Ford edge-cut workhorse for the PATS era before the laser key. Ford door locks are often the cleanest lock on the vehicle to read.' },
+  { id: 'hu101', tool: 'HU101', fam: 'Ford', kw: 'HU101', use: 'Ignition and door',
+    note: 'Ford two-track, and the tool that covers most of what Ford has built since 2011. On push-to-start trims the blade hides in the fob and opens the driver door only.' },
+  { id: 'fo21', tool: 'FO21', fam: 'Ford', kw: 'FO21', use: 'Ignition and door',
+    note: 'Tibbe is not an edge or a laser key — it is a round key with six discs, and nothing else in the roll will read one. You also cannot cut a Tibbe on a standard machine, so a Tibbe job needs the decoder and the cutter or it does not happen roadside.' },
+  { id: 'cy24', tool: 'CY24', fam: 'Chrysler / Stellantis', kw: 'CY24 / Y164 / Y170', use: 'Ignition and door',
+    note: 'Covers the whole modern Stellantis range. As with Nissan, the lock is the easy half — the security gateway on the newer trucks and vans is what decides whether the job is doable.' },
+  { id: 'hon66', tool: 'HON66', fam: 'Honda / Acura', kw: 'HON66 / HO05', use: 'Door',
+    note: 'Honda two-track. On the smart-key cars the cylinder is behind a cap on the driver handle — pop the cap, do not pry the handle.' },
+  { id: 'hon58r', tool: 'HON58R', fam: 'Honda / Acura', kw: 'HO01 / HD106 / HD91', use: 'Ignition and door',
+    note: 'The Honda edge-cut profile that runs from the 1990s to the mid-2010s. Six wafers and no shield on most — one of the friendlier decodes on the list.' },
+  { id: 'maz24', tool: 'MAZ24', fam: 'Mazda', kw: 'MAZ24', use: 'Ignition and door',
+    note: 'Also the tool for the Fiat 124 Spider, which is an MX-5 underneath whatever the badge says.' },
+  { id: 'mz34', tool: 'MZ34', fam: 'Mazda', kw: 'MZ34', use: 'Ignition and door',
+    note: 'The older Mazda profile. Check the year before you pick between this and MAZ24.' },
+  { id: 'mit11', tool: 'MIT11', fam: 'Mitsubishi', kw: 'MIT11 / MIT17', use: 'Ignition and door',
+    note: 'Mitsubishi cars. Not the Fuso trucks, which are Daimler and share nothing with these.' },
+  { id: 'hy20', tool: 'HY20', fam: 'Hyundai / Kia / Genesis', kw: 'HY20', use: 'Ignition and door',
+    note: 'Wide Hyundai and Kia coverage through the 2010s. Decoding is quick; the PIN-by-VIN step afterwards is the part to quote for.' },
+  { id: 'hy15', tool: 'HY15', fam: 'Hyundai / Kia / Genesis', kw: 'HY15 / HY18', use: 'Ignition and door',
+    note: 'Older Hyundai, including the years the immobilizer arrives partway through a model run. Look for a ring antenna at the cylinder before you promise a plain cut key will start it.' },
+  { id: 'hy22', tool: 'HY22', fam: 'Hyundai / Kia / Genesis', kw: 'HY22', use: 'Door',
+    note: 'The modern Hyundai group two-track tool. Covers Genesis as well, where the cylinder hides behind a cap on the handle.' },
+  { id: 'kia7', tool: 'KIA7', fam: 'Hyundai / Kia / Genesis', kw: 'KK10 / KK7 / HY18', use: 'Ignition and door',
+    note: 'Sold under a Kia name but reads the same family HY20 covers on the Hyundai side. If you already carry HY20, check the overlap before buying.' },
+  { id: 'kk10', tool: 'KK10', fam: 'Hyundai / Kia / Genesis', kw: 'KK10', use: 'Ignition and door',
+    note: 'The Kia edge-cut profile. Overlaps KIA7.' },
+  { id: 'kk12', tool: 'KK12', fam: 'Hyundai / Kia / Genesis', kw: 'KK12', use: 'Door',
+    note: 'Kia two-track. The newest Kias put the cylinder behind a handle cap like the rest of the Hyundai group.' },
+  { id: 'hu66', tool: 'HU66', fam: 'VW / Audi group', kw: 'HU66', use: 'Door',
+    note: 'The VAG two-track tool and one of the most useful in the roll given how much of the group shares it. The Porsche ignition is on the left and on the newest cars is a knob with nothing to pick, so the door is the lock.' },
+  { id: 'hu162t', tool: 'HU162T', fam: 'VW / Audi group', kw: 'HU162T', use: 'Door',
+    note: 'The MQB-era replacement for HU66. Decoding is the easy part — component protection is what makes an MQB car a long job.' },
+  { id: 'hu92', tool: 'HU92', fam: 'BMW / Mini', kw: 'HU92', use: 'Door',
+    note: 'BMW two-track for the EWS and CAS era, and the first BMW-built Mini. The electronics on these are bench work; the blade is the straightforward half.' },
+  { id: 'hu100r', tool: 'HU100R', fam: 'BMW / Mini', kw: 'HU100R / BMW1', use: 'Door',
+    note: 'The later BMW profile, FEM and BDC cars. Do not confuse it with HU100, which is GM — the names are one letter apart and the tools are not interchangeable.' },
+  { id: 'hu64', tool: 'HU64', fam: 'Mercedes-Benz', kw: 'HU64', use: 'Door',
+    note: 'Mercedes four-track. Reading the door is doable; the car will not start on a cut blade because the key is the electronics, so treat a decode here as entry only.' },
+  { id: 'hu56r', tool: 'HU56R', fam: 'Volvo', kw: 'HU56R', use: 'Door',
+    note: 'Volvo laser profile on the cars that still have a cylinder. The newer Volvos put it behind a cap on the handle.' },
+  { id: 'sip22', tool: 'SIP22', fam: 'Fiat group', kw: 'SIP22', use: 'Ignition and door',
+    note: 'The Fiat-group two-track tool, which is also the Maserati and older Ferrari tool because those locks came out of the Fiat parts bin. On the cars that use a code card, decoding gets you in and no further.' }
+];
+
+if (typeof module !== 'undefined') module.exports = { SEED_VEHICLES, SEED_BLANKS, SEED_LISHI, WMI, VIN_YEAR, SEED_VERSION };
