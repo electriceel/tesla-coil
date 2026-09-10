@@ -205,6 +205,22 @@ for the blank directory — 226 keyways, all editable: automotive, powersports,
 fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
 residential and commercial.
 
+The **Import & uncommon** category is the cross reference for what is not on a
+US van by default: cruciform and cross keys, British lever locks, Euro profile
+and DIN cylinders, multipoint gearboxes, Scandinavian ovals, the German and Swiss
+dimple systems, EVVA magnetic, Japanese residential, Lockwood, Rav Bariach,
+Godrej, imported big-box cylinders and tubular variants past the seven-pin Ace.
+Import vehicles sit in Automotive instead, because that is where you would look
+for them — JDM grey imports past the 25-year rule, kei trucks, VinFast, the
+Chinese marques, Mahindra, and the European heavy trucks.
+
+Each row says how likely you are to meet it. Some of these genuinely turn up on
+the Central Coast: Euro profile cylinders on modern architecture, imported
+multipoint patio doors, kei trucks on ranches and in vineyards, VinFast in
+California. Others you will most likely never see, and the row says so — the
+point of a reference is that the one call in five years finds you knowing what
+you are looking at rather than guessing.
+
 The **Safe & vault** category holds the key-operated side of safe work, and the
 five safe rows that used to sit awkwardly in Residential and Commercial moved
 into it — a gun safe was never residential door hardware. Almost none of these
