@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.09.10';
+const SEED_VERSION = '2026.09.10.2';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -4736,7 +4736,109 @@ const SEED_VEHICLES = [
   V({ id: 'tesla-semi-2023-2026', mk: 'Tesla', md: 'Semi', aka: ['Tesla Semi truck'], y0: 2023, y1: 2026, b: 'truck',
       kw: 'None', chip: 'Tesla keyless credentials', sys: 'Tesla keyless / fleet access', clone: 'No',
       obd: 'No standard locksmith programming path', on: 'No', akl: 'Tesla service through the fleet account',
-      note: 'Fleet-only heavy truck. Treat a lockout as a fleet credential or low-voltage service issue, not a conventional key job.' })
+      note: 'Fleet-only heavy truck. Treat a lockout as a fleet credential or low-voltage service issue, not a conventional key job.' }),
+
+  /* ---- Current-generation coverage added from the vPIC gap audit ---------
+     These rows close model-year gaps on common US vehicles. New-platform FCC
+     IDs and OEM part numbers stay blank until confirmed against the vehicle or
+     an OEM catalog; the record still gives the blade, system and honest job
+     path a technician needs before accepting the call. */
+  V({ id: 'ford-mustang-2024-2026', mk: 'Ford', md: 'Mustang', aka: ['Mustang GTD'], y0: 2024, y1: 2026,
+      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'ID49 / Hitag Pro', sys: 'PATS / BCM', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Current Ford-capable tool', on: 'No',
+      akl: 'Security access and current tool coverage required',
+      note: 'S650 generation. Do not order from a 2015-2023 Mustang listing; verify the fob by VIN and button layout.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+  V({ id: 'ford-ranger-2024-2026', mk: 'Ford', md: 'Ranger', y0: 2024, y1: 2026, b: 'truck',
+      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'ID49 / Hitag Pro', sys: 'PATS / BCM', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Current Ford-capable tool', on: 'No',
+      akl: 'Security access and current tool coverage required',
+      note: 'North American second-generation Ranger. Confirm keyed ignition versus push-button start before ordering.',
+      entry: 'Lishi HU101' }),
+  V({ id: 'ford-expedition-2024-2026', mk: 'Ford', md: 'Expedition', aka: ['Expedition MAX'], y0: 2024, y1: 2026, b: 'suv',
+      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'ID49 / Hitag Pro', sys: 'PATS / BCM', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Current Ford-capable tool', on: 'No',
+      akl: 'Security access and current tool coverage required',
+      note: 'The MAX is the long-wheelbase body, not a different key system. Verify the exact fob by VIN.', entry: 'Lishi HU101' }),
+
+  V({ id: 'toyota-tacoma-2024-2026', mk: 'Toyota', md: 'Tacoma', y0: 2024, y1: 2026, b: 'truck',
+      kw: 'TOY48 (emergency blade)', il: 'TOY48', chip: 'Toyota AES', sys: 'Toyota smart key', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Current Toyota-capable tool', on: 'No',
+      akl: 'Seed-key security procedure; confirm exact-year coverage',
+      note: 'TNGA-F generation. Blade-key and smart-key trims may coexist, so identify the ignition before ordering.',
+      entry: 'Emergency blade cylinder in the driver door' }),
+  V({ id: 'toyota-4runner-2025-2026', mk: 'Toyota', md: '4Runner', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'TOY48 (emergency blade)', il: 'TOY48', chip: 'Toyota AES', sys: 'Toyota smart key', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Current Toyota-capable tool', on: 'No',
+      akl: 'Seed-key security procedure; confirm exact-year coverage',
+      note: 'Sixth generation on the TNGA-F platform. It does not use the 2013-2024 4Runner key.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+  V({ id: 'toyota-camry-2025-2026', mk: 'Toyota', md: 'Camry', y0: 2025, y1: 2026,
+      kw: 'TOY48 (emergency blade)', il: 'TOY48', chip: 'Toyota AES', sys: 'Toyota smart key', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Current Toyota-capable tool', on: 'No',
+      akl: 'Seed-key security procedure; confirm exact-year coverage',
+      note: 'Hybrid-only ninth-generation Camry. Verify the fob by VIN; older Camry smart keys are not a safe interchange.',
+      entry: 'Emergency blade cylinder in the driver door' }),
+
+  V({ id: 'subaru-forester-2019-2024', mk: 'Subaru', md: 'Forester', y0: 2019, y1: 2024, b: 'suv',
+      kw: 'SUB4 (emergency blade)', il: 'SUB4-PT', chip: 'ID47 / Hitag3 AES', sys: 'Subaru immobilizer', clone: 'No',
+      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Yes with a current Subaru-capable tool', on: 'No',
+      akl: 'OBD plus PIN/seed; tool-dependent', pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
+  V({ id: 'subaru-forester-2025-2026', mk: 'Subaru', md: 'Forester', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'SUB4 (emergency blade)', il: 'SUB4-PT', chip: 'Subaru AES smart key', sys: 'Subaru immobilizer', clone: 'No',
+      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Confirm current Subaru tool coverage', on: 'No',
+      akl: 'PIN/seed security procedure; confirm exact-year coverage', pin: 'Tool-dependent',
+      note: 'Redesigned generation. Confirm the fob by VIN rather than reusing a 2019-2024 listing.', entry: 'Lishi SUB4' }),
+
+  V({ id: 'nissan-kicks-2025-2026', mk: 'Nissan', md: 'Kicks', aka: ['Kicks MPV', 'Kicks Play'], y0: 2025, y1: 2026, b: 'suv',
+      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'Nissan AES smart key', sys: 'NATS', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14', obd: 'Current Nissan-capable tool', on: 'No',
+      akl: 'OBD plus BCM PIN/security calculation', pin: 'Yes',
+      note: 'The redesigned Kicks and the carryover Kicks Play can appear in the same model year. Verify VIN and fob style before ordering.',
+      entry: 'Emergency blade in the driver door' }),
+
+  V({ id: 'chevy-equinox-2025-2026', mk: 'Chevrolet', md: 'Equinox', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES', sys: 'GM passive entry / security gateway', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Current GM-capable tool', on: 'No',
+      akl: 'Confirm aftermarket coverage; SPS/dealer route may be required',
+      note: 'Gas Equinox, not Equinox EV. The two are different platforms and should not share a fob order.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+  V({ id: 'chevy-traverse-2018-2024', mk: 'Chevrolet', md: 'Traverse', aka: ['Traverse Limited'], y0: 2018, y1: 2024, b: 'suv',
+      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / AES by year', sys: 'GM passive entry', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Yes with a current GM-capable tool', on: 'No',
+      akl: 'OBD plus security relearn', note: 'The 2024 Traverse Limited is the carryover body; identify it before ordering.',
+      entry: 'Lishi HU100' }),
+  V({ id: 'chevy-traverse-2025-2026', mk: 'Chevrolet', md: 'Traverse', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES', sys: 'GM passive entry / security gateway', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Current GM-capable tool', on: 'No',
+      akl: 'Confirm aftermarket coverage; SPS/dealer route may be required',
+      note: 'Redesigned body and electronics. Do not order from the 2018-2024 Traverse listing.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+  V({ id: 'gmc-terrain-2025-2026', mk: 'GMC', md: 'Terrain', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES', sys: 'GM passive entry / security gateway', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Current GM-capable tool', on: 'No',
+      akl: 'Confirm aftermarket coverage; SPS/dealer route may be required',
+      note: 'Redesigned Terrain. Verify the fob by VIN; the 2018-2024 Equinox/Terrain listing is not enough.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+  V({ id: 'gmc-acadia-2025-2026', mk: 'GMC', md: 'Acadia', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES', sys: 'GM passive entry / security gateway', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Current GM-capable tool', on: 'No',
+      akl: 'Confirm aftermarket coverage; SPS/dealer route may be required',
+      note: 'Third-generation Acadia. Confirm the exact fob by VIN rather than assuming 2017-2023 interchange.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+
+  V({ id: 'lincoln-navigator-2018-2024', mk: 'Lincoln', md: 'Navigator', aka: ['Navigator L'], y0: 2018, y1: 2024, b: 'suv',
+      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'ID49 / Hitag Pro', sys: 'PATS / BCM', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Current Ford/Lincoln-capable tool', on: 'No',
+      akl: 'Security access and current tool coverage required',
+      note: 'The L is the long-wheelbase body and uses the same key system. Powered running boards complicate a dead-battery lockout.',
+      entry: 'Emergency blade behind the driver-handle cap' }),
+  V({ id: 'lincoln-navigator-2025-2026', mk: 'Lincoln', md: 'Navigator', aka: ['Navigator L'], y0: 2025, y1: 2026, b: 'suv',
+      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'Ford/Lincoln AES smart key', sys: 'PATS / BCM', clone: 'No',
+      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Confirm current Ford/Lincoln tool coverage', on: 'No',
+      akl: 'Security access required; confirm exact-year coverage',
+      note: 'Redesigned generation with phone-as-a-key capability. Verify the physical fob by VIN before ordering.',
+      entry: 'Emergency blade behind the driver-handle cap' })
 ];
 
 /* --- Key blank cross-reference directory ---------------------------------
