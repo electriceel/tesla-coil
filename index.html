@@ -61,6 +61,22 @@
     <div id="vehicleBody"></div>
   </section>
 
+  <!-- ============ DEALER-ONLY REFERENCE ============ -->
+  <section class="view" id="view-dealer">
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
+    <div id="dealerTop">
+      <h2>Dealer only</h2>
+      <div class="notice warn">Every row is judged from that record's own OBD and
+        all-keys-lost fields, and shows both, so you can see why it landed where it did
+        instead of taking it on faith. Anything not listed here is ordinary OBD work.</div>
+      <div class="toolbar">
+        <input id="dealerQ" type="search" placeholder="Make, model or system" aria-label="Search">
+      </div>
+      <div class="countline" id="dealerCount"></div>
+    </div>
+    <div id="dealerResults"></div>
+  </section>
+
   <!-- ============ LISHI GUIDE ============ -->
   <section class="view" id="view-lishi">
     <button class="back" data-go="tools">&lsaquo; Back to tools</button>
@@ -131,6 +147,11 @@
   <section class="view" id="view-tools">
     <h2>Tools</h2>
     <div class="tiles">
+      <button class="tile" data-go="dealer">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5v5c0 4.5-3.6 7.6-9 8.5-5.4-.9-9-4-9-8.5v-5z"/><path d="M12 8.5v4M12 15.5v.5"/></svg></span>
+        <span class="tile-nm">Dealer only</span>
+        <span class="tile-sub">What to refer out, and what is only hard all-keys-lost.</span>
+      </button>
       <button class="tile" data-go="lishi">
         <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5h11a2.5 2.5 0 012.5 2.5v2A2.5 2.5 0 0115 15.5H4z"/><path d="M4 6v12"/><path d="M7.5 8.5v7M11 8.5v7"/><path d="M19.5 12h2"/></svg></span>
         <span class="tile-nm">Lishi guide</span>
@@ -268,6 +289,7 @@
 <script src="assets/js/data.js"></script>
 <script src="assets/js/models.js"></script>
 <script src="assets/js/vin.js"></script>
+<script src="assets/js/dealer.js"></script>
 <script src="assets/js/master.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/app.js"></script>

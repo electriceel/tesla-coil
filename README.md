@@ -28,6 +28,28 @@ models sit behind it, because picking a make is the first thing you do on a real
 Tap one to drill in; a link at the top comes back out. Searching or setting a year
 skips the index and goes straight to results across every make.
 
+**Tools > Dealer only** answers the first question on a call: can you do this
+job at all. 150 of the 727 records carry a warning, in six tiers that are six
+different phone conversations — dealer only, bench or module work, needs the OEM
+master key, gateway-gated, all-keys-lost only, and too new to promise. Nothing
+else is listed, because everything else is ordinary OBD work and a warning
+screen that flags half the book stops meaning anything.
+
+The classification is derived, not written down. `assets/js/dealer.js` reads
+each record's own `programming.obd` and `programming.allKeysLost` and nothing
+else, so the screen holds no list of its own and a record added tomorrow
+classifies itself. Every row shows the two fields it was judged on, so the
+verdict is auditable rather than asserted — tap through to the record if the
+evidence looks wrong.
+
+`tests/dealer.test.js` drives the classifier directly, and its cases are the
+mistakes it actually made: "Usually bench" begins with the word "usually" and an
+early version read that as an affirmative, filing a BMW F30 alongside a Camry;
+"Dealer on most" is some-trims-yes and reading it as dealer-only turns down work
+you can do; the notes field mentions tooling in passing and reading it flagged
+an ordinary Silverado. One test asserts only that the warning stays selective,
+because the failure mode of a screen like this is becoming wallpaper.
+
 **Tools > Lishi guide** is the tool roll, indexed the other way round. You are
 holding an HU101 and want to know what it opens; the guide answers that, grouped
 by make family and ordered by how much of your database each family covers, so
