@@ -1,5842 +1,788 @@
-/* ===========================================================================
-   KeyPro Field â€” seed reference data
-   ---------------------------------------------------------------------------
-   THIS IS STARTER DATA, NOT GOSPEL. Every record is marked `verified:false`
-   until a human confirms it against the vehicle, the OEM key catalog or the
-   machine's own database. The app treats this file as a seed: anything the
-   user adds or edits in Garage > Edit lives in localStorage and overrides the
-   matching seed record by `id`.
-
-   Field notes on the shape of a record are in autopro/README.md.
-   =========================================================================== */
-
-const SEED_VERSION = '2026.09.08';
-
-/* --- Vehicle reference ---------------------------------------------------- */
-/* Records are written in a compact form and expanded by V(). Short keys keep a
-   few hundred rows readable and diffable; the object V returns is the same shape
-   the app has always consumed.
-
-     id   record id        mk/md  make / model      y0/y1  first / last year
-     b    body style       kw     keyway            il/si/jm  Ilco / Silca / JMA
-     oem  OEM part no.     chip   transponder       sys    immobilizer system
-     clone  cloneable?     rem    [[type, fcc, pn, buttons], ...]
-     cs   code series      sp/dp  spaces / depths   cut    cut method
-     dec  decode method    obd/on/akl  programming paths   pin  PIN needed?
-     note programming note port   OBD port          entry  entry note
-     vnote free note
-
-   Everything ships verified:false. The app nags until a human confirms a record. */
-const DEFAULT_OBD_PORT = 'Driver side, under dash';
-
-const V = (o) => ({
-  id: o.id, make: o.mk, model: o.md, yearStart: o.y0, yearEnd: o.y1, body: o.b || 'car',
-  blanks: { keyway: o.kw || '', ilco: o.il || '', silca: o.si || '', jma: o.jm || '', oem: o.oem || '' },
-  transponder: { chip: o.chip || '', system: o.sys || '', cloneable: o.clone || '' },
-  remotes: (o.rem || []).map(r => ({ type: r[0], fcc: r[1], pn: r[2], buttons: r[3] })),
-  lock: {
-    codeSeries: o.cs || o.kw || '', spaces: o.sp || '', depths: o.dp || '',
-    cutMethod: o.cut || '', decode: o.dec || '',
-    /* Ignition retainer style, MACS and per-lock tumbler positions are
-       machine-book facts with no source we can cite at seed time, so they stay
-       empty rather than guessed â€” fill them from your own equipment. */
-    ignition: o.ign || '', macs: o.mac || '', tumblers: o.tum || null,
-    /* Some cars carry more than one code series â€” an ignition series and a
-       separate door/trunk series, each with its own MACS. When that is the
-       case they go here and the basics card shows a block per series. */
-    series: o.ser || null
-  },
-  programming: {
-    obd: o.obd || '', onboard: o.on || '', allKeysLost: o.akl || '',
-    pinRequired: o.pin || 'No', notes: o.note || ''
-  },
-  obdPort: o.port || DEFAULT_OBD_PORT,
-  doorUnlock: o.entry || '',
-  notes: o.vnote || '',
-  verified: false
-});
-
-const SEED_VEHICLES = [
-  V({ id: 'ford-f150-2015-2020', mk: 'Ford', md: 'F-150', y0: 2015, y1: 2020, b: 'truck', kw: 'HU101',
-       il: 'HU101-PT', oem: '164-R8134 / 5923293', chip: 'ID49 (Hitag Pro)',
-       sys: 'PATS / IPC', clone: 'No â€” OEM or Hitag-Pro capable cloner only',
-       rem: [['prox', 'M3N-A2C31243300', '164-R8109', '4B / 5B w/ remote start'], ['flip', 'N5F-A08TAA', '164-R8130', '4B (base trim)']],
-       cs: 'Ford 10-cut (HU101)', sp: 10, dp: 4, cut: 'Laser / sidewinder â€” 2-track',
-       dec: 'Decode door lock or read code from dealer w/ proof of ownership',
-       obd: 'Yes â€” 2 working keys allow onboard add. 1 key or AKL needs OBD tool + security wait.',
-       on: '2 working keys: insert/turn cycle. Prox: 2 fobs in cup holder sequence.',
-       akl: 'OBD, 10-min security access on most tools', pin: 'No PIN â€” timed security access',
-       note: 'Push-to-start trims have an emergency blade (HU101) hidden in the fob.',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Wedge top-corner of driver door + long reach to the interior lock switch. Watch the side-curtain airbag on Super Crew.' }),
-  V({ id: 'ford-f150-2004-2014', mk: 'Ford', md: 'F-150', y0: 2004, y1: 2014, b: 'truck',
-       kw: 'H92 / H84', il: 'H92-PT', oem: '5913441 / H92-PT',
-       chip: '4D-63 (80-bit from 2011; 40-bit 2004-2010)', sys: 'PATS',
-       clone: 'Yes â€” 40-bit clones easily; 80-bit needs a capable cloner',
-       rem: [['fob', 'CWTWB1U331 / CWTWB1U345', '8L3Z-15K601-B', '4B']], cs: 'Ford 8-cut (H75 series)',
-       sp: 8, dp: 5, cut: 'Edge cut',
-       dec: 'Door lock decodes with a 8-cut Ford tryout set or lishi FO38', obd: 'Yes',
-       on: '2 working keys: insert key 1, on/off, key 2 within 5s, on/off, new key within 10s â€” chime confirms.',
-       akl: 'OBD + 10-min timed access',
-       note: '80-bit vs 40-bit split is roughly the 2011 model year â€” verify with a chip reader before you cut.',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Wedge and long reach, or the H75 tryout set on the door.' }),
-  V({ id: 'ford-focus-2012-2018', mk: 'Ford', md: 'Focus', y0: 2012, y1: 2018, kw: 'HU101',
-       il: 'HU101-PT', oem: '164-R8046', chip: '4D-63 80-bit', sys: 'PATS',
-       clone: 'Yes with an 80-bit capable cloner',
-       rem: [['flip', 'KR55WK48801', '164-R8042', '4B integrated flip']], cs: 'HU101 10-cut', sp: 10,
-       dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101 on the driver door', obd: 'Yes',
-       on: '2 working keys â€” insert/turn cycle', akl: 'OBD + timed access',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Lishi HU101 is faster than forcing a wedge on this door seal.' }),
-  V({ id: 'chevy-silverado-2007-2013', mk: 'Chevrolet', md: 'Silverado 1500', y0: 2007, y1: 2013,
-       b: 'truck', kw: 'B111 (GM 10-cut)', il: 'B111-PT', oem: '15912286',
-       chip: 'GM Circle Plus (PK3+)', sys: 'Passlock / PK3+', clone: 'Yes â€” widely cloned',
-       rem: [['fob', 'OUC60270 / OUC60221', '20952474', '4B / 5B']], cs: 'GM 10-cut (B111)', sp: 10,
-       dp: 4, cut: 'Edge cut, 10-cut',
-       dec: 'Lishi GM37 on the door, or read the code off the lock cylinder code tag', obd: 'Yes',
-       on: '30-min relearn: key on 10 min until security light stops flashing, cycle off/on, repeat 3x',
-       akl: '30-min x3 onboard relearn works with no tool',
-       note: 'The 3x10 minute relearn is free but slow â€” budget 35 minutes on site.',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Lishi GM37, or wedge + reach to the pillar lock rod.' }),
-  V({ id: 'chevy-silverado-2014-2019', mk: 'Chevrolet', md: 'Silverado 1500', y0: 2014, y1: 2019,
-       b: 'truck', kw: 'B119 (GM 10-cut, HU100-ish profile)', il: 'B119-PT',
-       oem: '13500223 / 13504199', chip: 'GM 46E (Hitag2 / PCF7937E)',
-       sys: 'Immobilizer 2 / Passive Entry on prox trims',
-       clone: 'Limited â€” usually programmed, not cloned',
-       rem: [['fob', 'M3N-32337100', '13577770', '5B / 6B'], ['prox', 'M3N-32337200', '13508398', '5B prox (High Country / LTZ)']],
-       cs: 'GM 10-cut (B119)', sp: 10, dp: 4, cut: 'Edge cut, 10-cut',
-       dec: 'Lishi HU100 / GM45 on the driver door', obd: 'Yes',
-       on: '30-min relearn available on blade-key trims', akl: 'OBD, or 30-min x3 relearn on non-prox',
-       pin: 'No â€” some tools want the VIN for the seed',
-       note: 'Prox trims: add-a-fob is quick; AKL needs the security relearn.',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Lishi HU100. Watch the door film on 2016+.' }),
-  V({ id: 'chevy-malibu-2013-2015', mk: 'Chevrolet', md: 'Malibu', y0: 2013, y1: 2015, kw: 'HU100',
-       il: 'B116-PT', oem: '13500223', chip: 'GM 46E (Hitag2)',
-       sys: 'Immobilizer 2', clone: 'No â€” program it',
-       rem: [['fob', 'OHT01060512', '13584829', '4B / 5B']], cs: 'GM HU100 10-cut', sp: 10, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi HU100', obd: 'Yes', on: '30-min x3 relearn',
-       akl: '30-min relearn or OBD', entry: 'Lishi HU100' }),
-  V({ id: 'toyota-camry-2007-2011', mk: 'Toyota', md: 'Camry', y0: 2007, y1: 2011, kw: 'TOY44D',
-       il: 'TOY44D-PT', oem: '89785-08020 (dot chip)',
-       chip: '4D-67 (dot) / 4D-72 G on 2010+', sys: 'Toyota immobilizer',
-       clone: 'Dot chip clones; G chip needs a G-capable cloner',
-       rem: [['fob', 'GQ43VT20T', '89742-06020', '4B separate fob'], ['prox', 'HYQ14AAB', '89904-06041', 'Smart key on XLE / Hybrid']],
-       cs: 'TOY48 / TOY44D', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48 on the door',
-       obd: 'Yes', on: 'Yes on blade-key trims â€” the classic ignition-cycle + door-cycle dance',
-       akl: 'OBD; some need a reset via the immobilizer box',
-       note: 'Confirm dot vs G chip before you cut â€” the G chip is stamped "G" on the key head.',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Lishi TOY48 is the clean way in. Wedge and reach works but the seal marks easily.' }),
-  V({ id: 'toyota-camry-2012-2017', mk: 'Toyota', md: 'Camry', y0: 2012, y1: 2017,
-       kw: 'TOY44H (H chip 2013+)', il: 'TOY44H-PT',
-       oem: '89785-0D140 (H)', chip: '8A / H chip (128-bit AES) 2013+, G chip 2012',
-       sys: 'Toyota immobilizer', clone: 'No for H â€” must be programmed',
-       rem: [['prox', 'HYQ14FBA', '89904-06140', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes',
-       on: 'Limited â€” H-chip AKL often needs the 16-min immobilizer reset',
-       akl: 'OBD + 16-minute security wait on most tools',
-       pin: 'No, but many tools need the seed/PIN read first',
-       note: 'H-chip Toyotas are where cheap clone tools quit. Bring the good tool.',
-       entry: 'Lishi TOY48 on the door; smart-key trims hide a TOY48 emergency blade in the fob.' }),
-  V({ id: 'toyota-tacoma-2016-2023', mk: 'Toyota', md: 'Tacoma', y0: 2016, y1: 2023, b: 'truck',
-       kw: 'TOY44H', il: 'TOY44H-PT', oem: '89785-0D140',
-       chip: '8A / H chip', sys: 'Toyota immobilizer', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '89904-04100', '3B / 4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'honda-accord-2008-2012', mk: 'Honda', md: 'Accord', y0: 2008, y1: 2012, kw: 'HO01 / HO03',
-       il: 'HO01-PT', oem: '35111-TA0-A00', chip: 'ID46 (PCF7936)',
-       sys: 'Honda immobilizer', clone: 'Yes â€” ID46 clones with most cloners',
-       rem: [['fob', 'KR55WK49308 / OUCG8D-380H-A', '35111-TA0-A00', '4B']], cs: 'Honda 8-cut (HO01)',
-       sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON66 (high security trims) / HON58R', obd: 'Yes',
-       on: 'No true onboard â€” OBD tool needed', akl: 'OBD; some need the immobilizer PIN',
-       pin: 'Sometimes â€” PIN by VIN from the dealer or a code service',
-       port: 'Driver side, under dash, above the hood release', entry: 'Lishi HON66 or wedge + reach.' }),
-  V({ id: 'honda-civic-2016-2021', mk: 'Honda', md: 'Civic', y0: 2016, y1: 2021, kw: 'HON66',
-       il: 'HO03-PT', oem: '72147-TBA-A11',
-       chip: 'ID47 (Hitag3 / PCF7938)', sys: 'Honda smart entry', clone: 'No â€” program it',
-       rem: [['prox', 'KR5V2X', '72147-TBA-A11', '4B / 5B smart key']], cs: 'HON66 high security',
-       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66', obd: 'Yes', on: 'No',
-       akl: 'OBD, tool-dependent security wait', pin: 'Some tools want PIN by VIN',
-       note: 'Emergency blade lives in the fob â€” cut it from the door decode.', entry: 'Lishi HON66' }),
-  V({ id: 'nissan-altima-2007-2012', mk: 'Nissan', md: 'Altima', y0: 2007, y1: 2012,
-       kw: 'NSN14 (emergency blade)', il: 'DA34', oem: '285E3-JA05A',
-       chip: 'ID46 (Hitag2, in the Intelligent Key)', sys: 'NATS 5/6',
-       clone: 'No â€” Intelligent Key is programmed',
-       rem: [['prox', 'KR55WK48903 / CWTWB1U821', '285E3-JA05A', '4B Intelligent Key']], cs: 'NSN14',
-       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14 on the driver door', obd: 'Yes',
-       on: 'No', akl: 'OBD + 4-digit PIN',
-       pin: 'YES â€” PIN comes from the BCM code (see Tools > Nissan BCM)',
-       note: 'BCM code is on a white label on the BCM behind the kick panel / under the dash.',
-       port: 'Driver side, under dash, left of the steering column',
-       entry: 'Lishi NSN14 â€” this door is a bad wedge candidate.' }),
-  V({ id: 'nissan-rogue-2014-2020', mk: 'Nissan', md: 'Rogue', y0: 2014, y1: 2020, b: 'suv',
-       kw: 'NSN14 (emergency blade)', il: 'DA34', oem: '285E3-5HA3B',
-       chip: 'ID47 / Hitag3 on later builds', sys: 'NATS 6', clone: 'No',
-       rem: [['prox', 'KR5S180144014', '285E3-5HA3B', '4B Intelligent Key']], cs: 'NSN14', sp: 10,
-       dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES â€” BCM-derived PIN', entry: 'Lishi NSN14' }),
-  V({ id: 'hyundai-elantra-2011-2016', mk: 'Hyundai', md: 'Elantra', y0: 2011, y1: 2016,
-       kw: 'HY20 (KIA5 family)', il: 'HY20-PT', oem: '81996-3X010',
-       chip: 'ID46 (PCF7936)', sys: 'Hyundai immobilizer', clone: 'Yes',
-       rem: [['flip', 'OSLOKA-360T', '95430-3X500', '3B / 4B flip']], cs: 'HY20', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi HY20 / HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES â€” PIN by VIN (dealer or code service)',
-       note: 'Hyundai/Kia PIN by VIN is the usual holdup, not the cut.', entry: 'Lishi HY20' }),
-  V({ id: 'kia-optima-2011-2015', mk: 'Kia', md: 'Optima', y0: 2011, y1: 2015, kw: 'KK10 / HY18',
-       il: 'KK10-PT', oem: '81996-2T010', chip: 'ID46',
-       sys: 'Kia immobilizer', clone: 'Yes',
-       rem: [['prox', 'SY5HMFNA04', '95440-2T500', '4B smart key (EX/SX)']], cs: 'KK10', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi KIA7 / HY18', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES â€” PIN by VIN', entry: 'Lishi KIA7' }),
-  V({ id: 'dodge-ram-1500-2013-2018', mk: 'Ram', md: '1500', y0: 2013, y1: 2018, b: 'truck',
-       kw: 'Y170 / CY24', il: 'Y170-PT', oem: '68051387',
-       chip: 'ID46 (Hitag2)', sys: 'SKREEM / SKIM', clone: 'Yes on some, program is safer',
-       rem: [['fob', 'GQ4-53T', '68051387AB', '3B / 5B']], cs: 'CY24 8-cut', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi CY24', obd: 'Yes',
-       on: '2 working keys: cycle on with key 1, then key 2, then new key', akl: 'OBD + 4-digit PIN',
-       pin: 'YES for AKL â€” PIN read from the SKREEM or by VIN', entry: 'Lishi CY24' }),
-  V({ id: 'jeep-wrangler-2007-2017', mk: 'Jeep', md: 'Wrangler JK', y0: 2007, y1: 2017, b: 'suv',
-       kw: 'Y164 / CY24', il: 'Y164-PT', oem: '68001702',
-       chip: 'ID46 (Hitag2)', sys: 'SKREEM', clone: 'Yes',
-       rem: [['fob', 'OHT692427AA', '68001702AA', '3B']], cs: 'CY24', sp: 8, dp: 4, cut: 'Edge cut',
-       dec: 'Lishi CY24', obd: 'Yes', on: '2 working keys onboard add', akl: 'OBD + PIN',
-       pin: 'YES for AKL',
-       note: 'Soft-top Wranglers are an easy non-destructive entry â€” go through the window zipper before you touch a wedge.',
-       entry: 'Soft top: unzip. Hard top: Lishi CY24.' }),
-  V({ id: 'vw-jetta-2011-2018', mk: 'Volkswagen', md: 'Jetta', y0: 2011, y1: 2018, kw: 'HU66',
-       il: 'HU66AT4', oem: '5K0837202',
-       chip: 'ID48 (Megamos) / MQB ID88 on 2016+', sys: 'Immobilizer 4 / MQB',
-       clone: 'ID48 with a capable cloner; MQB is not a clone job',
-       rem: [['flip', 'NBG010180T', '5K0837202AE', '3B / 4B flip']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU66', obd: 'Yes', on: 'No',
-       akl: 'OBD; MQB platform needs an MQB-capable tool',
-       pin: 'Component security / CS code needed on some',
-       note: 'Find out MQB vs non-MQB before you quote. It is a different job and a different price.',
-       port: 'Driver side, under dash, left of the steering column', entry: 'Lishi HU66' }),
-  V({ id: 'bmw-3series-2006-2011', mk: 'BMW', md: '3 Series (E90)', y0: 2006, y1: 2011, kw: 'HU92',
-       il: 'HU92', oem: 'CAS3 fob', chip: 'CAS3 / CAS3+ (PCF7945)',
-       sys: 'CAS3', clone: 'No â€” CAS work, often bench',
-       rem: [['fob', 'KR55WK49127', '6986583', '3B / 4B']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi HU92', obd: 'Sometimes â€” CAS3+ often needs bench work', on: 'No',
-       akl: 'CAS module read, ISN required', pin: 'ISN from the DME/CAS',
-       note: 'Quote this one high or refer it out. It is not a driveway 20-minute job. The E92/E93 coupe and convertible ran on to 2013 alongside the F30 sedan.',
-       entry: 'Lishi HU92' }),
-  V({ id: 'mercedes-cclass-2008-2014', mk: 'Mercedes-Benz', md: 'C-Class (W204)', y0: 2008, y1: 2014,
-       kw: 'HU64', il: 'HU64', oem: 'FBS3 smart key',
-       chip: 'FBS3 (Infrared)', sys: 'FBS3 / DAS3', clone: 'No',
-       rem: [['prox', 'IYZ3312', 'A2049055204', '3B/4B FBS3 IR key']], sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU64',
-       obd: 'No â€” FBS3 needs EIS/ESL work and password calculation', on: 'No',
-       akl: 'EIS read, password calc, key file write', pin: 'Password from EIS data',
-       note: 'Specialist job. Price it as one.', entry: 'Lishi HU64' }),
-  V({ id: 'subaru-outback-2015-2019', mk: 'Subaru', md: 'Outback', y0: 2015, y1: 2019, b: 'suv',
-       kw: 'SUB4 (emergency blade)', il: 'SUB4-PT', oem: '88835-AL04A',
-       chip: 'ID47 / Hitag3', sys: 'Subaru immobilizer', clone: 'No',
-       rem: [['prox', 'HYQ14AHC', '88835-AL04A', '4B smart key']], cs: 'SUB4', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Yes', on: 'No', akl: 'OBD + PIN/seed',
-       pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
-  V({ id: 'mazda-3-2014-2018', mk: 'Mazda', md: 'Mazda3', y0: 2014, y1: 2018, kw: 'MAZ24',
-       il: 'MAZ24R-PT', oem: 'BHP1-67-5DY', chip: 'ID49 / Hitag Pro',
-       sys: 'Mazda immobilizer', clone: 'No',
-       rem: [['prox', 'WAZSKE13D01', 'BHP1-67-5DY', '3B / 4B smart key']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi MAZ24', obd: 'Yes', on: 'Limited', akl: 'OBD',
-       entry: 'Lishi MAZ24' }),
-  V({ id: 'harley-davidson-common', mk: 'Harley-Davidson', md: 'Most models', y0: 1993, y1: 2026,
-       b: 'moto', kw: 'HD103 / HD106', il: 'HD103', oem: 'varies by model',
-       chip: 'None on most â€” HFSM fob is separate',
-       sys: 'Hands-free security fob (not a transponder key)', clone: 'n/a',
-       rem: [['fob', 'varies', 'varies', 'HFSM proximity fob']], sp: 6, dp: 4, cut: 'Edge cut',
-       dec: 'Impression or decode the ignition; saddlebag locks often share a code', obd: 'n/a',
-       on: 'Security fob pairing via the odometer menu',
-       akl: 'Cut by code / impression; fob pairing separate',
-       note: 'Motorcycle lost-key work is high-margin and low-tool. Good bread and butter.',
-       port: 'n/a', entry: 'n/a' }),
-  V({ id: 'ford-superduty-2011-2016', mk: 'Ford', md: 'F-250/F-350 Super Duty', y0: 2011, y1: 2016,
-       b: 'truck', kw: 'HU101', il: 'HU101-PT', oem: '164-R8040',
-       chip: '4D-63 80-bit', sys: 'PATS', clone: 'Yes with an 80-bit cloner',
-       rem: [['fob', 'CWTWB1U793', '', '4B / 5B']], cs: 'HU101 10-cut', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes',
-       on: '2 working keys: insert/turn cycle', akl: 'OBD + 10-min timed access',
-       port: 'Driver side, under dash, left of the steering column', entry: 'Lishi HU101' }),
-  V({ id: 'ford-escape-2013-2019', mk: 'Ford', md: 'Escape', y0: 2013, y1: 2019, b: 'suv', kw: 'HU101',
-       il: 'HU101-PT', oem: '164-R8092',
-       chip: '4D-63 80-bit; ID49 on prox trims', sys: 'PATS', clone: 'Blade keys yes; prox no',
-       rem: [['prox', 'M3N-A2C31243300', '', '4B / 5B (Titanium)']], cs: 'HU101 10-cut', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes', on: '2 working keys',
-       akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-explorer-2011-2019', mk: 'Ford', md: 'Explorer', y0: 2011, y1: 2019, b: 'suv',
-       kw: 'HU101', il: 'HU101-PT', oem: '164-R8109',
-       chip: 'ID49 Hitag Pro on prox; 4D-63 on blade', sys: 'PATS / IPC', clone: 'No on prox',
-       rem: [['prox', 'M3N-A2C31243300', '', '5B w/ remote start']], cs: 'HU101 10-cut', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes',
-       on: '2 prox fobs in the cup holder sequence', akl: 'OBD + timed access',
-       note: 'Police Interceptor variants share the platform.', entry: 'Lishi HU101' }),
-  V({ id: 'ford-fusion-2013-2020', mk: 'Ford', md: 'Fusion', y0: 2013, y1: 2020, kw: 'HU101',
-       il: 'HU101-PT', oem: '164-R8109',
-       chip: 'ID49 Hitag Pro (prox) / 4D-63 (blade)', sys: 'PATS', clone: 'Blade only',
-       rem: [['prox', 'M3N-A2C31243300', '', '5B']], cs: 'HU101 10-cut', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes', on: '2 fobs',
-       akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-mustang-2015-2023', mk: 'Ford', md: 'Mustang', y0: 2015, y1: 2023, kw: 'HU101',
-       il: 'HU101-PT', oem: '164-R8118', chip: 'ID49 Hitag Pro',
-       sys: 'PATS', clone: 'No', rem: [['prox', 'M3N-A2C31243300', '', '4B / 5B']], cs: 'HU101 10-cut',
-       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes', on: '2 fobs',
-       akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-transit-2015-2023', mk: 'Ford', md: 'Transit / Transit Connect', y0: 2015, y1: 2023,
-       b: 'van', kw: 'HU101', il: 'HU101-PT', chip: 'ID49 / 4D-63 by trim',
-       sys: 'PATS', clone: 'Varies', rem: [['flip', '', '', '3B / 4B']], cs: 'HU101 10-cut', sp: 10,
-       dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes',
-       on: '2 working keys on some trims', akl: 'OBD + timed access',
-       note: 'Work vans are frequent lockout calls â€” the sliding door is often the easier way in.',
-       entry: 'Lishi HU101' }),
-  V({ id: 'ford-expedition-2015-2023', mk: 'Ford', md: 'Expedition', y0: 2015, y1: 2023, b: 'suv',
-       kw: 'HU101', il: 'HU101-PT', oem: '164-R8166',
-       chip: 'ID49 Hitag Pro', sys: 'PATS', clone: 'No', rem: [['prox', 'M3N-A2C931426', '', '5B']],
-       cs: 'HU101 10-cut', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes',
-       on: '2 fobs', akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-ranger-2019-2023', mk: 'Ford', md: 'Ranger', y0: 2019, y1: 2023, b: 'truck',
-       kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro', sys: 'PATS',
-       clone: 'No', rem: [['prox', 'N5F-A08TAA', '', '4B']], cs: 'HU101 10-cut', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU101', obd: 'Yes', on: '2 fobs',
-       akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'gmc-sierra-2014-2019', mk: 'GMC', md: 'Sierra 1500', y0: 2014, y1: 2019, b: 'truck',
-       kw: 'B119', il: 'B119-PT', oem: '13500223', chip: 'GM 46E (Hitag2)',
-       sys: 'Immobilizer 2', clone: 'No', rem: [['fob', 'M3N-32337100', '13577770', '5B / 6B']],
-       cs: 'GM 10-cut', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100 / GM45', obd: 'Yes',
-       on: '30-min x3 relearn on blade trims', akl: 'OBD or relearn',
-       note: 'Same platform as the Silverado of the same years.', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-equinox-2010-2017', mk: 'Chevrolet', md: 'Equinox', y0: 2010, y1: 2017, b: 'suv',
-       kw: 'HU100', il: 'B116-PT', oem: '13504252', chip: 'GM 46E (Hitag2)',
-       sys: 'Immobilizer 2', clone: 'No', rem: [['fob', 'OHT01060512', '13584829', '4B / 5B']],
-       cs: 'GM HU100 10-cut', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100', obd: 'Yes',
-       on: '30-min x3 relearn', akl: 'Relearn or OBD', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-cruze-2011-2019', mk: 'Chevrolet', md: 'Cruze', y0: 2011, y1: 2019, kw: 'HU100',
-       il: 'B116-PT', oem: '13500223', chip: 'GM 46E (Hitag2)',
-       sys: 'Immobilizer 2', clone: 'No', rem: [['fob', 'OHT01060512', '', '4B / 5B']],
-       cs: 'GM HU100 10-cut', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100', obd: 'Yes',
-       on: '30-min x3 relearn', akl: 'Relearn or OBD', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-tahoe-2015-2020', mk: 'Chevrolet', md: 'Tahoe / Suburban', y0: 2015, y1: 2020,
-       b: 'suv', kw: 'B119 (emergency blade)', il: 'B119-PT',
-       oem: '13580804', chip: 'GM 46E (Hitag2)', sys: 'Passive entry / push start', clone: 'No',
-       rem: [['prox', 'M3N-32337100', '13580804', '6B']], cs: 'GM 10-cut', sp: 10, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi HU100', obd: 'Yes', on: 'Add-a-fob possible with a working fob',
-       akl: 'OBD + security relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-impala-2014-2020', mk: 'Chevrolet', md: 'Impala', y0: 2014, y1: 2020, kw: 'HU100',
-       il: 'B119-PT', chip: 'GM 46E (Hitag2)', sys: 'Immobilizer 2',
-       clone: 'No', rem: [['prox', 'HYQ4EA', '', '5B']], cs: 'GM 10-cut', sp: 10, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi HU100', obd: 'Yes', on: '30-min relearn on blade trims', akl: 'OBD',
-       entry: 'Lishi HU100' }),
-  V({ id: 'chevy-colorado-2015-2022', mk: 'Chevrolet', md: 'Colorado', y0: 2015, y1: 2022, b: 'truck',
-       kw: 'B119', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-       sys: 'Immobilizer 2', clone: 'No', rem: [['fob', 'M3N-32337100', '', '4B / 5B']],
-       cs: 'GM 10-cut', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100', obd: 'Yes',
-       on: '30-min x3 relearn', akl: 'Relearn or OBD', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-traverse-2009-2017', mk: 'Chevrolet', md: 'Traverse', y0: 2009, y1: 2017, b: 'suv',
-       kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus / 46E by year',
-       sys: 'PK3+ / Immobilizer 2', clone: 'Circle Plus yes', rem: [['fob', 'OUC60270', '', '4B / 5B']],
-       cs: 'GM 10-cut', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37', obd: 'Yes',
-       on: '30-min x3 relearn', akl: 'Relearn',
-       note: 'Check which chip generation before cutting â€” this model spans the changeover.',
-       entry: 'Lishi GM37' }),
-  V({ id: 'gm-vats-1986-2002', mk: 'Chevrolet', md: 'VATS / PASS-Key (older GM)', y0: 1986, y1: 2002,
-       kw: 'B106 / B62 pellet', il: 'B62-P1 .. B62-P15',
-       oem: 'varies by pellet value', chip: 'None â€” resistor pellet in the blade',
-       sys: 'VATS / PASS-Key', clone: 'n/a â€” match the pellet resistance',
-       rem: [['fob', '', '', 'Separate keyless entry, if fitted']], cs: 'GM 6-cut (B106)', sp: 6, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi GM37 or impression', obd: 'n/a', on: 'n/a',
-       akl: 'Read the pellet value with a VATS interrogator, then cut and match',
-       note: '15 pellet values. Carry the full set or an interrogator â€” guessing burns the 4-minute lockout timer each try.',
-       port: 'Under dash (OBD-I on the earliest)', entry: 'Lishi GM37 or wedge and reach' }),
-  V({ id: 'toyota-corolla-2009-2013', mk: 'Toyota', md: 'Corolla', y0: 2009, y1: 2013, kw: 'TOY43',
-       il: 'TOY43-PT', oem: '89785-08020',
-       chip: '4D-67 (dot) / G on later', sys: 'Toyota immobilizer',
-       clone: 'Dot yes, G needs a G cloner', rem: [['fob', 'GQ43VT20T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes',
-       on: 'Yes on blade trims', akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-corolla-2014-2019', mk: 'Toyota', md: 'Corolla', y0: 2014, y1: 2019, kw: 'TOY44H',
-       il: 'TOY44H-PT', oem: '89785-0D140', chip: '8A / H chip',
-       sys: 'Toyota immobilizer', clone: 'No', rem: [['prox', 'HYQ14FBA', '', '3B / 4B smart key']],
-       cs: 'TOY48', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes',
-       on: 'Limited', akl: 'OBD + 16-min wait', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-rav4-2013-2018', mk: 'Toyota', md: 'RAV4', y0: 2013, y1: 2018, b: 'suv',
-       kw: 'TOY44H', il: 'TOY44H-PT', oem: '89785-0D140',
-       chip: '8A / H chip', sys: 'Toyota immobilizer', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '3B / 4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-tundra-2014-2021', mk: 'Toyota', md: 'Tundra', y0: 2014, y1: 2021, b: 'truck',
-       kw: 'TOY44H', il: 'TOY44H-PT', oem: '89785-0D140',
-       chip: '8A / H chip', sys: 'Toyota immobilizer', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '3B / 4B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-highlander-2014-2019', mk: 'Toyota', md: 'Highlander', y0: 2014, y1: 2019, b: 'suv',
-       kw: 'TOY44H', il: 'TOY44H-PT', oem: '89785-0D140',
-       chip: '8A / H chip', sys: 'Toyota immobilizer', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '4B / 5B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-prius-2010-2015', mk: 'Toyota', md: 'Prius', y0: 2010, y1: 2015,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT',
-       oem: '89904-47230', chip: 'G chip smart key', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14ACX', '89904-47230', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48 on the door', obd: 'Yes', on: 'No',
-       akl: 'OBD; smart box reset on some',
-       note: 'No conventional ignition â€” the emergency blade only opens the door.',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-rx-2010-2015', mk: 'Lexus', md: 'RX 350', y0: 2010, y1: 2015, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT',
-       oem: '89904-48191', chip: 'G chip smart key', sys: 'Lexus smart access', clone: 'No',
-       rem: [['prox', 'HYQ14AAB', '89904-48191', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No',
-       akl: 'OBD; smart reset on some', entry: 'Lishi TOY48' }),
-  V({ id: 'honda-crv-2012-2016', mk: 'Honda', md: 'CR-V', y0: 2012, y1: 2016, b: 'suv', kw: 'HO01',
-       il: 'HO01-PT', oem: '35118-T0A-A00', chip: 'ID46 (PCF7936)',
-       sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'MLBHLIK6-1T', '', '4B']],
-       cs: 'Honda 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R', obd: 'Yes', on: 'No',
-       akl: 'OBD; PIN by VIN on some', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-crv-2017-2022', mk: 'Honda', md: 'CR-V', y0: 2017, y1: 2022, b: 'suv', kw: 'HON66',
-       il: 'HO03-PT', oem: '72147-TLA-A11', chip: 'ID47 (Hitag3)',
-       sys: 'Honda smart entry', clone: 'No', rem: [['prox', 'KR5V2X', '72147-TLA-A11', '4B / 5B']],
-       cs: 'HON66 high security', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-       obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Some tools want PIN by VIN', entry: 'Lishi HON66' }),
-  V({ id: 'honda-pilot-2016-2022', mk: 'Honda', md: 'Pilot', y0: 2016, y1: 2022, b: 'suv', kw: 'HON66',
-       il: 'HO03-PT', oem: '72147-TG7-A11', chip: 'ID47 (Hitag3)',
-       sys: 'Honda smart entry', clone: 'No', rem: [['prox', 'KR5V2X', '', '5B']], sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HON66', obd: 'Yes', on: 'No', akl: 'OBD',
-       pin: 'Sometimes', entry: 'Lishi HON66' }),
-  V({ id: 'honda-odyssey-2011-2017', mk: 'Honda', md: 'Odyssey', y0: 2011, y1: 2017, b: 'van',
-       kw: 'HO01', il: 'HO01-PT', chip: 'ID46', sys: 'Honda immobilizer',
-       clone: 'Yes', rem: [['fob', 'KR5V1X', '', '5B / 6B w/ sliding doors']], cs: 'Honda 8-cut', sp: 8,
-       dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R', obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes',
-       entry: 'Lishi HON58R' }),
-  V({ id: 'honda-civic-2006-2011', mk: 'Honda', md: 'Civic', y0: 2006, y1: 2011, kw: 'HO01',
-       il: 'HO01-PT', oem: '35111-SNA-A01', chip: 'ID46',
-       sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'OUCG8D-380H-A', '', '3B / 4B']],
-       cs: 'Honda 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R', obd: 'Yes', on: 'No',
-       akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'acura-mdx-2014-2020', mk: 'Acura', md: 'MDX', y0: 2014, y1: 2020, b: 'suv', kw: 'HON66',
-       il: 'HO03-PT', oem: '72147-TZ5-A01', chip: 'ID47 (Hitag3)',
-       sys: 'Acura smart entry', clone: 'No', rem: [['prox', 'KR5V1X', '', '5B']], sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HON66', obd: 'Yes', on: 'No', akl: 'OBD',
-       pin: 'Sometimes', entry: 'Lishi HON66' }),
-  V({ id: 'nissan-altima-2013-2018', mk: 'Nissan', md: 'Altima', y0: 2013, y1: 2018,
-       kw: 'NSN14 (emergency blade)', il: 'DA34', oem: '285E3-9HP4B',
-       chip: 'ID46 / ID47 by year', sys: 'NATS 6', clone: 'No',
-       rem: [['prox', 'KR5S180144014', '', '4B / 5B Intelligent Key']], cs: 'NSN14', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi NSN14', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES â€” BCM-derived PIN', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-sentra-2013-2019', mk: 'Nissan', md: 'Sentra', y0: 2013, y1: 2019, kw: 'NSN14',
-       il: 'DA34', chip: 'ID46 / ID47', sys: 'NATS 6', clone: 'No',
-       rem: [['prox', 'CWTWB1U840', '', '4B']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi NSN14', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-       note: 'Base trims use a blade key with a separate fob rather than a prox.', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-frontier-2005-2019', mk: 'Nissan', md: 'Frontier', y0: 2005, y1: 2019, b: 'truck',
-       kw: 'DA31 / NSN14 by trim', il: 'DA31-PT', chip: 'ID46',
-       sys: 'NATS 5/6', clone: 'Some', rem: [['fob', 'CWTWB1U751', '', '3B / 4B']], cs: 'DA31 8-cut',
-       sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES', entry: 'Lishi DA31' }),
-  V({ id: 'nissan-pathfinder-2013-2020', mk: 'Nissan', md: 'Pathfinder', y0: 2013, y1: 2020, b: 'suv',
-       kw: 'NSN14', il: 'DA34', chip: 'ID46 / ID47', sys: 'NATS 6',
-       clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B / 5B']], sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi NSN14', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-titan-2016-2023', mk: 'Nissan', md: 'Titan', y0: 2016, y1: 2023, b: 'truck',
-       kw: 'NSN14', il: 'DA34', chip: 'ID47 (Hitag3)', sys: 'NATS 6',
-       clone: 'No', rem: [['prox', 'KR5TXN7', '', '4B / 5B']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi NSN14', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'hyundai-sonata-2011-2019', mk: 'Hyundai', md: 'Sonata', y0: 2011, y1: 2019,
-       kw: 'HY20 / HY22 by trim', il: 'HY20-PT', chip: 'ID46',
-       sys: 'Hyundai immobilizer', clone: 'Yes on blade keys',
-       rem: [['prox', 'SY5HMFNA04', '', '4B smart key on Limited']], cs: 'HY20', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi HY20 / HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES â€” PIN by VIN', note: 'PIN by VIN is the bottleneck on Hyundai/Kia, not the cut.',
-       entry: 'Lishi HY20' }),
-  V({ id: 'hyundai-santafe-2013-2018', mk: 'Hyundai', md: 'Santa Fe', y0: 2013, y1: 2018, b: 'suv',
-       kw: 'HY22', il: 'HY22-PT', chip: 'ID46', sys: 'Hyundai immobilizer',
-       clone: 'Yes', rem: [['prox', 'TQ8-FOB-4F03', '', '4B smart key']], cs: 'HY22 high security',
-       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22', obd: 'Yes', on: 'No',
-       akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi HY22' }),
-  V({ id: 'hyundai-tucson-2016-2021', mk: 'Hyundai', md: 'Tucson', y0: 2016, y1: 2021, b: 'suv',
-       kw: 'HY22', il: 'HY22-PT', chip: 'ID47 / ID46 by year',
-       sys: 'Hyundai immobilizer', clone: 'Varies', rem: [['prox', 'TQ8-FOB-4F11', '', '4B smart key']],
-       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22', obd: 'Yes', on: 'No',
-       akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi HY22' }),
-  V({ id: 'kia-soul-2014-2019', mk: 'Kia', md: 'Soul', y0: 2014, y1: 2019, b: 'suv',
-       kw: 'KK10 / HY22 by trim', il: 'KK10-PT', chip: 'ID46',
-       sys: 'Kia immobilizer', clone: 'Yes on blade', rem: [['flip', 'OSLOKA-875T', '', '4B flip']],
-       cs: 'KK10', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi KIA7', obd: 'Yes', on: 'No',
-       akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi KIA7' }),
-  V({ id: 'kia-sorento-2016-2020', mk: 'Kia', md: 'Sorento', y0: 2016, y1: 2020, b: 'suv', kw: 'HY22',
-       il: 'HY22-PT', chip: 'ID47 / ID46', sys: 'Kia immobilizer',
-       clone: 'Varies', rem: [['prox', 'SY5MQ4FGE04', '', '4B / 5B smart key']], sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES â€” PIN by VIN', entry: 'Lishi HY22' }),
-  V({ id: 'kia-forte-2014-2018', mk: 'Kia', md: 'Forte', y0: 2014, y1: 2018, kw: 'KK10', il: 'KK10-PT',
-       chip: 'ID46', sys: 'Kia immobilizer', clone: 'Yes',
-       rem: [['flip', 'OSLOKA-875T', '', '4B flip']], sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi KIA7',
-       obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi KIA7' }),
-  V({ id: 'jeep-grand-cherokee-2011-2013', mk: 'Jeep', md: 'Grand Cherokee (WK2)', y0: 2011, y1: 2013, b: 'suv',
-      kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: 'ID46 (Hitag2)',
-      sys: 'RFHM / SKREEM', clone: 'No on prox', rem: [['prox', 'IYZ-C01C', '', '5B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: 'Add-a-key with 2 working', akl: 'OBD + 4-digit PIN', pin: 'YES for AKL',
-      note: 'First years of the WK2 body.', entry: 'Lishi CY24' }),
-  V({ id: 'jeep-grand-cherokee-2014-2021', mk: 'Jeep', md: 'Grand Cherokee', y0: 2014, y1: 2021,
-       b: 'suv', kw: 'CY24 (emergency blade)', il: 'Y170-PT',
-       oem: '68143502', chip: 'ID46 (Hitag2)', sys: 'RFHM / SKREEM', clone: 'No on prox',
-       rem: [['prox', 'M3N-40821302', '68143502', '5B smart key']], cs: 'CY24', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi CY24', obd: 'Yes', on: 'Add-a-key with 2 working',
-       akl: 'OBD + 4-digit PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'jeep-cherokee-2014-2021', mk: 'Jeep', md: 'Cherokee', y0: 2014, y1: 2021, b: 'suv',
-       kw: 'SIP22', il: 'FT48-PT', chip: 'ID46 (Hitag2)',
-       sys: 'Fiat platform immobilizer', clone: 'No', rem: [['prox', 'M3N-40821302', '', '4B / 5B']],
-       sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22', obd: 'Yes', on: 'Limited',
-       akl: 'OBD + PIN', pin: 'YES', note: 'Fiat platform, not the CY24 Jeep you expect â€” bring SIP22.',
-       entry: 'Lishi SIP22' }),
-  V({ id: 'jeep-wrangler-2018-2023', mk: 'Jeep', md: 'Wrangler JL', y0: 2018, y1: 2023, b: 'suv',
-       kw: 'SIP22', il: 'FT48-PT', chip: 'ID4A (Hitag AES)',
-       sys: 'Stellantis immobilizer', clone: 'No', rem: [['prox', 'OHT1130261', '', '4B / 5B']], sp: 8,
-       dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22', obd: 'Yes', on: 'No',
-       akl: 'OBD + PIN, tool-dependent', pin: 'YES',
-       note: 'JL is a different platform from the JK â€” do not assume CY24.',
-       entry: 'Soft top: unzip. Hard top: Lishi SIP22.' }),
-  V({ id: 'dodge-charger-2011-2023', mk: 'Dodge', md: 'Charger / Challenger', y0: 2011, y1: 2023,
-       kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: 'ID46 (Hitag2)',
-       sys: 'RFHM', clone: 'No on prox', rem: [['prox', 'M3N-40821302', '', '4B / 5B']], cs: 'CY24',
-       sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24', obd: 'Yes', on: 'Add-a-key with 2 working',
-       akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'chrysler-pacifica-2017-2023', mk: 'Chrysler', md: 'Pacifica', y0: 2017, y1: 2023, b: 'van',
-       kw: 'SIP22', il: 'FT48-PT', chip: 'ID4A (Hitag AES)',
-       sys: 'Stellantis immobilizer', clone: 'No',
-       rem: [['prox', 'M3N-97395900', '', '6B / 7B w/ sliding doors']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi SIP22', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES', entry: 'Lishi SIP22' }),
-  V({ id: 'dodge-caravan-2008-2020', mk: 'Dodge', md: 'Grand Caravan', y0: 2008, y1: 2020, b: 'van',
-       kw: 'CY24', il: 'Y164-PT', chip: 'ID46 (Hitag2)', sys: 'SKREEM',
-       clone: 'Yes on some', rem: [['fob', 'IYZ-C01C', '', '5B / 6B']], sp: 8, dp: 4, cut: 'Edge cut',
-       dec: 'Lishi CY24', obd: 'Yes', on: '2 working keys onboard add', akl: 'OBD + PIN',
-       pin: 'YES for AKL', note: 'Very common lockout call. Sliding door is often the easy entry.',
-       entry: 'Lishi CY24' }),
-  V({ id: 'ram-promaster-2014-2023', mk: 'Ram', md: 'ProMaster / ProMaster City', y0: 2014, y1: 2024, b: 'van',
-       kw: 'SIP22', il: 'FT48-PT', chip: 'ID46 (Hitag2)',
-       sys: 'Fiat platform immobilizer', clone: 'No', rem: [['flip', '', '', '3B flip']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi SIP22', obd: 'Yes', on: 'No', akl: 'OBD + PIN',
-       pin: 'YES', note: 'Fleet vans â€” expect all-keys-lost with no paperwork. Verify ownership.',
-       entry: 'Lishi SIP22' }),
-  V({ id: 'vw-tiguan-2018-2023', mk: 'Volkswagen', md: 'Tiguan', y0: 2018, y1: 2023, b: 'suv',
-       kw: 'HU162T', il: 'HU162T-PT', chip: 'MQB (ID88 / AES)',
-       sys: 'MQB immobilizer', clone: 'No', rem: [['prox', 'NBGFS12A01', '', '4B']], sp: 9, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU162T', obd: 'Yes with an MQB-capable tool', on: 'No',
-       akl: 'MQB AKL â€” specialist job', pin: 'Component security data',
-       note: 'MQB is a different price bracket. Quote it as one.', entry: 'Lishi HU162T' }),
-  V({ id: 'audi-a4-2009-2016', mk: 'Audi', md: 'A4', y0: 2009, y1: 2016, kw: 'HU66', il: 'HU66AT4',
-       chip: 'ID48 (Megamos)', sys: 'Immobilizer 4',
-       clone: 'With a capable cloner', rem: [['flip', 'IYZFBSB802', '', '3B / 4B flip']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU66', obd: 'Sometimes â€” often bench', on: 'No',
-       akl: 'Usually needs the cluster / immo data', pin: 'CS code', entry: 'Lishi HU66' }),
-  V({ id: 'mercedes-sprinter-2010-2018', mk: 'Mercedes-Benz', md: 'Sprinter', y0: 2010, y1: 2018,
-       b: 'van', kw: 'HU64 / YM23 by trim', il: 'HU64',
-       chip: 'FBS3 on later; earlier vary', sys: 'FBS3 / DAS', clone: 'No',
-       rem: [['fob', '', '', '3B']], cs: 'HU64', sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi HU64', obd: 'No on FBS3 â€” EIS work', on: 'No', akl: 'EIS read + password calc',
-       pin: 'Password from EIS', note: 'Commercial fleet work. Specialist job, price accordingly. The 2003-2009 US Sprinter wore Dodge or Freightliner badges â€” same van, look under those makes.',
-       entry: 'Lishi HU64' }),
-  V({ id: 'subaru-forester-2014-2018', mk: 'Subaru', md: 'Forester', y0: 2014, y1: 2018, b: 'suv',
-       kw: 'SUB4', il: 'SUB4-PT', chip: 'ID47 / Hitag3',
-       sys: 'Subaru immobilizer', clone: 'No', rem: [['prox', 'HYQ14AHC', '', '4B smart key']], sp: 8,
-       dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Yes', on: 'No', akl: 'OBD + PIN/seed',
-       pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
-  V({ id: 'subaru-crosstrek-2013-2022', mk: 'Subaru', md: 'Impreza / Crosstrek', y0: 2013, y1: 2022,
-       b: 'suv', kw: 'SUB4', il: 'SUB4-PT', chip: 'ID47 / Hitag3',
-       sys: 'Subaru immobilizer', clone: 'No', rem: [['prox', 'HYQ14AHK', '', '4B']], sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Yes', on: 'No', akl: 'OBD + PIN/seed',
-       pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
-  V({ id: 'mazda-cx5-2013-2021', mk: 'Mazda', md: 'CX-5', y0: 2013, y1: 2021, b: 'suv', kw: 'MAZ24',
-       il: 'MAZ24R-PT', chip: 'ID49 / Hitag Pro',
-       sys: 'Mazda immobilizer', clone: 'No', rem: [['prox', 'WAZSKE13D01', '', '3B / 4B smart key']],
-       sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi MAZ24', obd: 'Yes', on: 'Limited',
-       akl: 'OBD', entry: 'Lishi MAZ24' }),
-  V({ id: 'mitsubishi-outlander-2014-2021', mk: 'Mitsubishi', md: 'Outlander', y0: 2014, y1: 2021,
-       b: 'suv', kw: 'MIT11', il: 'MIT11-PT', chip: 'ID46',
-       sys: 'Mitsubishi immobilizer', clone: 'Some', rem: [['prox', 'OUCJ166N', '', '4B']],
-       cs: 'MIT11 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi MIT11', obd: 'Yes', on: 'No',
-       akl: 'OBD + PIN', pin: 'Often', entry: 'Lishi MIT11' }),
-  V({ id: 'tesla-model3-y-2017-2024', mk: 'Tesla', md: 'Model 3 / Model Y', y0: 2017, y1: 2024,
-       kw: 'None â€” no mechanical key', oem: 'Key card / phone key / key fob',
-       chip: 'NFC key card, BLE phone key', sys: 'Tesla BLE / NFC', clone: 'No',
-       rem: [['prox', '', '', 'Optional BLE fob']], cs: 'n/a', cut: 'n/a', dec: 'n/a',
-       obd: 'No conventional OBD port',
-       on: 'Owner pairs a new card via the touchscreen with an existing card',
-       akl: 'Tesla service â€” not a locksmith job',
-       note: 'There is nothing to cut. Lockouts are the only realistic call, and there is no mechanical override on the door.',
-       port: 'None in the usual place â€” diagnostic connector is behind the front trim',
-       entry: 'No mechanical keyway. Do not attempt entry tools on the frameless glass â€” refer the owner to Tesla or roadside.' }),
-  V({ id: 'polaris-rzr-ranger', mk: 'Polaris', md: 'RZR / Ranger / General', y0: 2010, y1: 2026,
-       b: 'moto', kw: 'Polaris', oem: 'varies by model', chip: 'None on most', sys: 'None',
-       clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the ignition',
-       obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-       note: 'No immobilizer on most. Fast, high-margin work â€” worth stocking the blanks.', port: 'n/a',
-       entry: 'n/a' }),
-  V({ id: 'toyota-camry-1997-2001', mk: 'Toyota', md: 'Camry', y0: 1997, y1: 2001, kw: 'TOY43',
-       il: 'TOY43', chip: 'None on most; 4C on late builds',
-       sys: 'Pre-immobilizer / early 4C', clone: '4C clones easily',
-       rem: [['fob', '', '', 'Aftermarket or dealer add-on']], cs: 'TOY43 8-cut', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi TOY43, or impression', obd: 'n/a on non-chip', on: 'n/a',
-       akl: 'Cut by code or decode the door',
-       note: 'Fast money â€” no chip, no tool. Confirm with a chip sniffer before you quote a programming fee.',
-       entry: 'Lishi TOY43 or wedge and reach' }),
-  V({ id: 'toyota-camry-2002-2006', mk: 'Toyota', md: 'Camry', y0: 2002, y1: 2006, kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4C', sys: 'Toyota immobilizer',
-       clone: 'Yes â€” 4C is the easy one', rem: [['fob', 'GQ43VT14T', '', '3B / 4B separate fob']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes',
-       on: 'Yes â€” ignition-cycle procedure', akl: 'OBD, or ECU reset on some', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-camry-2018-2024', mk: 'Toyota', md: 'Camry', y0: 2018, y1: 2024,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBC', '', '4B / 5B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48 on the door', obd: 'Yes with an H-capable tool',
-       on: 'No', akl: 'OBD + 16-min security wait',
-       note: 'TNGA platform. Cheap clone tools will not touch it.', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-corolla-1998-2002', mk: 'Toyota', md: 'Corolla', y0: 1998, y1: 2002, kw: 'TOY43',
-       il: 'TOY43', chip: 'None on most', sys: 'Pre-immobilizer',
-       clone: 'n/a', rem: [['fob', '', '', 'Dealer add-on if fitted']], cs: 'TOY43 8-cut', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi TOY43 or impression', obd: 'n/a', on: 'n/a',
-       akl: 'Cut by code or decode', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-corolla-2003-2008', mk: 'Toyota', md: 'Corolla', y0: 2003, y1: 2008, kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4C / 4D-67 dot on later',
-       sys: 'Toyota immobilizer', clone: 'Yes', rem: [['fob', 'GQ43VT14T', '', '3B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes',
-       on: 'Yes on chip trims', akl: 'OBD',
-       note: 'Base trims of these years often have no chip at all â€” check before quoting.',
-       entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-corolla-2020-2025', mk: 'Toyota', md: 'Corolla', y0: 2020, y1: 2025,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBC', '', '3B / 4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes with an H-capable tool', on: 'No',
-       akl: 'OBD + 16-min wait', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-avalon-2005-2012', mk: 'Toyota', md: 'Avalon', y0: 2005, y1: 2012, kw: 'TOY48',
-       il: 'TOY44D-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer / smart entry', clone: 'Dot yes, G needs a G cloner',
-       rem: [['prox', 'HYQ14AAB', '', '4B smart key']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'Blade trims only', akl: 'OBD',
-       note: 'One of the earliest Toyota smart-key platforms in the US.', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-avalon-2013-2018', mk: 'Toyota', md: 'Avalon', y0: 2013, y1: 2018,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '4B / 5B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-yaris-2007-2018', mk: 'Toyota', md: 'Yaris', y0: 2007, y1: 2018, kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4D-67 dot; G on later',
-       sys: 'Toyota immobilizer', clone: 'Dot yes', rem: [['fob', 'GQ4-29T', '', '3B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes',
-       on: 'Yes on blade trims', akl: 'OBD', note: 'Some base trims shipped with no immobilizer.',
-       entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-yaris-ia-2017-2020', mk: 'Toyota', md: 'Yaris iA / Yaris sedan', y0: 2017, y1: 2020,
-       kw: 'MAZ24', il: 'MAZ24R-PT', chip: 'ID49 / Hitag Pro (Mazda)',
-       sys: 'Mazda immobilizer', clone: 'No', rem: [['fob', '', '', '3B']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi MAZ24', obd: 'Yes â€” use the Mazda menu, not Toyota',
-       on: 'No', akl: 'OBD as a Mazda 2',
-       note: 'GOTCHA: this is a rebadged Mazda 2. Toyota blanks and Toyota software will both fail you.',
-       entry: 'Lishi MAZ24' }),
-  V({ id: 'toyota-prius-2004-2009', mk: 'Toyota', md: 'Prius', y0: 2004, y1: 2009,
-       kw: 'TOY43 / TOY48 by trim', il: 'TOY43-PT', chip: '4D-67 dot',
-       sys: 'Toyota immobilizer / early smart entry', clone: 'Yes',
-       rem: [['prox', 'MOZB21TG', '', '3B smart key (option)']], cs: 'TOY43 / TOY48', sp: 8, dp: 4,
-       cut: 'Edge or laser by trim', dec: 'Lishi TOY43 or TOY48', obd: 'Yes', on: 'Blade trims',
-       akl: 'OBD', note: 'Smart-key trims have no conventional ignition.', entry: 'Lishi by trim' }),
-  V({ id: 'toyota-prius-2016-2022', mk: 'Toyota', md: 'Prius', y0: 2016, y1: 2022,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBA / HYQ14FLA', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48 on the door', obd: 'Yes with an H-capable tool',
-       on: 'No', akl: 'OBD + 16-min wait',
-       note: 'No mechanical ignition â€” the blade only opens the door.', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-matrix-2003-2013', mk: 'Toyota', md: 'Corolla Matrix / Matrix', y0: 2003, y1: 2013, kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4C / 4D-67 dot by year',
-       sys: 'Toyota immobilizer', clone: 'Yes', rem: [['fob', 'GQ43VT20T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', note: 'Corolla mechanicals. Pontiac Vibe of the same years is the same car.',
-       entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-solara-2004-2008', mk: 'Toyota', md: 'Camry Solara', y0: 2004, y1: 2008, kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4D-67 dot', sys: 'Toyota immobilizer',
-       clone: 'Yes', rem: [['fob', 'GQ43VT14T', '', '3B / 4B']], cs: 'TOY43 8-cut', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes', akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-venza-2009-2015', mk: 'Toyota', md: 'Venza', y0: 2009, y1: 2015, b: 'suv',
-       kw: 'TOY48', il: 'TOY44D-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer / smart entry', clone: 'Dot yes',
-       rem: [['prox', 'HYQ14AAB', '', '4B smart key']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'Blade trims', akl: 'OBD', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-chr-2018-2022', mk: 'Toyota', md: 'C-HR', y0: 2018, y1: 2022, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBC', '', '3B / 4B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-86-2017-2024', mk: 'Toyota', md: '86 / GR86', y0: 2017, y1: 2024, kw: 'SUB4',
-       il: 'SUB4-PT', chip: 'Subaru ID47 / Hitag3',
-       sys: 'Subaru immobilizer', clone: 'No', rem: [['prox', '', '', '3B / 4B']], sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Yes â€” work it as a Subaru', on: 'No',
-       akl: 'OBD as Subaru BRZ', pin: 'Tool-dependent',
-       note: 'GOTCHA: built by Subaru. Subaru blank, Subaru software. Same car as the BRZ.',
-       entry: 'Lishi SUB4' }),
-  V({ id: 'toyota-supra-2020-2025', mk: 'Toyota', md: 'GR Supra / Supra', y0: 2020, y1: 2025, kw: 'HU100R',
-       il: 'BMW1', oem: 'BMW-style fob', chip: 'BMW FEM/BDC',
-       sys: 'BMW immobilizer', clone: 'No', rem: [['prox', '', '', '3B BMW-style']], sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi HU100R', obd: 'BMW procedure â€” often bench', on: 'No',
-       akl: 'BMW FEM/BDC work, ISN required', pin: 'ISN',
-       note: 'GOTCHA: this is a BMW Z4 underneath. Toyota tooling will not see it. Quote it as a BMW or refer it out.',
-       entry: 'Lishi HU100R' }),
-  V({ id: 'toyota-tacoma-1995-2004', mk: 'Toyota', md: 'Tacoma', y0: 1995, y1: 2004, b: 'truck',
-       kw: 'TOY43 / TR47', il: 'TOY43', chip: 'None on most',
-       sys: 'Pre-immobilizer', clone: 'n/a', rem: [['fob', '', '', 'Dealer add-on if fitted']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43 or impression', obd: 'n/a',
-       on: 'n/a', akl: 'Cut by code or decode the ignition',
-       note: 'No chip. Quick job, and these are still everywhere.',
-       entry: 'Lishi TOY43 or wedge and reach' }),
-  V({ id: 'toyota-tacoma-2005-2015', mk: 'Toyota', md: 'Tacoma', y0: 2005, y1: 2015, b: 'truck',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer', clone: 'Dot yes, G needs a G cloner',
-       rem: [['fob', 'GQ43VT20T', '', '3B / 4B']], cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut',
-       dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes on blade trims', akl: 'OBD',
-       note: 'Base work trucks of these years often have no chip at all.', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-tundra-2000-2006', mk: 'Toyota', md: 'Tundra', y0: 2000, y1: 2006, b: 'truck',
-       kw: 'TOY43', il: 'TOY43', chip: 'None to 4C by year',
-       sys: 'Pre-immobilizer / early 4C', clone: '4C yes', rem: [['fob', '', '', 'Add-on']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes on chip trims',
-       on: 'Yes', akl: 'Cut by code, or OBD if chipped', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-tundra-2007-2013', mk: 'Toyota', md: 'Tundra', y0: 2007, y1: 2013, b: 'truck',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer', clone: 'Dot yes', rem: [['fob', 'GQ43VT20T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes',
-       on: 'Yes on blade trims', akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-tundra-2022-2025', mk: 'Toyota', md: 'Tundra', y0: 2022, y1: 2025, b: 'truck',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBX', '', '4B / 5B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes with a current H-capable tool',
-       on: 'No', akl: 'OBD + security wait; newest builds may need dealer',
-       note: 'Newest generation â€” check your tool covers it before you commit to the job.',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-4runner-1996-2002', mk: 'Toyota', md: '4Runner', y0: 1996, y1: 2002, b: 'suv',
-       kw: 'TOY43', il: 'TOY43', chip: 'None on most',
-       sys: 'Pre-immobilizer', clone: 'n/a', rem: [['fob', '', '', 'Add-on']], cs: 'TOY43 8-cut', sp: 8,
-       dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43 or impression', obd: 'n/a', on: 'n/a',
-       akl: 'Cut by code or decode', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-4runner-2003-2009', mk: 'Toyota', md: '4Runner', y0: 2003, y1: 2009, b: 'suv',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4D-67 dot',
-       sys: 'Toyota immobilizer', clone: 'Yes', rem: [['fob', 'GQ43VT14T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-4runner-2013-2024', mk: 'Toyota', md: '4Runner', y0: 2013, y1: 2024, b: 'suv',
-       kw: 'TOY44H', il: 'TOY44H-PT', oem: '89785-0D140',
-       chip: '8A / H chip', sys: 'Toyota immobilizer / smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '3B / 4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-highlander-2001-2007', mk: 'Toyota', md: 'Highlander', y0: 2001, y1: 2007, b: 'suv',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4C / 4D-67 dot by year',
-       sys: 'Toyota immobilizer', clone: 'Yes', rem: [['fob', 'GQ43VT14T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-highlander-2008-2013', mk: 'Toyota', md: 'Highlander', y0: 2008, y1: 2013, b: 'suv',
-       kw: 'TOY48', il: 'TOY44D-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer / smart entry', clone: 'Dot yes',
-       rem: [['prox', 'HYQ14AAB', '', '4B smart key']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'Blade trims', akl: 'OBD', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-highlander-2020-2024', mk: 'Toyota', md: 'Highlander', y0: 2020, y1: 2024, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBC', '', '4B / 5B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-rav4-2001-2005', mk: 'Toyota', md: 'RAV4', y0: 2001, y1: 2005, b: 'suv', kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4C', sys: 'Toyota immobilizer',
-       clone: 'Yes', rem: [['fob', '', '', '3B']], cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut',
-       dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes', akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-rav4-2006-2012', mk: 'Toyota', md: 'RAV4', y0: 2006, y1: 2012, b: 'suv', kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer', clone: 'Dot yes', rem: [['fob', 'GQ43VT20T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-rav4-2019-2025', mk: 'Toyota', md: 'RAV4', y0: 2019, y1: 2025, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBC', '', '3B / 4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes with an H-capable tool', on: 'No',
-       akl: 'OBD + 16-min wait', note: 'TNGA platform, highest-volume Toyota in the US right now.',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-sequoia-2001-2007', mk: 'Toyota', md: 'Sequoia', y0: 2001, y1: 2007, b: 'suv',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4C / 4D-67 dot by year',
-       sys: 'Toyota immobilizer', clone: 'Yes', rem: [['fob', 'GQ43VT14T', '', '3B / 4B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-sequoia-2008-2022', mk: 'Toyota', md: 'Sequoia', y0: 2008, y1: 2022, b: 'suv',
-       kw: 'TOY48', il: 'TOY44D-PT / TOY44H-PT by year',
-       chip: 'Dot to 2010, G 2011-2012, H 2013+', sys: 'Toyota smart entry', clone: 'Dot/G yes, H no',
-       rem: [['prox', 'HYQ14FBA', '', '4B / 5B']], sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'Blade trims early', akl: 'OBD; 16-min wait on H',
-       note: 'Long run spanning all three chip generations â€” check the key head stamp.',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-landcruiser-2008-2021', mk: 'Toyota', md: 'Land Cruiser', y0: 2008, y1: 2021,
-       b: 'suv', kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT / TOY44H-PT by year',
-       chip: 'G to 2012, H 2013+', sys: 'Toyota smart entry', clone: 'No on H',
-       rem: [['prox', 'HYQ14FBA', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       note: 'High-value vehicle. Verify ownership carefully on an AKL call.', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-fjcruiser-2007-2014', mk: 'Toyota', md: 'FJ Cruiser', y0: 2007, y1: 2014, b: 'suv',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4D-67 dot; G on 2011+',
-       sys: 'Toyota immobilizer', clone: 'Dot yes', rem: [['fob', 'GQ43VT20T', '', '3B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-sienna-2004-2010', mk: 'Toyota', md: 'Sienna', y0: 2004, y1: 2010, b: 'van',
-       kw: 'TOY43', il: 'TOY43-PT', chip: '4D-67 dot',
-       sys: 'Toyota immobilizer', clone: 'Yes',
-       rem: [['fob', 'GQ43VT20T', '', '4B / 5B w/ sliding doors']], cs: 'TOY43 8-cut', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes', akl: 'OBD',
-       note: 'Frequent lockout call â€” the sliding door is often the easier entry.',
-       entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-sienna-2021-2024', mk: 'Toyota', md: 'Sienna', y0: 2021, y1: 2024, b: 'van',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBX', '', '5B / 6B w/ sliding doors']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes with a current H-capable tool',
-       on: 'No', akl: 'OBD + security wait', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-4runner-2010-2012', mk: 'Toyota', md: '4Runner', y0: 2010, y1: 2012, b: 'suv',
-       kw: 'TOY44G', il: 'TOY44G-PT', chip: '4D-72 G chip',
-       sys: 'Toyota immobilizer', clone: 'Yes with a G-capable cloner',
-       rem: [['fob', 'GQ43VT20T', '', '3B / 4B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'Yes on blade trims', akl: 'OBD',
-       note: 'G chip years only â€” 2013 on is the H chip and a different job.', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-sienna-2011-2012', mk: 'Toyota', md: 'Sienna', y0: 2011, y1: 2012, b: 'van',
-       kw: 'TOY44G', il: 'TOY44G-PT', chip: '4D-72 G chip',
-       sys: 'Toyota immobilizer / smart entry', clone: 'Yes with a G-capable cloner',
-       rem: [['prox', 'HYQ14ADR', '', '5B / 6B w/ sliding doors']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'Blade trims', akl: 'OBD',
-       note: 'G chip years only.', entry: 'Lishi TOY48' }),
-  V({ id: 'toyota-sienna-2013-2020', mk: 'Toyota', md: 'Sienna', y0: 2013, y1: 2020, b: 'van',
-       kw: 'TOY44H', il: 'TOY44H-PT', oem: '89785-0D140',
-       chip: '8A / H chip (AES)', sys: 'Toyota smart entry', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '5B / 6B w/ sliding doors']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       note: 'Very common family-van lockout. Sliding door is often the easier entry.',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-es-2007-2012', mk: 'Lexus', md: 'ES 350', y0: 2007, y1: 2012,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT',
-       chip: '4D-67 dot; G on 2011+', sys: 'Lexus smart access', clone: 'Dot yes',
-       rem: [['prox', 'HYQ14AAB', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD',
-       note: 'Camry underneath.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-es-2013-2018', mk: 'Lexus', md: 'ES 350', y0: 2013, y1: 2018,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip', sys: 'Lexus smart access', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-is-2006-2013', mk: 'Lexus', md: 'IS 250 / IS 350', y0: 2006, y1: 2013,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT',
-       chip: '4D-67 dot; G on 2011+', sys: 'Lexus smart access', clone: 'Dot yes',
-       rem: [['prox', 'HYQ14AAB', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-is-2014-2020', mk: 'Lexus', md: 'IS', y0: 2014, y1: 2020,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip', sys: 'Lexus smart access', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '4B']], cs: 'TOY48', sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-rx-2004-2009', mk: 'Lexus', md: 'RX 330 / RX 350', y0: 2004, y1: 2009, b: 'suv',
-       kw: 'TOY48 / TOY43 by trim', il: 'TOY44D-PT',
-       chip: '4D-67 dot', sys: 'Lexus smart access', clone: 'Yes',
-       rem: [['prox', 'HYQ12BBX', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'Blade trims', akl: 'OBD',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-rx-2016-2022', mk: 'Lexus', md: 'RX 350', y0: 2016, y1: 2022, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip (AES)', sys: 'Lexus smart access', clone: 'No',
-       rem: [['prox', 'HYQ14FBA / HYQ14FBB', '', '4B / 5B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-gx460-2010-2023', mk: 'Lexus', md: 'GX 460', y0: 2010, y1: 2023, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT / TOY44H-PT by year',
-       chip: 'G to 2012, H 2013+', sys: 'Lexus smart access', clone: 'No on H',
-       rem: [['prox', 'HYQ14FBA', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No',
-       akl: 'OBD + 16-min wait on H', note: '4Runner platform underneath.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-lx570-2008-2021', mk: 'Lexus', md: 'LX 570', y0: 2008, y1: 2021, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT / TOY44H-PT by year',
-       chip: 'G to 2012, H 2013+', sys: 'Lexus smart access', clone: 'No on H',
-       rem: [['prox', 'HYQ14FBA', '', '4B']], cs: 'TOY48', sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait',
-       note: 'Land Cruiser platform. High value â€” verify ownership on AKL.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-nx-2015-2021', mk: 'Lexus', md: 'NX 200t / NX 300', y0: 2015, y1: 2021, b: 'suv',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT',
-       chip: '8A / H chip', sys: 'Lexus smart access', clone: 'No',
-       rem: [['prox', 'HYQ14FBA', '', '4B']], cs: 'TOY48', sp: 10, dp: 4, cut: 'Laser / sidewinder',
-       dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-gs-2006-2011', mk: 'Lexus', md: 'GS 300 / GS 350', y0: 2006, y1: 2011,
-      note: 'Lexus sold no 2012 GS in the US â€” the third generation ended in 2011 and the fourth arrived as a 2013. The year gap here is real.',
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT',
-       chip: '4D-67 dot', sys: 'Lexus smart access', clone: 'Yes',
-       rem: [['prox', 'HYQ14AAB', '', '4B smart key']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No', akl: 'OBD',
-       entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-ls460-2007-2017', mk: 'Lexus', md: 'LS 460', y0: 2007, y1: 2017,
-       kw: 'TOY48 (emergency blade)', il: 'TOY44D-PT / TOY44H-PT by year',
-       chip: 'Dot to 2010, G 2011-2012, H 2013+', sys: 'Lexus smart access',
-       clone: 'No on H', rem: [['prox', 'HYQ14ACX', '', '4B / 5B']], cs: 'TOY48', sp: 10, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi TOY48', obd: 'Yes', on: 'No',
-       akl: 'OBD; 16-min wait on H', entry: 'Lishi TOY48' }),
-  V({ id: 'scion-tc-2005-2016', mk: 'Scion', md: 'tC', y0: 2005, y1: 2016, kw: 'TOY43', il: 'TOY43-PT',
-       chip: '4D-67 dot; G on 2011+', sys: 'Toyota immobilizer',
-       clone: 'Dot yes', rem: [['fob', 'GQ43VT20T', '', '3B']], cs: 'TOY43 8-cut', sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes', akl: 'OBD',
-       note: 'Scion is Toyota â€” work it in the Toyota menu.', entry: 'Lishi TOY43' }),
-  V({ id: 'scion-xb-xd-2004-2015', mk: 'Scion', md: 'xB / xD', y0: 2004, y1: 2015, kw: 'TOY43',
-       il: 'TOY43-PT', chip: '4C / 4D-67 dot by year',
-       sys: 'Toyota immobilizer', clone: 'Yes', rem: [['fob', 'GQ43VT20T', '', '3B']],
-       cs: 'TOY43 8-cut', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43', obd: 'Yes', on: 'Yes',
-       akl: 'OBD', entry: 'Lishi TOY43' }),
-  V({ id: 'scion-frs-2013-2016', mk: 'Scion', md: 'FR-S', y0: 2013, y1: 2016, kw: 'SUB4',
-       il: 'SUB4-PT', chip: 'Subaru ID47 / Hitag3',
-       sys: 'Subaru immobilizer', clone: 'No', rem: [['prox', '', '', '3B']], sp: 8, dp: 4,
-       cut: 'Edge cut', dec: 'Lishi SUB4', obd: 'Yes â€” work it as a Subaru', on: 'No',
-       akl: 'OBD as Subaru BRZ', pin: 'Tool-dependent',
-       note: 'GOTCHA: Subaru build. Subaru blank and Subaru software, not Toyota.', entry: 'Lishi SUB4' }),
-  V({ id: 'scion-ia-2016', mk: 'Scion', md: 'iA', y0: 2016, y1: 2016, kw: 'MAZ24',
-       il: 'MAZ24R-PT', chip: 'ID49 / Hitag Pro (Mazda)',
-       sys: 'Mazda immobilizer', clone: 'No', rem: [['fob', '', '', '3B']], sp: 8, dp: 4,
-       cut: 'Laser / sidewinder', dec: 'Lishi MAZ24', obd: 'Yes â€” Mazda menu', on: 'No',
-       akl: 'OBD as a Mazda 2',
-       note: 'GOTCHA: rebadged Mazda 2, same as the Yaris iA that replaced it.', entry: 'Lishi MAZ24' }),
-
-  /* ===== FORD / LINCOLN / MERCURY ===== */
-  V({ id: 'ford-f150-1997-2003', mk: 'Ford', md: 'F-150', y0: 1997, y1: 2003, b: 'truck',
-      kw: 'H72', il: 'H72-PT', chip: '4C / PATS gen 1-2',
-      sys: 'PATS', clone: 'Yes on 4C', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Limited on early PATS', on: '2 working keys: insert/turn cycle', akl: 'Early PATS often needs the PCM â€” check before you commit',
-      note: '1996-1998 PATS is the awkward one. Confirm the year before quoting an AKL.', entry: 'Lishi FO38 or wedge and reach' }),
-  V({ id: 'ford-f150-2021-2024', mk: 'Ford', md: 'F-150', y0: 2021, y1: 2024, b: 'truck',
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro',
-      sys: 'PATS / IPC', clone: 'No', rem: [['prox', 'M3N-A3C054339', '', '5B w/ remote start']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait; newest builds may need dealer',
-      note: 'Latest generation â€” verify your tool covers it before you take the job.', entry: 'Lishi HU101' }),
-  V({ id: 'ford-superduty-1999-2010', mk: 'Ford', md: 'F-250/F-350 Super Duty', y0: 1999, y1: 2010, b: 'truck',
-      kw: 'H72 / H92', il: 'H92-PT', chip: '4C to 4D-63 40-bit by year',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes on later', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-superduty-2017-2022', mk: 'Ford', md: 'F-250/F-350 Super Duty', y0: 2017, y1: 2022, b: 'truck',
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro',
-      sys: 'PATS / IPC', clone: 'No', rem: [['prox', 'M3N-A2C931426', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: '2 fobs', akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-escape-2001-2007', mk: 'Ford', md: 'Escape', y0: 2001, y1: 2007, b: 'suv',
-      kw: 'H84', il: 'H84-PT', chip: '4C / 4D-63 40-bit',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-escape-2008-2012', mk: 'Ford', md: 'Escape', y0: 2008, y1: 2012, b: 'suv',
-      kw: 'H92', il: 'H92-PT', chip: '4D-63 40-bit',
-      sys: 'PATS', clone: 'Yes', rem: [['fob', 'CWTWB1U331', '', '4B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-escape-2020-2024', mk: 'Ford', md: 'Escape', y0: 2020, y1: 2024, b: 'suv',
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro',
-      sys: 'PATS', clone: 'No', rem: [['prox', 'M3N-A3C054339', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: 'No', akl: 'OBD + security wait', entry: 'Lishi HU101' }),
-  V({ id: 'ford-explorer-2002-2010', mk: 'Ford', md: 'Explorer', y0: 2002, y1: 2010, b: 'suv',
-      kw: 'H92 / H84', il: 'H92-PT', chip: '4D-63 40-bit',
-      sys: 'PATS', clone: 'Yes', rem: [['fob', 'CWTWB1U212', '', '4B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-explorer-2020-2024', mk: 'Ford', md: 'Explorer', y0: 2020, y1: 2024, b: 'suv',
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro',
-      sys: 'PATS / IPC', clone: 'No', rem: [['prox', 'M3N-A3C054339', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: 'No', akl: 'OBD + security wait', note: 'Police Interceptor Utility shares this platform.', entry: 'Lishi HU101' }),
-  V({ id: 'ford-focus-2000-2007', mk: 'Ford', md: 'Focus', y0: 2000, y1: 2007,
-      kw: 'FO38 (Tibbe)', il: 'FO21', chip: '4C on chipped trims',
-      sys: 'PATS', clone: 'Yes', sp: 6, dp: 4, cut: 'Tibbe', dec: 'Tibbe decoder â€” not an edge or laser machine',
-      obd: 'Limited', on: '2 working keys on chipped trims', akl: 'PCM work on early cars',
-      note: 'GOTCHA: Tibbe keyway. You need a dedicated Tibbe decoder and cutter â€” nothing else touches it.',
-      entry: 'Tibbe pick or wedge and reach' }),
-  V({ id: 'ford-focus-2008-2011', mk: 'Ford', md: 'Focus', y0: 2008, y1: 2011,
-      kw: 'H92', il: 'H92-PT', chip: '4D-63 40-bit',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'Ford dropped Tibbe for this generation â€” much easier than the car before it.', entry: 'Lishi FO38' }),
-  V({ id: 'ford-fusion-2006-2012', mk: 'Ford', md: 'Fusion', y0: 2006, y1: 2012,
-      kw: 'H92', il: 'H92-PT', chip: '4D-63 40-bit',
-      sys: 'PATS', clone: 'Yes', rem: [['fob', 'CWTWB1U345', '', '4B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-mustang-1996-2004', mk: 'Ford', md: 'Mustang', y0: 1996, y1: 2004,
-      kw: 'H72', il: 'H72-PT', chip: '4C / PATS gen 1-2',
-      sys: 'PATS', clone: 'Yes on 4C', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Limited on early PATS', on: '2 working keys', akl: 'Early PATS may need the PCM', entry: 'Lishi FO38' }),
-  V({ id: 'ford-mustang-2005-2014', mk: 'Ford', md: 'Mustang', y0: 2005, y1: 2014,
-      kw: 'H92', il: 'H92-PT', chip: '4D-63; 80-bit from 2011',
-      sys: 'PATS', clone: 'Yes with the right cloner', rem: [['fob', 'CWTWB1U331', '', '4B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-taurus-1996-2007', mk: 'Ford', md: 'Taurus', y0: 1996, y1: 2007,
-      kw: 'H72 / H84', il: 'H72-PT', chip: '4C / PATS',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Limited early', on: '2 working keys', akl: 'PCM work on the earliest', entry: 'Lishi FO38' }),
-  V({ id: 'ford-taurus-2008-2019', mk: 'Ford', md: 'Taurus', y0: 2008, y1: 2019,
-      kw: 'H92 / HU101 by year', il: 'H92-PT', chip: '4D-63; ID49 on later prox',
-      sys: 'PATS', clone: 'Blade yes', rem: [['prox', 'M3N-A2C31243300', '', '5B']],
-      sp: 8, dp: 5, cut: 'Edge or laser by year', dec: 'Lishi FO38 or HU101',
-      obd: 'Yes', on: '2 keys / 2 fobs', akl: 'OBD + timed access',
-      note: 'Spans the H92 to HU101 changeover â€” check the blade before cutting.', entry: 'Lishi by keyway' }),
-  V({ id: 'ford-edge-2007-2014', mk: 'Ford', md: 'Edge', y0: 2007, y1: 2014, b: 'suv',
-      kw: 'H92', il: 'H92-PT', chip: '4D-63; 80-bit from 2011',
-      sys: 'PATS', clone: 'Yes with the right cloner', rem: [['fob', 'CWTWB1U345', '', '4B / 5B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-edge-2015-2024', mk: 'Ford', md: 'Edge', y0: 2015, y1: 2024, b: 'suv',
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro',
-      sys: 'PATS / IPC', clone: 'No', rem: [['prox', 'M3N-A2C31243300', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: '2 fobs', akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-expedition-1997-2006', mk: 'Ford', md: 'Expedition', y0: 1997, y1: 2006, b: 'suv',
-      kw: 'H72 / H84', il: 'H72-PT', chip: '4C / PATS',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Limited early', on: '2 working keys', akl: 'OBD on later', entry: 'Lishi FO38' }),
-  V({ id: 'ford-expedition-2007-2014', mk: 'Ford', md: 'Expedition', y0: 2007, y1: 2014, b: 'suv',
-      kw: 'H92', il: 'H92-PT', chip: '4D-63; 80-bit from 2011',
-      sys: 'PATS', clone: 'Yes with the right cloner', rem: [['fob', 'CWTWB1U331', '', '4B / 5B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi FO38' }),
-  V({ id: 'ford-ranger-1998-2011', mk: 'Ford', md: 'Ranger', y0: 1998, y1: 2011, b: 'truck',
-      kw: 'H72 / H84', il: 'H72-PT', chip: 'None to 4C by trim',
-      sys: 'PATS on chipped trims', clone: 'Yes on 4C', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'Cut by code on non-chip trims',
-      note: 'Plenty of these work trucks have no chip at all â€” check before quoting programming. Ford sold no North American Ranger for 2012-2018; the gap in the years here is real.', entry: 'Lishi FO38' }),
-  V({ id: 'ford-eseries-1996-2014', mk: 'Ford', md: 'E-Series / Econoline', y0: 1996, y1: 2014, b: 'van',
-      kw: 'H72 / H92', il: 'H92-PT', chip: '4C to 4D-63 by year',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes on later', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'Fleet and shuttle work. Expect AKL with thin paperwork â€” verify ownership.', entry: 'Lishi FO38' }),
-  V({ id: 'ford-fiesta-2011-2019', mk: 'Ford', md: 'Fiesta', y0: 2011, y1: 2019,
-      kw: 'HU101', il: 'HU101-PT', chip: '4D-63 80-bit',
-      sys: 'PATS', clone: 'Yes with an 80-bit cloner', rem: [['flip', 'KR55WK48801', '', '3B / 4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access', entry: 'Lishi HU101' }),
-  V({ id: 'ford-flex-2009-2019', mk: 'Ford', md: 'Flex', y0: 2009, y1: 2019, b: 'suv',
-      kw: 'H92 / HU101 by year', il: 'H92-PT', chip: '4D-63; ID49 on later prox',
-      sys: 'PATS', clone: 'Blade yes', sp: 8, dp: 5, cut: 'Edge or laser by year', dec: 'Lishi FO38 or HU101',
-      obd: 'Yes', on: '2 keys / 2 fobs', akl: 'OBD + timed access', entry: 'Lishi by keyway' }),
-  V({ id: 'ford-crownvic-1998-2011', mk: 'Ford', md: 'Crown Victoria / P71', y0: 1998, y1: 2011,
-      kw: 'H72 / H84', il: 'H72-PT', chip: '4C / 4D-63',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes on later', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'Ex-police P71s turn up constantly at auction with one key or none.', entry: 'Lishi FO38' }),
-  V({ id: 'mercury-grandmarquis-1998-2011', mk: 'Mercury', md: 'Grand Marquis', y0: 1998, y1: 2011,
-      kw: 'H72 / H84', il: 'H72-PT', chip: '4C / 4D-63',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes on later', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'Same car as the Crown Victoria.', entry: 'Lishi FO38' }),
-  V({ id: 'lincoln-towncar-1998-2011', mk: 'Lincoln', md: 'Town Car', y0: 1998, y1: 2011,
-      kw: 'H72 / H84', il: 'H72-PT', chip: '4C / 4D-63',
-      sys: 'PATS', clone: 'Yes', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38',
-      obd: 'Yes on later', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'Livery fleets run these forever. Panther platform, same as Crown Vic.', entry: 'Lishi FO38' }),
-  V({ id: 'lincoln-navigator-2007-2017', mk: 'Lincoln', md: 'Navigator', y0: 2007, y1: 2017, b: 'suv',
-      kw: 'H92 / HU101 by year', il: 'H92-PT', chip: '4D-63; ID49 on later',
-      sys: 'PATS', clone: 'Blade yes', rem: [['prox', 'M3N5WY8406A', '', '5B']],
-      sp: 8, dp: 5, cut: 'Edge or laser by year', dec: 'Lishi FO38 or HU101',
-      obd: 'Yes', on: '2 keys / 2 fobs', akl: 'OBD + timed access', entry: 'Lishi by keyway' }),
-  V({ id: 'lincoln-mkz-2013-2020', mk: 'Lincoln', md: 'MKZ', y0: 2013, y1: 2020,
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 Hitag Pro',
-      sys: 'PATS / IPC', clone: 'No', rem: [['prox', 'M3N-A2C31243300', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: '2 fobs', akl: 'OBD + timed access',
-      note: 'Push-button gear selector â€” no mechanical ignition to pick.', entry: 'Lishi HU101' }),
-  /* ===== GM ===== */
-  V({ id: 'chevy-silverado-1999-2006', mk: 'Chevrolet', md: 'Silverado 1500', y0: 1999, y1: 2006, b: 'truck',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'PK3 transponder',
-      sys: 'Passlock / PK3', clone: 'Yes', rem: [['fob', 'LGQ25LR', '', '4B']],
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 or impression',
-      obd: 'Limited', on: '10-min relearn on PK3', akl: '30-min x3 relearn',
-      note: 'Passlock trims have no chip at all â€” the resistor is in the lock cylinder.', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-silverado-2020-2024', mk: 'Chevrolet', md: 'Silverado 1500', y0: 2020, y1: 2024, b: 'truck',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / newer AES',
-      sys: 'Passive entry / push start', clone: 'No', rem: [['prox', 'YG0G21TB2', '', '5B / 6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
-      note: 'Newest generation â€” confirm tool coverage before committing.', entry: 'Lishi HU100' }),
-  V({ id: 'gmc-sierra-1999-2006', mk: 'GMC', md: 'Sierra 1500', y0: 1999, y1: 2006, b: 'truck',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'PK3 transponder',
-      sys: 'Passlock / PK3', clone: 'Yes', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Limited', on: '10-min relearn', akl: '30-min x3 relearn', entry: 'Lishi GM37' }),
-  V({ id: 'gmc-sierra-2007-2013', mk: 'GMC', md: 'Sierra 1500', y0: 2007, y1: 2013, b: 'truck',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus (PK3+)',
-      sys: 'PK3+', clone: 'Yes', rem: [['fob', 'OUC60270', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: '30-min x3 relearn, no tool needed',
-      note: 'Free but slow â€” budget 35 minutes on site.', entry: 'Lishi GM37' }),
-  V({ id: 'gmc-sierra-2020-2024', mk: 'GMC', md: 'Sierra 1500', y0: 2020, y1: 2024, b: 'truck',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / newer AES',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'YG0G21TB2', '', '5B / 6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes with a current tool', on: 'Add-a-fob', akl: 'OBD + security relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-tahoe-2000-2006', mk: 'Chevrolet', md: 'Tahoe / Suburban', y0: 2000, y1: 2006, b: 'suv',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'PK3',
-      sys: 'Passlock / PK3', clone: 'Yes', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Limited', on: '10-min relearn', akl: '30-min x3 relearn', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-tahoe-2007-2014', mk: 'Chevrolet', md: 'Tahoe / Suburban', y0: 2007, y1: 2014, b: 'suv',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus (PK3+)',
-      sys: 'PK3+', clone: 'Yes', rem: [['fob', 'OUC60270', '', '5B / 6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: '30-min x3 relearn', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-tahoe-2021-2024', mk: 'Chevrolet', md: 'Tahoe / Suburban', y0: 2021, y1: 2024, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / newer AES',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'YG0G21TB2', '', '6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes with a current tool', on: 'Add-a-fob', akl: 'OBD + security relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-equinox-2005-2009', mk: 'Chevrolet', md: 'Equinox', y0: 2005, y1: 2009, b: 'suv',
-      kw: 'B111 / B106', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-equinox-2018-2024', mk: 'Chevrolet', md: 'Equinox', y0: 2018, y1: 2024, b: 'suv',
-      kw: 'B119', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Immobilizer 2 / passive entry', clone: 'No', rem: [['prox', 'HYQ4ES', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-malibu-2004-2012', mk: 'Chevrolet', md: 'Malibu', y0: 2004, y1: 2012,
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', rem: [['fob', 'OUC60270', '', '4B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-malibu-2016-2024', mk: 'Chevrolet', md: 'Malibu', y0: 2016, y1: 2024,
-      kw: 'B119', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Immobilizer 2', clone: 'No', rem: [['prox', 'HYQ4EA', '', '5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-impala-1999-2013', mk: 'Chevrolet', md: 'Impala', y0: 1999, y1: 2013,
-      kw: 'B102 / B111 by year', il: 'B111-PT', chip: 'PK3 / Circle Plus',
-      sys: 'Passlock / PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes on later', on: '30-min x3 relearn', akl: 'Relearn',
-      note: 'Long fleet-favourite run. Confirm which keyway before you cut.', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-cobalt-hhr-2005-2011', mk: 'Chevrolet', md: 'Cobalt / HHR', y0: 2005, y1: 2011,
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-trax-encore-2013-2022', mk: 'Chevrolet', md: 'Trax / Buick Encore', y0: 2013, y1: 2022, b: 'suv',
-      kw: 'HU100', il: 'B116-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Immobilizer 2', clone: 'No', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: '30-min x3 relearn on blade trims', akl: 'OBD or relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-camaro-2010-2015', mk: 'Chevrolet', md: 'Camaro', y0: 2010, y1: 2015,
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', rem: [['fob', 'OUC60270', '', '4B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-camaro-2016-2024', mk: 'Chevrolet', md: 'Camaro', y0: 2016, y1: 2024,
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'HYQ4EA', '', '5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-express-1996-2024', mk: 'Chevrolet', md: 'Express / GMC Savana', y0: 1996, y1: 2024, b: 'van',
-      kw: 'B102 / B111 by year', il: 'B111-PT', chip: 'None to Circle Plus by year',
-      sys: 'Passlock / PK3+', clone: 'Yes on chipped', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes on later', on: '30-min x3 relearn', akl: 'Relearn, or cut by code on non-chip',
-      note: 'Contractor and shuttle fleets. Very long run with little change â€” a good stock item.', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-colorado-2004-2012', mk: 'Chevrolet', md: 'Colorado / GMC Canyon', y0: 2004, y1: 2012, b: 'truck',
-      note: 'GM built no 2013-2014 Colorado for North America; the gap in the years here is real.',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'gmc-yukon-2007-2014', mk: 'GMC', md: 'Yukon / Yukon XL', y0: 2007, y1: 2014, b: 'suv',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', rem: [['fob', 'OUC60270', '', '5B / 6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'gmc-yukon-2015-2020', mk: 'GMC', md: 'Yukon / Yukon XL', y0: 2015, y1: 2020, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'M3N-32337100', '', '6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn', entry: 'Lishi HU100' }),
-  V({ id: 'buick-lacrosse-enclave-2008-2017', mk: 'Buick', md: 'LaCrosse / Enclave', y0: 2008, y1: 2017, b: 'suv',
-      kw: 'B111 / HU100 by year', il: 'B111-PT', chip: 'Circle Plus / 46E',
-      sys: 'PK3+ / Immobilizer 2', clone: 'Varies', rem: [['prox', 'OHT01060512', '', '5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 or HU100',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'OBD or relearn',
-      note: 'Spans the Circle Plus to 46E changeover â€” check the key.', entry: 'Lishi by keyway' }),
-  V({ id: 'cadillac-escalade-2007-2014', mk: 'Cadillac', md: 'Escalade', y0: 2007, y1: 2014, b: 'suv',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', rem: [['fob', 'OUC60270', '', '6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn',
-      note: 'High-theft vehicle. Verify ownership carefully on an AKL call.', entry: 'Lishi GM37' }),
-  V({ id: 'cadillac-escalade-2015-2020', mk: 'Cadillac', md: 'Escalade', y0: 2015, y1: 2020, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'HYQ2AB', '', '6B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn',
-      note: 'High-theft. Verify ownership.', entry: 'Lishi HU100' }),
-  V({ id: 'cadillac-cts-ats-2008-2019', mk: 'Cadillac', md: 'CTS / ATS', y0: 2008, y1: 2019,
-      kw: 'HU100 / B119 by year', il: 'B116-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Immobilizer 2 / passive entry', clone: 'No', rem: [['prox', 'NBG009768T', '', '5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn', entry: 'Lishi HU100' }),
-  V({ id: 'pontiac-saturn-2005-2010', mk: 'Pontiac', md: 'G6 / Saturn Aura', y0: 2005, y1: 2010,
-      kw: 'B111 / B106', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn',
-      note: 'Dead brands, live cars â€” still plenty on the road. The Saturn Vue of 2002-2010 is the same era and takes the same GM blanks.', entry: 'Lishi GM37' }),
-  /* ===== HONDA / ACURA ===== */
-  V({ id: 'honda-accord-1998-2002', mk: 'Honda', md: 'Accord', y0: 1998, y1: 2002,
-      kw: 'HO01', il: 'HO01', chip: 'None to 13-14 chip by trim',
-      sys: 'Early Honda immobilizer', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut',
-      dec: 'Lishi HON58R or impression', obd: 'Limited', on: 'No', akl: 'Cut by code on non-chip trims',
-      note: 'Many of these have no chip. Check before quoting programming.', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-accord-2003-2007', mk: 'Honda', md: 'Accord', y0: 2003, y1: 2007,
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46 (PCF7936)',
-      sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'OUCG8D-380H-A', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD; PIN by VIN on some', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-accord-2013-2017', mk: 'Honda', md: 'Accord', y0: 2013, y1: 2017,
-      kw: 'HON66', il: 'HO03-PT', chip: 'ID47 (Hitag3)',
-      sys: 'Honda smart entry', clone: 'No', rem: [['prox', 'ACJ932HK1210A', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Some tools want PIN by VIN', entry: 'Lishi HON66' }),
-  V({ id: 'honda-accord-2018-2022', mk: 'Honda', md: 'Accord', y0: 2018, y1: 2022,
-      kw: 'HON66', il: 'HO03-PT', chip: 'ID47 (Hitag3)',
-      sys: 'Honda smart entry', clone: 'No', rem: [['prox', 'CWTWB1G0090', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON66' }),
-  V({ id: 'honda-civic-2001-2005', mk: 'Honda', md: 'Civic', y0: 2001, y1: 2005,
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46 / 13-14 by year',
-      sys: 'Honda immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-civic-2012-2015', mk: 'Honda', md: 'Civic', y0: 2012, y1: 2015,
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46 (PCF7936)',
-      sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'MLBHLIK6-1T', '', '4B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-civic-2022-2025', mk: 'Honda', md: 'Civic', y0: 2022, y1: 2025,
-      kw: 'HON66', il: 'HO03-PT', chip: 'ID47 / newer Hitag',
-      sys: 'Honda smart entry', clone: 'No', rem: [['prox', 'KR5TP-4', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD', pin: 'Sometimes',
-      note: 'Newest generation â€” confirm tool coverage.', entry: 'Lishi HON66' }),
-  V({ id: 'honda-crv-2002-2006', mk: 'Honda', md: 'CR-V', y0: 2002, y1: 2006, b: 'suv',
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46',
-      sys: 'Honda immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-crv-2007-2011', mk: 'Honda', md: 'CR-V', y0: 2007, y1: 2011, b: 'suv',
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46',
-      sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'N5F-S0084A', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-pilot-2003-2015', mk: 'Honda', md: 'Pilot', y0: 2003, y1: 2015, b: 'suv',
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46',
-      sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'KR55WK49308', '', '4B / 5B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-odyssey-2005-2010', mk: 'Honda', md: 'Odyssey', y0: 2005, y1: 2010, b: 'van',
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46',
-      sys: 'Honda immobilizer', clone: 'Yes', rem: [['fob', 'OUCG8D-399H-A', '', '4B / 5B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes',
-      note: 'Common lockout â€” the sliding door is often the easier entry.', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-odyssey-2018-2024', mk: 'Honda', md: 'Odyssey', y0: 2018, y1: 2024, b: 'van',
-      kw: 'HON66', il: 'HO03-PT', chip: 'ID47 (Hitag3)',
-      sys: 'Honda smart entry', clone: 'No', rem: [['prox', 'KR5V2X', '', '6B / 7B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON66' }),
-  V({ id: 'honda-fit-hrv-2007-2022', mk: 'Honda', md: 'Fit / HR-V', y0: 2007, y1: 2022,
-      kw: 'HO01 / HON66 by year', il: 'HO01-PT', chip: 'ID46 / ID47 by year',
-      sys: 'Honda immobilizer', clone: 'ID46 yes', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi HON58R or HON66', obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes',
-      note: 'Spans the HO01 to HON66 changeover â€” check the blade.', entry: 'Lishi by keyway' }),
-  V({ id: 'honda-ridgeline-2006-2024', mk: 'Honda', md: 'Ridgeline', y0: 2006, y1: 2024, b: 'truck',
-      kw: 'HO01 / HON66 by year', il: 'HO01-PT', chip: 'ID46 / ID47 by year',
-      sys: 'Honda immobilizer / smart entry', clone: 'ID46 yes', sp: 8, dp: 4,
-      cut: 'Edge or laser by year', dec: 'Lishi HON58R or HON66',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi by keyway' }),
-  V({ id: 'acura-tl-tsx-2004-2014', mk: 'Acura', md: 'TL / TSX', y0: 2004, y1: 2014,
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46',
-      sys: 'Acura immobilizer', clone: 'Yes', rem: [['fob', 'KR55WK49308', '', '4B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'acura-tlx-rdx-2015-2024', mk: 'Acura', md: 'TLX / RDX', y0: 2015, y1: 2024, b: 'suv',
-      kw: 'HON66', il: 'HO03-PT', chip: 'ID47 (Hitag3)',
-      sys: 'Acura smart entry', clone: 'No', rem: [['prox', 'KR5V2X', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON66' }),
-
-  /* ===== NISSAN / INFINITI ===== */
-  V({ id: 'nissan-altima-2002-2006', mk: 'Nissan', md: 'Altima', y0: 2002, y1: 2006,
-      kw: 'DA31', il: 'DA31-PT', chip: 'ID46 / 4D-60 by year',
-      sys: 'NATS 5', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived PIN',
-      note: 'BCM label is behind the kick panel or under the dash.', entry: 'Lishi DA31' }),
-  V({ id: 'nissan-altima-2019-2024', mk: 'Nissan', md: 'Altima', y0: 2019, y1: 2024,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID47 / Hitag3 AES',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5TXN4', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-sentra-2000-2012', mk: 'Nissan', md: 'Sentra', y0: 2000, y1: 2012,
-      kw: 'DA31', il: 'DA31-PT', chip: 'ID46 / 4D-60 by year',
-      sys: 'NATS 5', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi DA31' }),
-  V({ id: 'nissan-versa-2007-2019', mk: 'Nissan', md: 'Versa', y0: 2007, y1: 2019,
-      kw: 'DA31 / NSN14 by trim', il: 'DA31-PT', chip: 'ID46 / ID47',
-      sys: 'NATS 5/6', clone: 'Some', sp: 8, dp: 4, cut: 'Edge or laser by trim',
-      dec: 'Lishi DA31 or NSN14', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Base trims are still a plain blade key â€” cheapest Nissan on the lot.', entry: 'Lishi by keyway' }),
-  V({ id: 'nissan-murano-2003-2020', mk: 'Nissan', md: 'Murano', y0: 2003, y1: 2020, b: 'suv',
-      kw: 'NSN14', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 5/6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-maxima-2004-2023', mk: 'Nissan', md: 'Maxima', y0: 2004, y1: 2023,
-      kw: 'NSN14', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 5/6', clone: 'No', rem: [['prox', 'KR5TXN7', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-rogue-2008-2013', mk: 'Nissan', md: 'Rogue', y0: 2008, y1: 2013, b: 'suv',
-      kw: 'NSN14', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5', clone: 'No', rem: [['prox', 'CWTWB1U808', '', '4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-rogue-2021-2024', mk: 'Nissan', md: 'Rogue', y0: 2021, y1: 2024, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'Hitag3 AES',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5TXN7', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-nv-2012-2021', mk: 'Nissan', md: 'NV / NV200', y0: 2012, y1: 2021, b: 'van',
-      kw: 'DA31 / NSN14 by trim', il: 'DA31-PT', chip: 'ID46',
-      sys: 'NATS 5/6', clone: 'Some', sp: 8, dp: 4, cut: 'Edge or laser', dec: 'Lishi DA31 or NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Fleet vans â€” verify ownership on AKL.', entry: 'Lishi by keyway' }),
-  /* ===== HYUNDAI / KIA ===== */
-  V({ id: 'hyundai-elantra-2001-2010', mk: 'Hyundai', md: 'Elantra', y0: 2001, y1: 2010,
-      kw: 'HY15 / HY20', il: 'HY15-PT', chip: 'ID46 / 4D-60 by year',
-      sys: 'Hyundai immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HY15 / HY20',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'Some early trims have no immobilizer at all.', entry: 'Lishi by keyway' }),
-  V({ id: 'hyundai-elantra-2017-2024', mk: 'Hyundai', md: 'Elantra', y0: 2017, y1: 2024,
-      kw: 'HY22', il: 'HY22-PT', chip: 'ID47 / ID46 by year',
-      sys: 'Hyundai immobilizer', clone: 'Varies', rem: [['prox', 'TQ8-FOB-4F11', '', '4B smart key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'The 2011-2021 Hyundai/Kia theft issue centres on non-immobilizer trims â€” check whether one is even fitted.', entry: 'Lishi HY22' }),
-  V({ id: 'hyundai-sonata-2006-2010', mk: 'Hyundai', md: 'Sonata', y0: 2006, y1: 2010,
-      kw: 'HY15 / HY20', il: 'HY20-PT', chip: 'ID46',
-      sys: 'Hyundai immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HY20',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi HY20' }),
-  V({ id: 'hyundai-sonata-2020-2024', mk: 'Hyundai', md: 'Sonata', y0: 2020, y1: 2024,
-      kw: 'HY22', il: 'HY22-PT', chip: 'ID47 / AES',
-      sys: 'Hyundai smart key', clone: 'No', rem: [['prox', 'TQ8-FOB-4F27', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi HY22' }),
-  V({ id: 'hyundai-santafe-2001-2012', mk: 'Hyundai', md: 'Santa Fe', y0: 2001, y1: 2012, b: 'suv',
-      kw: 'HY15 / HY20', il: 'HY20-PT', chip: 'ID46 / 4D-60',
-      sys: 'Hyundai immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HY20',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi HY20' }),
-  V({ id: 'hyundai-accent-2006-2022', mk: 'Hyundai', md: 'Accent', y0: 2006, y1: 2022,
-      kw: 'HY20 / HY22 by year', il: 'HY20-PT', chip: 'ID46 / ID47',
-      sys: 'Hyundai immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi HY20 or HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'Base trims frequently shipped with no immobilizer.', entry: 'Lishi by keyway' }),
-  V({ id: 'hyundai-palisade-2020-2024', mk: 'Hyundai', md: 'Palisade', y0: 2020, y1: 2024, b: 'suv',
-      kw: 'HY22', il: 'HY22-PT', chip: 'ID47 / AES',
-      sys: 'Hyundai smart key', clone: 'No', rem: [['prox', 'TQ8-FOB-4F19', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi HY22' }),
-  V({ id: 'kia-optima-2016-2020', mk: 'Kia', md: 'Optima', y0: 2016, y1: 2020,
-      kw: 'HY22', il: 'HY22-PT', chip: 'ID47 / ID46',
-      sys: 'Kia smart key', clone: 'Varies', rem: [['prox', 'SY5JFFGE04', '', '4B smart key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN', entry: 'Lishi HY22' }),
-  V({ id: 'kia-sportage-2005-2022', mk: 'Kia', md: 'Sportage', y0: 2005, y1: 2022, b: 'suv',
-      kw: 'KK10 / HY22 by year', il: 'KK10-PT', chip: 'ID46 / ID47',
-      sys: 'Kia immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi KIA7 or HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'kia-sedona-carnival-2006-2024', mk: 'Kia', md: 'Sedona / Carnival', y0: 2006, y1: 2024, b: 'van',
-      kw: 'KK10 / HY22 by year', il: 'KK10-PT', chip: 'ID46 / ID47',
-      sys: 'Kia immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi KIA7 or HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'Common family-van lockout. Sliding door is often the easier entry.', entry: 'Lishi by keyway' }),
-  V({ id: 'kia-telluride-2020-2024', mk: 'Kia', md: 'Telluride', y0: 2020, y1: 2024, b: 'suv',
-      kw: 'HY22', il: 'HY22-PT', chip: 'ID47 / AES',
-      sys: 'Kia smart key', clone: 'No', rem: [['prox', 'TQ8-FOB-4F24', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi HY22' }),
-
-  /* ===== STELLANTIS ===== */
-  V({ id: 'dodge-ram-1994-2008', mk: 'Dodge', md: 'Ram 1500', y0: 1994, y1: 2008, b: 'truck',
-      kw: 'Y157 / Y160', il: 'Y160-PT', chip: 'None to ID46 by year',
-      sys: 'SKIM / SKREEM', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL on chipped',
-      note: 'Pre-1998 trucks often have no chip.', entry: 'Lishi CY24 or wedge and reach' }),
-  V({ id: 'dodge-ram-2009-2012', mk: 'Dodge', md: 'Ram 1500', y0: 2009, y1: 2012, b: 'truck',
-      kw: 'CY24', il: 'Y164-PT', chip: 'ID46 (Hitag2)',
-      sys: 'SKREEM', clone: 'Yes on some', rem: [['fob', 'OHT692427AA', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'ram-1500-2019-2024', mk: 'Ram', md: '1500 (DT)', y0: 2019, y1: 2024, b: 'truck',
-      kw: 'SIP22', il: 'FT48-PT', chip: 'ID4A (Hitag AES)',
-      sys: 'Stellantis immobilizer', clone: 'No', rem: [['prox', 'OHT-4882056', '', '5B']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'GOTCHA: the DT generation moved to SIP22. The older CY24 blank will not fit.', entry: 'Lishi SIP22' }),
-  V({ id: 'jeep-grand-cherokee-1999-2010', mk: 'Jeep', md: 'Grand Cherokee', y0: 1999, y1: 2010, b: 'suv',
-      kw: 'Y157 / Y160', il: 'Y160-PT', chip: 'ID46 / 4D-64',
-      sys: 'SKIM / SKREEM', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'jeep-wrangler-1997-2006', mk: 'Jeep', md: 'Wrangler TJ', y0: 1997, y1: 2006, b: 'suv',
-      kw: 'Y157 / Y160', il: 'Y160-PT', chip: 'None to ID46 by year',
-      sys: 'SKIM on chipped', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'Cut by code on non-chip',
-      note: 'Soft top: go through the window zipper before you reach for a wedge.', entry: 'Soft top: unzip' }),
-  V({ id: 'jeep-compass-patriot-2007-2017', mk: 'Jeep', md: 'Compass / Patriot', y0: 2007, y1: 2017, b: 'suv',
-      kw: 'CY24', il: 'Y164-PT', chip: 'ID46 (Hitag2)',
-      sys: 'SKREEM', clone: 'Yes on some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'jeep-gladiator-2020-2024', mk: 'Jeep', md: 'Gladiator', y0: 2020, y1: 2024, b: 'truck',
-      kw: 'SIP22', il: 'FT48-PT', chip: 'ID4A (Hitag AES)',
-      sys: 'Stellantis immobilizer', clone: 'No', rem: [['prox', 'OHT1130261', '', '4B / 5B']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'JL Wrangler platform â€” SIP22, not CY24.', entry: 'Lishi SIP22' }),
-  V({ id: 'chrysler-300-2005-2010', mk: 'Chrysler', md: '300 / Dodge Magnum', y0: 2005, y1: 2010,
-      kw: 'CY24', il: 'Y164-PT', chip: 'ID46 (Hitag2)',
-      sys: 'SKREEM', clone: 'Yes on some', rem: [['fob', 'KOBDT04A', '', '4B / 5B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'dodge-journey-durango-2008-2023', mk: 'Dodge', md: 'Journey / Durango', y0: 2008, y1: 2023, b: 'suv',
-      kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: 'ID46 (Hitag2)',
-      sys: 'RFHM / SKREEM', clone: 'No on prox', rem: [['prox', 'M3N-40821302', '', '5B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: 'Add-a-key with 2 working', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'fiat-500-2012-2019', mk: 'Fiat', md: '500', y0: 2012, y1: 2019,
-      kw: 'SIP22', il: 'FT48-PT', chip: 'ID46 (Hitag2)',
-      sys: 'Fiat immobilizer', clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi SIP22' }),
-
-  /* ===== EURO ===== */
-  V({ id: 'vw-jetta-golf-1999-2010', mk: 'Volkswagen', md: 'Jetta / Golf (Mk4-Mk5)', y0: 1999, y1: 2010,
-      kw: 'HU66', il: 'HU66AT4', chip: 'ID48 (Megamos)',
-      sys: 'Immobilizer 2 / 3', clone: 'With a capable cloner', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Yes on Immo 2/3', on: 'No', akl: 'Often needs cluster / immo data', pin: 'CS code',
-      note: 'Immobilizer 2 is far friendlier than the Immo 4 cars that followed.', entry: 'Lishi HU66' }),
-  V({ id: 'vw-passat-2006-2019', mk: 'Volkswagen', md: 'Passat', y0: 2006, y1: 2019,
-      kw: 'HU66', il: 'HU66AT4', chip: 'ID48; MQB on later',
-      sys: 'Immobilizer 4 / MQB', clone: 'ID48 only', rem: [['flip', 'NBG010180T', '', '4B flip']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Yes with the right tool', on: 'No', akl: 'MQB is a specialist job', pin: 'Component security',
-      note: 'Establish MQB vs non-MQB before you quote â€” different job, different price.', entry: 'Lishi HU66' }),
-  V({ id: 'vw-atlas-2018-2024', mk: 'Volkswagen', md: 'Atlas', y0: 2018, y1: 2024, b: 'suv',
-      kw: 'HU162T', il: 'HU162T-PT', chip: 'MQB (AES)',
-      sys: 'MQB immobilizer', clone: 'No', sp: 9, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU162T',
-      obd: 'MQB-capable tool only', on: 'No', akl: 'MQB AKL â€” specialist', pin: 'Component security',
-      entry: 'Lishi HU162T' }),
-  V({ id: 'audi-q5-a6-2009-2024', mk: 'Audi', md: 'Q5 / A6', y0: 2009, y1: 2024, b: 'suv',
-      kw: 'HU66 / HU162T by year', il: 'HU66AT4', chip: 'ID48 / MQB AES',
-      sys: 'Immobilizer 4 / MQB', clone: 'ID48 only', sp: 8, dp: 4, cut: 'Laser / sidewinder',
-      dec: 'Lishi HU66 or HU162T', obd: 'Often bench work', on: 'No',
-      akl: 'Cluster / immo data usually required', pin: 'CS code',
-      note: 'Price these as specialist work or refer out.', entry: 'Lishi by keyway' }),
-  V({ id: 'bmw-3series-2012-2019', mk: 'BMW', md: '3 Series (F30)', y0: 2012, y1: 2018,
-      kw: 'HU100R', il: 'BMW1', chip: 'FEM / BDC',
-      sys: 'FEM-BDC', clone: 'No', rem: [['prox', 'NBGIDGNG1', '', '3B / 4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100R',
-      obd: 'Usually bench â€” FEM/BDC module work', on: 'No', akl: 'FEM/BDC read, ISN required', pin: 'ISN',
-      note: 'Not a driveway job. Quote high or refer out. The G20 that replaces this for 2019 has its own record and is a harder job again.', entry: 'Lishi HU100R' }),
-  V({ id: 'bmw-x3-x5-2007-2018', mk: 'BMW', md: 'X3 / X5', y0: 2007, y1: 2018, b: 'suv',
-      kw: 'HU92 / HU100R by year', il: 'HU92', chip: 'CAS3 / FEM-BDC',
-      sys: 'CAS3 / FEM-BDC', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder',
-      dec: 'Lishi HU92 or HU100R', obd: 'Often bench', on: 'No', akl: 'Module read, ISN required', pin: 'ISN',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'mini-cooper-2007-2024', mk: 'Mini', md: 'Cooper', y0: 2007, y1: 2024,
-      kw: 'HU92 / HU100R by year', il: 'HU92', chip: 'CAS / FEM-BDC',
-      sys: 'BMW CAS / FEM', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder',
-      dec: 'Lishi HU92 or HU100R', obd: 'Often bench', on: 'No', akl: 'BMW procedure, ISN required', pin: 'ISN',
-      note: 'A BMW in a small body â€” price it that way.', entry: 'Lishi by keyway' }),
-  V({ id: 'mercedes-eclass-2003-2016', mk: 'Mercedes-Benz', md: 'E-Class', y0: 2003, y1: 2016,
-      kw: 'HU64', il: 'HU64', chip: 'FBS3 (infrared)',
-      sys: 'FBS3 / DAS3', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU64',
-      obd: 'No â€” EIS/ESL work', on: 'No', akl: 'EIS read, password calc, key file write', pin: 'Password from EIS',
-      note: 'Specialist job. Price it as one.', entry: 'Lishi HU64' }),
-  V({ id: 'volvo-xc60-xc90-2008-2024', mk: 'Volvo', md: 'XC60 / XC90', y0: 2008, y1: 2024, b: 'suv',
-      kw: 'HU56R', il: 'HU56R', chip: 'Volvo semi-smart / CEM',
-      sys: 'Volvo CEM', clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU56R',
-      obd: 'Tool-dependent, often CEM work', on: 'No', akl: 'CEM procedure', pin: 'Tool-dependent',
-      note: 'Niche. Confirm your tool covers Volvo before you take the call.', entry: 'Lishi HU56R' }),
-
-  /* ===== SUBARU / MAZDA / MITSUBISHI ===== */
-  V({ id: 'subaru-outback-legacy-2005-2014', mk: 'Subaru', md: 'Outback / Legacy', y0: 2005, y1: 2014, b: 'suv',
-      kw: 'DAT17 / SUB4', il: 'DAT17', chip: '4D-62 / ID46',
-      sys: 'Subaru immobilizer', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DAT17 / SUB4',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN/seed', pin: 'Tool-dependent', entry: 'Lishi by keyway' }),
-  V({ id: 'subaru-outback-2020-2024', mk: 'Subaru', md: 'Outback', y0: 2020, y1: 2024, b: 'suv',
-      kw: 'SUB4 (emergency blade)', il: 'SUB4-PT', chip: 'ID47 / Hitag3 AES',
-      sys: 'Subaru immobilizer', clone: 'No', rem: [['prox', 'HYQ14AHK', '', '4B smart key']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN/seed', pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
-  V({ id: 'subaru-wrx-2008-2021', mk: 'Subaru', md: 'Impreza WRX / WRX / STI', y0: 2008, y1: 2021,
-      kw: 'SUB4', il: 'SUB4-PT', chip: 'ID46 / ID47 by year',
-      sys: 'Subaru immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN/seed', pin: 'Tool-dependent',
-      note: 'High-theft enthusiast car. Verify ownership on AKL.', entry: 'Lishi SUB4' }),
-  V({ id: 'mazda-6-2003-2021', mk: 'Mazda', md: 'Mazda6', y0: 2003, y1: 2021,
-      kw: 'MAZ24 / MZ34 by year', il: 'MAZ24R-PT', chip: 'ID46 / ID49 by year',
-      sys: 'Mazda immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi MAZ24 or MZ34', obd: 'Yes', on: 'Limited', akl: 'OBD', entry: 'Lishi by keyway' }),
-  V({ id: 'mazda-cx9-cx30-2007-2024', mk: 'Mazda', md: 'CX-9 / CX-30', y0: 2007, y1: 2024, b: 'suv',
-      kw: 'MAZ24', il: 'MAZ24R-PT', chip: 'ID49 / Hitag Pro',
-      sys: 'Mazda immobilizer', clone: 'No', rem: [['prox', 'WAZSKE13D01', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi MAZ24',
-      obd: 'Yes', on: 'Limited', akl: 'OBD', entry: 'Lishi MAZ24' }),
-  V({ id: 'mitsubishi-lancer-2002-2017', mk: 'Mitsubishi', md: 'Lancer / Eclipse', y0: 2002, y1: 2017,
-      kw: 'MIT11', il: 'MIT11-PT', chip: 'ID46 / 4D-61',
-      sys: 'Mitsubishi immobilizer', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi MIT11',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'Often', entry: 'Lishi MIT11' }),
-
-  /* ===== POWERSPORTS / EQUIPMENT ===== */
-  V({ id: 'harley-2014-2024', mk: 'Harley-Davidson', md: 'Touring / Softail (HFSM)', y0: 2014, y1: 2024, b: 'moto',
-      kw: 'HD103', il: 'HD103', chip: 'None in the key â€” HFSM fob is separate',
-      sys: 'Hands-free security module', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut',
-      dec: 'Impression or decode the ignition; saddlebags often share a code',
-      obd: 'n/a', on: 'Fob pairing through the odometer menu', akl: 'Cut by code or impression, then pair the fob',
-      note: 'High-margin, low-tool work. The blade and the fob are two separate problems.',
-      port: 'n/a', entry: 'n/a' }),
-  V({ id: 'honda-moto-common', mk: 'Honda', md: 'Motorcycle / ATV (most)', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None on most; HISS on later sport bikes',
-      sys: 'HISS on some', clone: 'HISS needs programming', sp: 6, dp: 4, cut: 'Edge cut',
-      dec: 'Impression or decode the ignition', obd: 'n/a', on: 'HISS pairing needs the red master key',
-      akl: 'Cut by code; HISS AKL usually means dealer',
-      note: 'GOTCHA: if it has HISS and the red master key is gone, it is a dealer job.',
-      port: 'n/a', entry: 'n/a' }),
-  V({ id: 'yamaha-moto-common', mk: 'Yamaha', md: 'Motorcycle / ATV (most)', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'YH35', il: 'YH35', chip: 'None on most; immobilizer on later',
-      sys: 'Yamaha immobilizer on some', clone: 'n/a on most', sp: 6, dp: 4, cut: 'Edge cut',
-      dec: 'Impression or decode', obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      port: 'n/a', entry: 'n/a' }),
-  V({ id: 'kawasaki-suzuki-moto', mk: 'Kawasaki', md: 'Motorcycle / ATV (most)', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'KA13 / SUZ14', il: 'KA13', chip: 'None on most',
-      sys: 'None on most', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', port: 'n/a', entry: 'n/a' }),
-  V({ id: 'canam-brp-2010-2026', mk: 'Can-Am', md: 'Maverick / Defender', y0: 2010, y1: 2026, b: 'moto',
-      kw: 'Can-Am / BRP', chip: 'D.E.S.S. key on some models', sys: 'BRP D.E.S.S.', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the ignition',
-      obd: 'n/a', on: 'D.E.S.S. tether keys pair through the dealer tool', akl: 'Cut by code where a mechanical lock is fitted',
-      note: 'Side-by-sides are common rural calls. Confirm whether it is a mechanical key or a D.E.S.S. tether before you drive out. The Spyder and Ryker road machines are a separate record here, and so are the Outlander and Renegade quads.',
-      port: 'n/a', entry: 'n/a' }),
-  V({ id: 'equipment-common', mk: 'Caterpillar', md: 'Equipment master keys (CAT / Deere / Case)', y0: 1970, y1: 2026, b: 'equip',
-      kw: 'CAT 5P8500 / Deere AR51481', il: '1690 / 1660', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 3, cut: 'Edge cut', dec: 'Standard master keys â€” usually just cut from stock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut from the standard master blank',
-      note: 'Most heavy equipment uses a small set of common master keys. Job-site calls are quick money if you stock them.',
-      port: 'n/a', entry: 'n/a' }),
-
-  V({ id: 'lexus-es-1997-2006', mk: 'Lexus', md: 'ES 300 / ES 330', y0: 1997, y1: 2006,
-      kw: 'TOY48 / TOY43 by year', il: 'TOY43-PT', chip: '4C; 4D-67 dot on later',
-      sys: 'Lexus immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi TOY43 or TOY48', obd: 'Yes', on: 'Yes on blade trims', akl: 'OBD',
-      note: 'Camry underneath. Confirm the blade before cutting â€” this run spans the changeover.', entry: 'Lishi by keyway' }),
-  V({ id: 'lexus-es-2019-2025', mk: 'Lexus', md: 'ES 350', y0: 2019, y1: 2025,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBF', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-is-2021-2025', mk: 'Lexus', md: 'IS', y0: 2021, y1: 2025,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBF', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-gs-1998-2005', mk: 'Lexus', md: 'GS 300 / GS 400 / GS 430', y0: 1998, y1: 2005,
-      kw: 'TOY48', il: 'TOY48', chip: '4C',
-      sys: 'Lexus immobilizer', clone: 'Yes', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes', on: 'Yes', akl: 'OBD', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-gs-2013-2020', mk: 'Lexus', md: 'GS 350 / GS 450h', y0: 2013, y1: 2020,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBA', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-ls-1995-2006', mk: 'Lexus', md: 'LS 400 / LS 430', y0: 1995, y1: 2006,
-      kw: 'TOY48 / TOY40 by year', il: 'TOY48', chip: 'None early; 4C from the late 90s',
-      sys: 'Lexus immobilizer on later', clone: 'Yes on 4C', sp: 10, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes on chipped', on: 'Yes', akl: 'Cut by code on the earliest; OBD on chipped',
-      note: 'Early LS 400s predate the immobilizer entirely.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-ls-2018-2024', mk: 'Lexus', md: 'LS 500', y0: 2018, y1: 2024,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBF', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait',
-      note: 'High value â€” verify ownership on an AKL call.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-rx-1999-2003', mk: 'Lexus', md: 'RX 300', y0: 1999, y1: 2003, b: 'suv',
-      kw: 'TOY43 / TOY48 by trim', il: 'TOY43-PT', chip: '4C',
-      sys: 'Lexus immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge or laser by trim',
-      dec: 'Lishi TOY43 or TOY48', obd: 'Yes', on: 'Yes', akl: 'OBD', entry: 'Lishi by keyway' }),
-  V({ id: 'lexus-rx-2023-2025', mk: 'Lexus', md: 'RX 350 / RX 500h', y0: 2023, y1: 2025, b: 'suv',
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBX', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait; newest builds may need dealer',
-      note: 'Newest generation â€” confirm tool coverage before committing.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-gx470-2003-2009', mk: 'Lexus', md: 'GX 470', y0: 2003, y1: 2009, b: 'suv',
-      kw: 'TOY43', il: 'TOY43-PT', chip: '4D-67 dot',
-      sys: 'Lexus immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43',
-      obd: 'Yes', on: 'Yes', akl: 'OBD', note: '4Runner platform underneath.', entry: 'Lishi TOY43' }),
-  V({ id: 'lexus-lx470-1998-2007', mk: 'Lexus', md: 'LX 470', y0: 1998, y1: 2007, b: 'suv',
-      kw: 'TOY43 / TOY48 by year', il: 'TOY43-PT', chip: '4C / 4D-67 dot',
-      sys: 'Lexus immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi TOY43 or TOY48', obd: 'Yes', on: 'Yes', akl: 'OBD',
-      note: 'Land Cruiser 100 platform.', entry: 'Lishi by keyway' }),
-  V({ id: 'lexus-lx600-2022-2025', mk: 'Lexus', md: 'LX 600', y0: 2022, y1: 2025, b: 'suv',
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBX', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait',
-      note: 'High value. Verify ownership on AKL.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-nx-2022-2025', mk: 'Lexus', md: 'NX', y0: 2022, y1: 2025, b: 'suv',
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBX', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-rc-2015-2024', mk: 'Lexus', md: 'RC / RC F', y0: 2015, y1: 2024,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBA', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes', on: 'No', akl: 'OBD + 16-min wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-lc-2018-2024', mk: 'Lexus', md: 'LC 500', y0: 2018, y1: 2024,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBF', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait',
-      note: 'Low volume, high value. Verify ownership.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-ct200h-2011-2017', mk: 'Lexus', md: 'CT 200h', y0: 2011, y1: 2017,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44G-PT', chip: 'G chip to 2012, H 2013+',
-      sys: 'Lexus smart access', clone: 'G yes, H no', rem: [['prox', 'HYQ14ACX', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes', on: 'No', akl: 'OBD; 16-min wait on H',
-      note: 'Prius platform. Spans the G to H changeover â€” check the key.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-ux-2019-2025', mk: 'Lexus', md: 'UX 200 / UX 250h', y0: 2019, y1: 2025, b: 'suv',
-      kw: 'TOY48 (emergency blade)', il: 'TOY44H-PT', chip: '8A / H chip (AES)',
-      sys: 'Lexus smart access', clone: 'No', rem: [['prox', 'HYQ14FBF', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + security wait', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-sc430-2002-2010', mk: 'Lexus', md: 'SC 430', y0: 2002, y1: 2010,
-      kw: 'TOY48', il: 'TOY44D-PT', chip: '4D-67 dot',
-      sys: 'Lexus immobilizer / early smart access', clone: 'Yes', rem: [['prox', 'HYQ12BBX', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes', on: 'Blade trims', akl: 'OBD',
-      note: 'Folding hard top â€” do not force the deck lid on a lockout.', entry: 'Lishi TOY48' }),
-  V({ id: 'lexus-hs250h-2010-2012', mk: 'Lexus', md: 'HS 250h', y0: 2010, y1: 2012,
-      kw: 'TOY48 (emergency blade)', il: 'TOY44G-PT', chip: 'G chip',
-      sys: 'Lexus smart access', clone: 'Yes with a G-capable cloner', rem: [['prox', 'HYQ14AAB', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi TOY48',
-      obd: 'Yes', on: 'No', akl: 'OBD', entry: 'Lishi TOY48' }),
-  /* ===== INFINITI ===== */
-  V({ id: 'infiniti-g20-1999-2002', mk: 'Infiniti', md: 'G20', y0: 1999, y1: 2002,
-      kw: 'DA31', il: 'DA31-PT', chip: 'None to 4D-60 by year',
-      sys: 'NATS 4 on chipped', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Limited', on: 'No', akl: 'OBD + PIN on chipped; cut by code otherwise', pin: 'YES on chipped',
-      note: 'Early NATS. Some of these have no chip at all.', entry: 'Lishi DA31' }),
-  V({ id: 'infiniti-i30-i35-1996-2004', mk: 'Infiniti', md: 'I30 / I35', y0: 1996, y1: 2004,
-      kw: 'DA31', il: 'DA31-PT', chip: '4D-60 on chipped',
-      sys: 'NATS 4/5', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Yes on later', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived',
-      note: 'Nissan Maxima underneath.', entry: 'Lishi DA31' }),
-  V({ id: 'infiniti-q45-1997-2006', mk: 'Infiniti', md: 'Q45', y0: 1997, y1: 2006,
-      kw: 'DA31 / NSN14 by year', il: 'DA31-PT', chip: '4D-60 / ID46 by year',
-      sys: 'NATS 4/5', clone: 'Some', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi DA31 or NSN14', obd: 'Yes on later', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'The 2002+ Q45 was among the first US cars with a proximity key.', entry: 'Lishi by keyway' }),
-  V({ id: 'infiniti-g35-2003-2007', mk: 'Infiniti', md: 'G35', y0: 2003, y1: 2007,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5', clone: 'No on Intelligent Key', rem: [['prox', 'KBRTN001', '', '4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + 4-digit PIN', pin: 'YES â€” BCM-derived',
-      note: 'Base coupes shipped with a plain blade key; the sedan usually has the Intelligent Key.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-g37-2008-2013', mk: 'Infiniti', md: 'G37 / G25', y0: 2008, y1: 2013,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5/6', clone: 'No', rem: [['prox', 'KR55WK48903', '', '4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-q50-2014-2025', mk: 'Infiniti', md: 'Q50', y0: 2014, y1: 2025,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID47 / Hitag3 AES',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B / 5B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-q60-2014-2022', mk: 'Infiniti', md: 'Q60', y0: 2014, y1: 2022,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID47 / Hitag3',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-m35-m45-2006-2010', mk: 'Infiniti', md: 'M35 / M45', y0: 2006, y1: 2010,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5', clone: 'No', rem: [['prox', 'KBRTN001', '', '4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-m37-m56-2011-2013', mk: 'Infiniti', md: 'M37 / M56', y0: 2011, y1: 2013,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR55WK49622', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-q70-2014-2019', mk: 'Infiniti', md: 'Q70', y0: 2014, y1: 2019,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID47 / Hitag3',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Renamed M â€” same platform.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-fx-2003-2008', mk: 'Infiniti', md: 'FX35 / FX45', y0: 2003, y1: 2008, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5', clone: 'No', rem: [['prox', 'KBRTN001', '', '4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-fx-2009-2013', mk: 'Infiniti', md: 'FX35 / FX37 / FX50', y0: 2009, y1: 2013, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR55WK49622', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx70-2014-2017', mk: 'Infiniti', md: 'QX70', y0: 2014, y1: 2017, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID47 / Hitag3',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Renamed FX.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx4-1997-2003', mk: 'Infiniti', md: 'QX4', y0: 1997, y1: 2003, b: 'suv',
-      kw: 'DA31', il: 'DA31-PT', chip: 'None to 4D-60 by year',
-      sys: 'NATS 4 on chipped', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Limited', on: 'No', akl: 'Cut by code on non-chip; OBD + PIN otherwise', pin: 'YES on chipped',
-      note: 'Nissan Pathfinder underneath.', entry: 'Lishi DA31' }),
-  V({ id: 'infiniti-qx56-2004-2010', mk: 'Infiniti', md: 'QX56', y0: 2004, y1: 2010, b: 'suv',
-      kw: 'NSN14 / DA31 by trim', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5', clone: 'No', rem: [['prox', 'CWTWB1U733', '', '4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Nissan Armada / Titan platform.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx80-2011-2025', mk: 'Infiniti', md: 'QX56 / QX80', y0: 2011, y1: 2025, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5TXN7', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'High value and high theft. Verify ownership on an AKL call.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-ex-2008-2013', mk: 'Infiniti', md: 'EX35 / EX37', y0: 2008, y1: 2013, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5/6', clone: 'No', rem: [['prox', 'KR55WK48903', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx50-2014-2018', mk: 'Infiniti', md: 'QX50', y0: 2014, y1: 2018, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 / ID47',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR55WK48903', '', '4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Renamed EX â€” same platform.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx50-2019-2025', mk: 'Infiniti', md: 'QX50 / QX55', y0: 2019, y1: 2025, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID47 / Hitag3 AES',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5TXN7', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'All-new platform for 2019 â€” not the old EX/QX50.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx60-2013-2020', mk: 'Infiniti', md: 'JX35 / QX60', y0: 2013, y1: 2020, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Launched as the JX35 for 2013, renamed QX60 for 2014. Same vehicle.', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx60-2021-2025', mk: 'Infiniti', md: 'QX60', y0: 2021, y1: 2025, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'Hitag3 AES',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5TXN7', '', '5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi NSN14' }),
-  V({ id: 'infiniti-qx30-2017-2019', mk: 'Infiniti', md: 'QX30', y0: 2017, y1: 2019, b: 'suv',
-      kw: 'HU64 (Mercedes)', il: 'HU64', chip: 'Mercedes FBS-family',
-      sys: 'Mercedes platform immobilizer', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU64',
-      obd: 'No â€” Mercedes EIS procedure', on: 'No', akl: 'Mercedes-style EIS work, not a Nissan job', pin: 'Mercedes password',
-      note: 'GOTCHA: built on the Mercedes GLA platform with Mercedes electronics. Nissan software and NSN14 blanks are both wrong here. Price and tool it as a Mercedes.',
-      entry: 'Lishi HU64' }),
-
-  /* Models below were found missing by cross-checking the seed against the NHTSA
-     vPIC database; the year ranges come from vPIC, the key data does not. */
-  V({ id: 'dodge-dakota-1997-2011', mk: 'Dodge', md: 'Dakota', y0: 1997, y1: 2011, b: 'truck',
-      kw: 'Y157 / CY24 by year', il: 'Y160-PT', chip: 'None early; ID46 later',
-      sys: 'SKIM / SKREEM on chipped', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'Cut by code on non-chip; OBD + PIN otherwise',
-      pin: 'YES for AKL on chipped', entry: 'Lishi CY24' }),
-  V({ id: 'jeep-liberty-2002-2012', mk: 'Jeep', md: 'Liberty', y0: 2002, y1: 2012, b: 'suv',
-      kw: 'CY24 / Y160', il: 'Y160-PT', chip: 'ID46 (Hitag2)',
-      sys: 'SKREEM', clone: 'Yes on some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'chrysler-town-country-1996-2016', mk: 'Chrysler', md: 'Town and Country', y0: 1996, y1: 2016, b: 'van',
-      kw: 'Y157 / CY24 by year', il: 'Y164-PT', chip: 'None early; ID46 from the 2000s',
-      sys: 'SKIM / SKREEM', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL',
-      note: 'Very common minivan lockout. Sliding door is often the easier entry.', entry: 'Lishi CY24' }),
-  V({ id: 'chevy-corvette-1997-2013', mk: 'Chevrolet', md: 'Corvette (C5/C6)', y0: 1997, y1: 2013,
-      kw: 'B99 / B111 by year', il: 'B111-PT', chip: 'VATS pellet early; Circle Plus later',
-      sys: 'PASS-Key / PK3+', clone: 'Circle Plus yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes on later', on: '30-min x3 relearn', akl: 'Relearn on PK3+',
-      note: 'C6 keyless trims use a fob, not a blade, in the ignition.', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-blazer-s10-1995-2005', mk: 'Chevrolet', md: 'Blazer / S-10 Blazer', y0: 1995, y1: 2005, b: 'suv',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'VATS pellet / PK3 by year',
-      sys: 'VATS / Passlock', clone: 'n/a on pellet', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 or impression',
-      obd: 'Limited', on: '10-min relearn on Passlock', akl: 'Read the pellet value, or 30-min relearn',
-      note: 'Different vehicle entirely from the 2019+ Blazer that reuses the name. Chevrolet sold no Blazer at all for 2006-2018, so that year gap is real.', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-blazer-2019-2024', mk: 'Chevrolet', md: 'Blazer', y0: 2019, y1: 2024, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'HYQ4ES', '', '5B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'Add-a-fob', akl: 'OBD + relearn',
-      note: 'Name reused â€” nothing in common with the S-10 Blazer.', entry: 'Lishi HU100' }),
-  V({ id: 'chevy-astro-safari-1995-2005', mk: 'Chevrolet', md: 'Astro / GMC Safari', y0: 1995, y1: 2005, b: 'van',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'VATS pellet / PK3',
-      sys: 'VATS / Passlock', clone: 'n/a on pellet', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Limited', on: '10-min relearn', akl: 'Pellet read or relearn',
-      note: 'Still a working-trade favourite. Carry the B62 pellet set.', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-trailblazer-2002-2009', mk: 'Chevrolet', md: 'TrailBlazer / GMC Envoy', y0: 2002, y1: 2009, b: 'suv',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn', entry: 'Lishi GM37' }),
-  V({ id: 'gmc-acadia-2007-2024', mk: 'GMC', md: 'Acadia', y0: 2007, y1: 2024, b: 'suv',
-      kw: 'B111 / B119 by year', il: 'B111-PT', chip: 'Circle Plus early; 46E later',
-      sys: 'PK3+ / Immobilizer 2', clone: 'Circle Plus yes', sp: 10, dp: 4, cut: 'Edge cut',
-      dec: 'Lishi GM37 or HU100', obd: 'Yes', on: '30-min x3 relearn on blade trims', akl: 'OBD or relearn',
-      note: 'Spans the Circle Plus to 46E changeover â€” check the key.', entry: 'Lishi by keyway' }),
-  V({ id: 'gmc-terrain-2010-2024', mk: 'GMC', md: 'Terrain', y0: 2010, y1: 2024, b: 'suv',
-      kw: 'HU100 / B119 by year', il: 'B116-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Immobilizer 2', clone: 'No', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: '30-min x3 relearn on blade trims', akl: 'OBD or relearn',
-      note: 'Equinox twin.', entry: 'Lishi HU100' }),
-  V({ id: 'vw-gti-golf-2010-2025', mk: 'Volkswagen', md: 'GTI', y0: 2010, y1: 2025,
-      kw: 'HU66 / HU162T by year', il: 'HU66AT4', chip: 'ID48; MQB from 2015',
-      sys: 'Immobilizer 4 / MQB', clone: 'ID48 only', sp: 8, dp: 4, cut: 'Laser / sidewinder',
-      dec: 'Lishi HU66 or HU162T', obd: 'Yes with the right tool', on: 'No',
-      akl: 'MQB is a specialist job', pin: 'Component security',
-      note: 'Establish MQB vs non-MQB before quoting.', entry: 'Lishi by keyway' }),
-  V({ id: 'vw-beetle-1998-2019', mk: 'Volkswagen', md: 'Beetle', y0: 1998, y1: 2019,
-      kw: 'HU66', il: 'HU66AT4', chip: 'ID48 (Megamos)',
-      sys: 'Immobilizer 2 / 3', clone: 'With a capable cloner', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66', obd: 'Yes on Immo 2/3', on: 'No',
-      akl: 'Often needs cluster / immo data', pin: 'CS code', entry: 'Lishi HU66' }),
-  V({ id: 'mazda-mx5-1999-2024', mk: 'Mazda', md: 'MX-5 Miata', y0: 1999, y1: 2024,
-      kw: 'MAZ24 / MZ34 by year', il: 'MAZ24R-PT', chip: 'ID46 early; ID49 later',
-      sys: 'Mazda immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi MZ34 or MAZ24', obd: 'Yes', on: 'Limited', akl: 'OBD',
-      note: 'Soft top â€” do not cut a roof on a lockout, it is the expensive part.', entry: 'Lishi by keyway' }),
-  V({ id: 'mercedes-sclass-1998-2024', mk: 'Mercedes-Benz', md: 'S-Class', y0: 1998, y1: 2024,
-      kw: 'HU64', il: 'HU64', chip: 'FBS3 / FBS4 by year',
-      sys: 'FBS3 / FBS4', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU64',
-      obd: 'No â€” EIS/ESL work', on: 'No', akl: 'EIS read, password calc; FBS4 is dealer-only in practice',
-      pin: 'Password from EIS',
-      note: 'High value and the hardest Mercedes to key. Quote as specialist or refer out.', entry: 'Lishi HU64' }),
-  V({ id: 'mercedes-metris-2016-2023', mk: 'Mercedes-Benz', md: 'Metris', y0: 2016, y1: 2023, b: 'van',
-      kw: 'HU64', il: 'HU64', chip: 'FBS3',
-      sys: 'FBS3', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU64',
-      obd: 'No â€” EIS work', on: 'No', akl: 'EIS read + password calc', pin: 'Password from EIS',
-      note: 'Trade van. Specialist job despite being a work vehicle â€” price it accordingly.', entry: 'Lishi HU64' }),
-  V({ id: 'audi-a8-tt-1999-2023', mk: 'Audi', md: 'A8 / TT', y0: 1999, y1: 2023,
-      kw: 'HU66 / HU162T by year', il: 'HU66AT4', chip: 'ID48; MQB on later',
-      sys: 'Immobilizer 4 / MQB', clone: 'ID48 only', sp: 8, dp: 4, cut: 'Laser / sidewinder',
-      dec: 'Lishi HU66 or HU162T', obd: 'Often bench', on: 'No', akl: 'Cluster / immo data usually required',
-      pin: 'CS code', note: 'Price as specialist work or refer out.', entry: 'Lishi by keyway' }),
-  V({ id: 'audi-q7-2007-2024', mk: 'Audi', md: 'Q7', y0: 2007, y1: 2024, b: 'suv',
-      kw: 'HU66 / HU162T by year', il: 'HU66AT4', chip: 'ID48; MQB on later',
-      sys: 'Immobilizer 4 / MQB', clone: 'ID48 only', sp: 8, dp: 4, cut: 'Laser / sidewinder',
-      dec: 'Lishi HU66 or HU162T', obd: 'Often bench', on: 'No', akl: 'Specialist job', pin: 'CS code',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'nissan-gtr-370z-2009-2024', mk: 'Nissan', md: 'GT-R / 370Z', y0: 2009, y1: 2024,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 5/6', clone: 'No', rem: [['prox', 'KR55WK49622', '', '3B / 4B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived',
-      note: 'High-theft enthusiast cars. Verify ownership on AKL.', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-leaf-2011-2024', mk: 'Nissan', md: 'Leaf', y0: 2011, y1: 2024,
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 6', clone: 'No', rem: [['prox', 'KR5S180144014', '', '3B / 4B Intelligent Key']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'EV, but the key system is ordinary Nissan â€” no high-voltage work involved in keying it.', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-armada-2004-2024', mk: 'Nissan', md: 'Armada', y0: 2004, y1: 2024, b: 'suv',
-      kw: 'NSN14 (emergency blade)', il: 'DA34', chip: 'ID46 / ID47 by year',
-      sys: 'NATS 5/6', clone: 'No', rem: [['prox', 'KR5TXN7', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Infiniti QX56 / QX80 twin.', entry: 'Lishi NSN14' }),
-  V({ id: 'kia-rio-2001-2023', mk: 'Kia', md: 'Rio', y0: 2001, y1: 2023,
-      kw: 'KK10 / HY22 by year', il: 'KK10-PT', chip: 'None early; ID46 / ID47 later',
-      sys: 'Kia immobilizer on chipped', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by year',
-      dec: 'Lishi KIA7 or HY22', obd: 'Yes on chipped', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'Early and base trims often shipped with no immobilizer at all.', entry: 'Lishi by keyway' }),
-  V({ id: 'hyundai-veloster-2012-2021', mk: 'Hyundai', md: 'Veloster', y0: 2012, y1: 2021,
-      kw: 'HY20 / HY22 by trim', il: 'HY20-PT', chip: 'ID46 / ID47',
-      sys: 'Hyundai immobilizer', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge or laser by trim',
-      dec: 'Lishi HY20 or HY22', obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'ford-f450-f550-1999-2024', mk: 'Ford', md: 'F-450 / F-550', y0: 1999, y1: 2024, b: 'truck',
-      kw: 'H92 / HU101 by year', il: 'H92-PT', chip: '4C to ID49 by year',
-      sys: 'PATS', clone: 'Varies by chip', sp: 8, dp: 5, cut: 'Edge or laser by year',
-      dec: 'Lishi FO38 or HU101', obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'Same keys as the F-250/F-350 of the same year. Chassis-cab and tow rigs â€” often fleet, verify ownership.',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'ford-e350-2015-2024', mk: 'Ford', md: 'E-350 / E-450 cutaway', y0: 2015, y1: 2024, b: 'van',
-      kw: 'HU101 / H92 by build', il: 'H92-PT', chip: '4D-63 80-bit / ID49',
-      sys: 'PATS', clone: 'Varies', sp: 8, dp: 5, cut: 'Edge or laser by build',
-      dec: 'Lishi FO38 or HU101', obd: 'Yes', on: '2 working keys', akl: 'OBD + timed access',
-      note: 'The E-Series van ended in 2014 but the cutaway chassis carried on â€” box trucks, ambulances, shuttles.',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'jeep-renegade-2015-2023', mk: 'Jeep', md: 'Renegade', y0: 2015, y1: 2023, b: 'suv',
-      kw: 'SIP22', il: 'FT48-PT', chip: 'ID46 (Hitag2)',
-      sys: 'Fiat platform immobilizer', clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Fiat platform â€” SIP22, not the CY24 the badge suggests.', entry: 'Lishi SIP22' }),
-  V({ id: 'jeep-commander-2006-2010', mk: 'Jeep', md: 'Commander', y0: 2006, y1: 2010, b: 'suv',
-      kw: 'CY24', il: 'Y164-PT', chip: 'ID46 (Hitag2)',
-      sys: 'SKREEM', clone: 'Yes on some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL', entry: 'Lishi CY24' }),
-  V({ id: 'honda-element-2003-2011', mk: 'Honda', md: 'Element', y0: 2003, y1: 2011, b: 'suv',
-      kw: 'HO01', il: 'HO01-PT', chip: 'ID46 (PCF7936)',
-      sys: 'Honda immobilizer', clone: 'Yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HON58R',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON58R' }),
-  V({ id: 'honda-insight-2010-2022', mk: 'Honda', md: 'Insight', y0: 2010, y1: 2022,
-      kw: 'HO01 / HON66 by year', il: 'HO01-PT', chip: 'ID46 / ID47 by year',
-      sys: 'Honda immobilizer / smart entry', clone: 'ID46 yes', sp: 8, dp: 4,
-      cut: 'Edge or laser by year', dec: 'Lishi HON58R or HON66',
-      obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi by keyway' }),
-  V({ id: 'subaru-ascent-2019-2024', mk: 'Subaru', md: 'Ascent', y0: 2019, y1: 2024, b: 'suv',
-      kw: 'SUB4 (emergency blade)', il: 'SUB4-PT', chip: 'ID47 / Hitag3 AES',
-      sys: 'Subaru immobilizer', clone: 'No', rem: [['prox', 'HYQ14AHK', '', '4B smart key']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN/seed', pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
-  V({ id: 'cadillac-srx-2004-2016', mk: 'Cadillac', md: 'SRX', y0: 2004, y1: 2016, b: 'suv',
-      kw: 'B111 / HU100 by year', il: 'B111-PT', chip: 'Circle Plus / 46E',
-      sys: 'PK3+ / Immobilizer 2', clone: 'Circle Plus yes', sp: 10, dp: 4, cut: 'Edge cut',
-      dec: 'Lishi GM37 or HU100', obd: 'Yes', on: '30-min x3 relearn on blade trims', akl: 'OBD or relearn',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'lincoln-mkx-mkc-2007-2019', mk: 'Lincoln', md: 'MKX / MKC', y0: 2007, y1: 2019, b: 'suv',
-      kw: 'H92 / HU101 by year', il: 'H92-PT', chip: '4D-63; ID49 on later',
-      sys: 'PATS', clone: 'Blade yes', sp: 8, dp: 5, cut: 'Edge or laser by year',
-      dec: 'Lishi FO38 or HU101', obd: 'Yes', on: '2 keys / 2 fobs', akl: 'OBD + timed access',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'chrysler-sebring-200-1996-2017', mk: 'Chrysler', md: 'Sebring / 200', y0: 1996, y1: 2017,
-      kw: 'Y157 / CY24 by year', il: 'Y164-PT', chip: 'None early; ID46 later',
-      sys: 'SKIM / SKREEM', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'OBD + PIN', pin: 'YES for AKL',
-      note: 'Sebring through 2010, renamed 200 for 2011.', entry: 'Lishi CY24' }),
-  V({ id: 'mitsubishi-mirage-2014-2024', mk: 'Mitsubishi', md: 'Mirage', y0: 2014, y1: 2024,
-      kw: 'MIT11', il: 'MIT11-PT', chip: 'ID46',
-      sys: 'Mitsubishi immobilizer', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi MIT11',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'Often', entry: 'Lishi MIT11' }),
-
-  /* ===== PORSCHE ===== */
-  V({ id: 'porsche-911-1995-1997', mk: 'Porsche', md: '911 (993)', y0: 1995, y1: 1997,
-      kw: 'Porsche / HU66-family', il: 'HU66AT4', chip: 'None to early immobilizer by year',
-      sys: 'Early Porsche immobilizer on later cars', clone: 'Varies', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66 or decode the door',
-      obd: 'Limited', on: 'No', akl: 'Specialist; the immobilizer box holds the data',
-      note: 'Last of the air-cooled 911s and priced accordingly. Verify ownership and quote as specialist work.',
-      entry: 'Non-marking entry only' }),
-  V({ id: 'porsche-911-1998-2004', mk: 'Porsche', md: '911 (996) / Boxster (986)', y0: 1998, y1: 2004,
-      kw: 'HU66', il: 'HU66AT4', chip: 'ID42 / ID48 (Megamos)',
-      sys: 'Porsche immobilizer', clone: 'With a capable cloner', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Limited', on: 'No', akl: 'Immobilizer box work; often dealer', pin: 'Component security',
-      note: 'VAG-family blade, Porsche electronics. Not a driveway job â€” quote high or refer out.',
-      entry: 'Lishi HU66' }),
-  V({ id: 'porsche-911-2005-2019', mk: 'Porsche', md: '911 (997/991) / Cayman / Boxster', y0: 2005, y1: 2019,
-      kw: 'HU66', il: 'HU66AT4', chip: 'ID46 / ID48; AES on later',
-      sys: 'Porsche immobilizer', clone: 'No on later', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist or dealer', pin: 'Component security',
-      note: 'The blade is easy; the electronics are not. Confirm tool coverage before quoting.',
-      entry: 'Lishi HU66' }),
-  V({ id: 'porsche-cayenne-2003-2010', mk: 'Porsche', md: 'Cayenne (955/957)', y0: 2003, y1: 2010, b: 'suv',
-      kw: 'HU66', il: 'HU66AT4', chip: 'ID48 (Megamos)',
-      sys: 'VAG-family immobilizer', clone: 'With a capable cloner', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Yes with VAG-capable tooling', on: 'No', akl: 'Immo data usually required', pin: 'CS code',
-      note: 'Shares the VW Touareg platform â€” work it with VAG tooling, not a Porsche-only tool.',
-      entry: 'Lishi HU66' }),
-  V({ id: 'porsche-cayenne-macan-2011-2025', mk: 'Porsche', md: 'Cayenne / Macan / Panamera', y0: 2011, y1: 2025, b: 'suv',
-      kw: 'HU66 / HU162T by model', il: 'HU66AT4', chip: 'AES (MQB-era)',
-      sys: 'Porsche / VAG AES immobilizer', clone: 'No', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU66 or HU162T',
-      obd: 'Specialist tooling only', on: 'No', akl: 'Dealer or specialist', pin: 'Component security',
-      note: 'Macan is an Audi Q5 underneath. High value â€” verify ownership on AKL.',
-      entry: 'Lishi by keyway' }),
-  V({ id: 'porsche-taycan-2020-2025', mk: 'Porsche', md: 'Taycan', y0: 2020, y1: 2025,
-      kw: 'Not recorded â€” treat as no usable keyway', chip: 'AES smart key', sys: 'Porsche AES', clone: 'No',
-      cut: 'Laser / sidewinder', dec: 'Decode the door if a blade is fitted',
-      obd: 'Dealer in practice', on: 'No', akl: 'Dealer', pin: 'n/a',
-      note: 'EV, dealer-only in practice. Take the lockout, refer the keys.',
-      entry: 'No practical non-destructive keyway route â€” call it as a lockout only.' }),
-
-  /* ===== LAND ROVER ===== */
-  V({ id: 'landrover-rangerover-2003-2005', mk: 'Land Rover', md: 'Range Rover (L322, BMW-era)', y0: 2003, y1: 2005, b: 'suv',
-      kw: 'HU92 (BMW)', il: 'HU92', chip: 'BMW EWS',
-      sys: 'BMW EWS', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU92',
-      obd: 'BMW procedure', on: 'No', akl: 'EWS module work, BMW-style', pin: 'ISN',
-      note: 'GOTCHA: these years are BMW inside â€” BMW blade, BMW electronics, BMW tooling. Land Rover software will not see it. From 2006 it switches to Ford/Jaguar and everything changes.',
-      entry: 'Lishi HU92' }),
-  V({ id: 'landrover-rangerover-2006-2012', mk: 'Land Rover', md: 'Range Rover / Sport (Ford-era)', y0: 2006, y1: 2012, b: 'suv',
-      kw: 'HU101', il: 'HU101-PT', chip: 'Ford/Jaguar-derived',
-      sys: 'JLR immobilizer', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist JLR tooling', pin: 'Tool-dependent',
-      note: 'Ford ownership era â€” HU101 blade, not the BMW key of 2003-2005.', entry: 'Lishi HU101' }),
-  V({ id: 'landrover-lr3-lr4-2005-2016', mk: 'Land Rover', md: 'LR3 / LR4 / Discovery', y0: 2005, y1: 2016, b: 'suv',
-      kw: 'HU101', il: 'HU101-PT', chip: 'Ford/Jaguar-derived; later JLR',
-      sys: 'JLR immobilizer', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist JLR tooling', pin: 'Tool-dependent',
-      entry: 'Lishi HU101' }),
-  V({ id: 'landrover-evoque-velar-2012-2025', mk: 'Land Rover', md: 'Evoque / Velar / Discovery Sport', y0: 2012, y1: 2025, b: 'suv',
-      kw: 'JLR emergency blade', chip: 'JLR smart key', sys: 'JLR KVM', clone: 'No',
-      cut: 'Laser / sidewinder', dec: 'Decode the door for the emergency blade',
-      obd: 'Specialist JLR tooling only', on: 'No', akl: 'KVM work â€” specialist or dealer', pin: 'Tool-dependent',
-      note: 'Modern JLR is a specialist job. Confirm your tool covers it before you drive out.',
-      entry: 'Emergency blade opens the door only' }),
-  V({ id: 'landrover-defender-2020-2025', mk: 'Land Rover', md: 'Defender', y0: 2020, y1: 2025, b: 'suv',
-      kw: 'JLR emergency blade', chip: 'JLR AES smart key', sys: 'JLR KVM', clone: 'No',
-      cut: 'Laser / sidewinder', dec: 'Decode the door for the emergency blade',
-      obd: 'Dealer or high-end specialist', on: 'No', akl: 'Dealer in practice', pin: 'n/a',
-      note: 'High value and high theft. Verify ownership before doing anything.',
-      entry: 'Emergency blade opens the door only' }),
-
-  /* ===== JAGUAR ===== */
-  V({ id: 'jaguar-tibbe-1997-2006', mk: 'Jaguar', md: 'XJ / XJ8 / XK / XK8 / S-Type / X-Type (Tibbe)', y0: 1997, y1: 2006,
-      kw: 'FO38 (Tibbe)', il: 'FO21', chip: 'Tibbe-era transponder',
-      sys: 'Jaguar immobilizer', clone: 'Varies', sp: 6, dp: 4, cut: 'Tibbe',
-      dec: 'Tibbe decoder â€” nothing else touches it',
-      obd: 'Limited', on: 'No', akl: 'Specialist; often module work', pin: 'Tool-dependent',
-      note: 'GOTCHA: Tibbe keyway, the same family as the early Ford Focus. You need a Tibbe decoder and cutter; an edge or laser machine will not do it.',
-      entry: 'Tibbe pick' }),
-  V({ id: 'jaguar-2007-2025', mk: 'Jaguar', md: 'XF / XJ / F-Type / F-Pace', y0: 2007, y1: 2025,
-      kw: 'HU101 / emergency blade', il: 'HU101-PT', chip: 'JLR smart key',
-      sys: 'JLR KVM', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Specialist JLR tooling', on: 'No', akl: 'KVM work â€” specialist or dealer', pin: 'Tool-dependent',
-      note: 'Jaguar dropped Tibbe after 2006. Same JLR platform as Land Rover of the same years.',
-      entry: 'Lishi HU101' }),
-
-  /* ===== GENESIS ===== */
-  V({ id: 'genesis-2017-2025', mk: 'Genesis', md: 'G70 / G80 / G90 / GV70 / GV80', y0: 2017, y1: 2025,
-      kw: 'HY22 (emergency blade)', il: 'HY22-PT', chip: 'ID47 / AES',
-      sys: 'Hyundai-family smart key', clone: 'No', sp: 10, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HY22',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'Hyundai underneath â€” work it in the Hyundai/Kia menu, and the same PIN-by-VIN bottleneck applies.',
-      entry: 'Lishi HY22' }),
-  /* ===== SAAB â€” three different cars wearing one badge ===== */
-  V({ id: 'saab-9-3-9-5-2000-2012', mk: 'Saab', md: '9-3 / 9-5', y0: 2000, y1: 2012,
-      kw: 'Saab / NE66-family', chip: 'Saab CIM-based transponder', sys: 'Saab CIM',
-      clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Decode the door lock',
-      obd: 'Tool-dependent', on: 'No', akl: 'CIM module work â€” specialist', pin: 'Tool-dependent',
-      note: 'On the 2003+ 9-3 the ignition is in the centre console, not the column, and the key is a fob with a blade. Budget for CIM work.',
-      entry: 'Wedge and reach, or decode the door' }),
-  V({ id: 'saab-9-7x-2005-2009', mk: 'Saab', md: '9-7X', y0: 2005, y1: 2009, b: 'suv',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'GM PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'GM relearn',
-      note: 'GOTCHA: a Chevrolet TrailBlazer in a Saab suit. GM blank, GM software, GM relearn â€” nothing Saab about the keys.',
-      entry: 'Lishi GM37' }),
-  V({ id: 'saab-9-2x-2005-2006', mk: 'Saab', md: '9-2X', y0: 2005, y1: 2006,
-      kw: 'SUB4 / DAT17', il: 'SUB4-PT', chip: 'Subaru 4D-62 / ID46',
-      sys: 'Subaru immobilizer', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4',
-      obd: 'Yes â€” work it as a Subaru', on: 'No', akl: 'OBD as a Subaru Impreza', pin: 'Tool-dependent',
-      note: 'GOTCHA: a Subaru Impreza wagon in a Saab suit. Subaru blank, Subaru software.',
-      entry: 'Lishi SUB4' }),
-
-  /* ===== SATURN ===== */
-  V({ id: 'saturn-s-series-1996-2002', mk: 'Saturn', md: 'SL / SC / SW', y0: 1996, y1: 2002,
-      kw: 'B106 / Saturn', il: 'B106-PT', chip: 'None on most',
-      sys: 'None on most', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'No immobilizer on most. Quick, cheap work.', entry: 'Lishi GM37 or wedge and reach' }),
-  V({ id: 'saturn-vue-ion-2002-2010', mk: 'Saturn', md: 'Vue / Ion / Aura / Outlook / Sky', y0: 2002, y1: 2010, b: 'suv',
-      kw: 'B111 / B106 by model', il: 'B111-PT', chip: 'GM Circle Plus / PK3',
-      sys: 'GM PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'GM relearn',
-      note: 'GM keys throughout, even on the Honda-engined Vue.', entry: 'Lishi GM37' }),
-  V({ id: 'saturn-astra-2008', mk: 'Saturn', md: 'Astra', y0: 2008, y1: 2008,
-      kw: 'HU100', il: 'B116-PT', chip: 'GM 46E (Hitag2)',
-      sys: 'Opel / GM immobilizer', clone: 'No', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
-      obd: 'Yes', on: 'No', akl: 'OBD',
-      note: 'GOTCHA: a German-built Opel Astra, not a US Saturn. HU100, not the B111 the rest of the range uses.',
-      entry: 'Lishi HU100' }),
-
-  /* ===== HUMMER / OLDSMOBILE / PLYMOUTH ===== */
-  V({ id: 'hummer-h2-h3-2003-2010', mk: 'Hummer', md: 'H2 / H3', y0: 2003, y1: 2010, b: 'suv',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus (PK3+)',
-      sys: 'GM PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'GM relearn, no tool needed',
-      note: 'Straight GM underneath. The H1 is a different animal â€” AM General, military-derived.',
-      entry: 'Lishi GM37' }),
-  V({ id: 'oldsmobile-1996-2004', mk: 'Oldsmobile', md: 'Alero / Intrigue / Bravada / Silhouette / Aurora', y0: 1996, y1: 2004,
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'VATS pellet / PK3 by year',
-      sys: 'VATS / Passlock', clone: 'n/a on pellet', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Limited', on: '10-min relearn on Passlock', akl: 'Read the pellet value, or 30-min relearn',
-      note: 'Dead brand, live cars. Carry the B62 pellet set for the VATS years.', entry: 'Lishi GM37' }),
-  V({ id: 'plymouth-1996-2002', mk: 'Plymouth', md: 'Voyager / Neon / Breeze / Prowler', y0: 1996, y1: 2002,
-      kw: 'Y157 / Y160', il: 'Y160-PT', chip: 'None to ID46 by year',
-      sys: 'SKIM on chipped', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes on chipped', on: '2 working keys', akl: 'Cut by code on non-chip; OBD + PIN otherwise',
-      pin: 'YES for AKL on chipped',
-      note: 'Chrysler underneath â€” the Voyager is a Caravan.', entry: 'Lishi CY24' }),
-
-  /* ===== ISUZU / SUZUKI / GEO â€” mostly other people's cars ===== */
-  V({ id: 'isuzu-rodeo-trooper-1996-2004', mk: 'Isuzu', md: 'Rodeo / Trooper / Axiom / Amigo', y0: 1996, y1: 2004, b: 'suv',
-      kw: 'Isuzu (X-series)', chip: 'None to early transponder by year', sys: 'Isuzu immobilizer on later',
-      clone: 'Varies', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door or impression',
-      obd: 'Limited', on: 'No', akl: 'Cut by code where no chip is fitted',
-      note: 'Catalog numbers left blank rather than guessed â€” check your book before ordering.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'isuzu-ascender-i-series-2004-2008', mk: 'Isuzu', md: 'Ascender / i-280 / i-290 / i-350 / i-370', y0: 2004, y1: 2008, b: 'truck',
-      kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
-      sys: 'GM PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Yes', on: '30-min x3 relearn', akl: 'GM relearn',
-      note: 'GOTCHA: the Ascender is a TrailBlazer and the i-series are Colorados. Pure GM key work under an Isuzu badge.',
-      entry: 'Lishi GM37' }),
-  V({ id: 'isuzu-npr-nqr-1996-2026', mk: 'Isuzu', md: 'NPR / NQR / NRR (cabover)', y0: 1996, y1: 2026, b: 'truck',
-      kw: 'Isuzu commercial', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Box trucks and landscape rigs â€” steady commercial work, usually no immobilizer at all.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'suzuki-grand-vitara-1999-2013', mk: 'Suzuki', md: 'Grand Vitara / Vitara / Aerio / SX4', y0: 1999, y1: 2013, b: 'suv',
-      kw: 'SZ14 / SZ18', il: 'X257', chip: 'None early; ID46 later',
-      sys: 'Suzuki immobilizer on later', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge cut',
-      dec: 'Decode the door', obd: 'Yes on chipped', on: 'No', akl: 'OBD on chipped; cut by code otherwise',
-      entry: 'Wedge and reach' }),
-  V({ id: 'suzuki-xl7-forenza-2004-2009', mk: 'Suzuki', md: 'XL7 / Forenza / Reno', y0: 2004, y1: 2009, b: 'suv',
-      kw: 'B111 (XL7) / Daewoo (Forenza)', il: 'B111-PT',
-      chip: 'GM Circle Plus on the 2007+ XL7', sys: 'GM PK3+ / Daewoo', clone: 'Varies',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 on the XL7',
-      obd: 'Yes on the XL7', on: '30-min x3 relearn on the XL7', akl: 'GM relearn on the XL7',
-      note: 'GOTCHA: the 2007+ XL7 is GM-built (Theta platform) and takes GM keys; the Forenza and Reno are Daewoos. One badge, three different jobs.',
-      entry: 'Lishi GM37 on the XL7' }),
-  V({ id: 'suzuki-equator-2009-2012', mk: 'Suzuki', md: 'Equator', y0: 2009, y1: 2012, b: 'truck',
-      kw: 'DA31 / NSN14', il: 'DA31-PT', chip: 'ID46',
-      sys: 'Nissan NATS', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Yes â€” work it as a Nissan', on: 'No', akl: 'OBD + PIN as a Nissan Frontier', pin: 'YES â€” BCM-derived',
-      note: 'GOTCHA: a Nissan Frontier in a Suzuki suit. Nissan blank, Nissan software, Nissan BCM PIN.',
-      entry: 'Lishi DA31' }),
-  V({ id: 'geo-prizm-metro-tracker-1995-1997', mk: 'Geo', md: 'Prizm / Metro / Tracker', y0: 1995, y1: 1997,
-      kw: 'TOY43 (Prizm) / SZ14 (Metro, Tracker)', il: 'TOY43',
-      chip: 'None on most', sys: 'None on most', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut',
-      dec: 'Lishi TOY43 on the Prizm', obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'GOTCHA: the Prizm is a Toyota Corolla, the Metro and Tracker are Suzukis. Nothing here is really a Geo. The badge was retired after 1997 â€” from 1998 the same cars are Chevrolets, so check under Chevrolet for a later one.',
-      entry: 'Lishi by keyway' }),
-  /* ===== ALFA ROMEO / MASERATI / FIAT-FAMILY ===== */
-  V({ id: 'alfa-giulia-stelvio-2016-2025', mk: 'Alfa Romeo', md: 'Giulia / Stelvio / Tonale', y0: 2016, y1: 2025, b: 'suv',
-      kw: 'SIP22 (emergency blade)', il: 'FT48-PT', chip: 'ID4A (Hitag AES)',
-      sys: 'Stellantis immobilizer', clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Yes with a current tool', on: 'No', akl: 'OBD + PIN', pin: 'YES',
-      note: 'Stellantis platform â€” work it in the Fiat/Chrysler menu, not as an exotic.', entry: 'Lishi SIP22' }),
-  V({ id: 'alfa-4c-2014-2020', mk: 'Alfa Romeo', md: '4C', y0: 2014, y1: 2020,
-      kw: 'SIP22', il: 'FT48-PT', chip: 'ID46 (Hitag2)',
-      sys: 'Fiat immobilizer', clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES', entry: 'Lishi SIP22' }),
-  V({ id: 'maserati-ghibli-levante-2014-2023', mk: 'Maserati', md: 'Ghibli / Quattroporte / Levante', y0: 2014, y1: 2023, b: 'suv',
-      kw: 'SIP22 (emergency blade)', il: 'FT48-PT', chip: 'Stellantis-family prox',
-      sys: 'Stellantis-derived immobilizer', clone: 'No', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist; often dealer', pin: 'YES',
-      note: 'Fiat-era Maseratis share a lot with Chrysler. Worth trying the Stellantis menu before writing it off as exotic-only.',
-      entry: 'Lishi SIP22' }),
-  V({ id: 'maserati-granturismo-2008-2019', mk: 'Maserati', md: 'GranTurismo', y0: 2008, y1: 2019,
-      kw: 'Maserati / Fiat-family', chip: 'Maserati immobilizer', sys: 'Maserati', clone: 'No',
-      cut: 'Laser / sidewinder', dec: 'Decode the door lock',
-      obd: 'Dealer in practice', on: 'No', akl: 'Dealer', pin: 'n/a',
-      note: 'Low volume, dealer-driven. Take the lockout, refer the keys.', entry: 'Decode the door' }),
-
-  /* ===== EV MAKES â€” mostly nothing to cut ===== */
-  V({ id: 'rivian-r1t-r1s-2022-2025', mk: 'Rivian', md: 'R1T / R1S', y0: 2022, y1: 2025, b: 'truck',
-      kw: 'None â€” no mechanical key', chip: 'NFC card and phone key', sys: 'Rivian BLE / NFC', clone: 'No',
-      cut: 'n/a', dec: 'n/a', obd: 'No conventional OBD path', on: 'Owner pairs a card through the touchscreen',
-      akl: 'Rivian service â€” not a locksmith job', pin: 'n/a',
-      note: 'Nothing to cut and no mechanical override. Lockouts only, and there is no keyway to pick.',
-      port: 'No standard OBD port in the usual place', entry: 'No mechanical keyway â€” refer to Rivian or roadside' }),
-  V({ id: 'polestar-2-2021-2025', mk: 'Polestar', md: 'Polestar 2', y0: 2021, y1: 2025,
-      kw: 'None â€” no mechanical key', chip: 'Phone key / prox fob', sys: 'Volvo-family BLE', clone: 'No',
-      cut: 'n/a', dec: 'n/a', obd: 'Volvo-family, tool-dependent', on: 'No',
-      akl: 'Dealer or Volvo specialist', pin: 'n/a',
-      note: 'Volvo underneath. No blade to cut.', port: 'Driver side, under dash',
-      entry: 'No mechanical keyway' }),
-  V({ id: 'lucid-air-2022-2025', mk: 'Lucid', md: 'Air', y0: 2022, y1: 2025,
-      kw: 'None â€” no mechanical key', chip: 'Phone key / NFC card', sys: 'Lucid BLE / NFC', clone: 'No',
-      cut: 'n/a', dec: 'n/a', obd: 'No conventional OBD path', on: 'Owner pairs through the touchscreen',
-      akl: 'Lucid service', pin: 'n/a',
-      note: 'Nothing to cut. Lockout calls only.', port: 'None in the usual place',
-      entry: 'No mechanical keyway' }),
-
-  /* ===== COMMERCIAL / MICRO ===== */
-  V({ id: 'freightliner-sprinter-2003-2025', mk: 'Freightliner', md: 'Sprinter', y0: 2003, y1: 2025, b: 'van',
-      kw: 'HU64 / YM23 by year', il: 'HU64', chip: 'Mercedes FBS-family',
-      sys: 'Mercedes FBS3 on later', clone: 'No', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU64',
-      obd: 'No on FBS3 â€” EIS work', on: 'No', akl: 'EIS read + password calc', pin: 'Password from EIS',
-      note: 'The same van as the Mercedes-Benz Sprinter and the 2003-2009 Dodge Sprinter. Whatever the badge says, key it as a Mercedes.',
-      entry: 'Lishi HU64' }),
-  V({ id: 'dodge-sprinter-2003-2009', mk: 'Dodge', md: 'Sprinter', y0: 2003, y1: 2009, b: 'van',
-      kw: 'YM23 / HU64 by year', il: 'YM23', chip: 'Mercedes-family',
-      sys: 'Mercedes DAS / FBS', clone: 'No', sp: 8, dp: 4, cut: 'Edge or laser by year', dec: 'Lishi HU64',
-      obd: 'Mercedes procedure', on: 'No', akl: 'EIS work', pin: 'Password from EIS',
-      note: 'GOTCHA: a Mercedes Sprinter with a Dodge badge. Chrysler tooling and CY24 blanks are both wrong here.',
-      entry: 'Lishi HU64' }),
-  V({ id: 'smart-fortwo-2008-2019', mk: 'Smart', md: 'Fortwo', y0: 2008, y1: 2019,
-      kw: 'Mercedes-family â€” profile not recorded', chip: 'Mercedes-derived immobilizer', sys: 'Mercedes-family', clone: 'No',
-      cut: 'Laser / sidewinder', dec: 'Decode the door lock',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist; Mercedes-style procedure', pin: 'Tool-dependent',
-      note: 'Mercedes electronics in a very small car. Price it as a Mercedes job, not a city-car job.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'daewoo-1999-2002', mk: 'Daewoo', md: 'Lanos / Nubira / Leganza', y0: 1999, y1: 2002,
-      kw: 'Daewoo (DWO)', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Rare now, but the same platform turns up rebadged as the Suzuki Forenza and Reno.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'bentley-continental-2004-2025', mk: 'Bentley', md: 'Continental / Flying Spur / Bentayga', y0: 2004, y1: 2025,
-      kw: 'HU66', il: 'HU66AT4', chip: 'VAG-family; AES on later',
-      sys: 'VAG immobilizer', clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Specialist VAG tooling', on: 'No', akl: 'Dealer or high-end specialist', pin: 'Component security',
-      note: 'VW Group underneath â€” HU66 blade. Very high value: verify ownership before touching it.',
-      entry: 'Lishi HU66' }),
-
-  /* ===== MOTORCYCLE MAKES ===== */
-  V({ id: 'indian-gilroy-1999-2013', mk: 'Indian Motorcycle', md: 'Chief / Spirit / Scout (pre-Polaris)', y0: 1999, y1: 2013, b: 'moto',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the fork lock',
-      obd: 'n/a', on: 'n/a', akl: 'Impression â€” assume no code record survives',
-      note: 'Three different companies built bikes under the Indian name between 1999 and 2013 â€” Gilroy, Kings Mountain and then nothing â€” before Polaris bought the marque in 2011 and restarted it for 2014. Parts came from wherever, so the locks are not consistent even within one year. Decode what is on the bike; do not order from a cross-reference. The Polaris-era bikes are the other Indian records here and are a different job entirely.',
-      port: 'n/a', entry: 'Fork lock' }),
-
-  /* ---- gaps found by testing the search against real calls ---- */
-  V({ id: 'honda-civic-1996-2000', mk: 'Honda', md: 'Civic', y0: 1996, y1: 2000,
-      kw: 'HD106 / HO01', il: 'HD106', chip: 'None on most US cars',
-      sys: 'None on most', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the ignition',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'No immobilizer on most US-market cars of these years. Fast job, and these are still everywhere. Also the most-stolen car in America â€” check ownership.',
-      entry: 'Wedge and reach, or decode the door' }),
-  V({ id: 'honda-accord-1990-1997', mk: 'Honda', md: 'Accord', y0: 1990, y1: 1997,
-      kw: 'HD106 / HO01', il: 'HD106', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', entry: 'Wedge and reach' }),
-  V({ id: 'subaru-forester-1998-2008', mk: 'Subaru', md: 'Forester', y0: 1998, y1: 2008, b: 'suv',
-      kw: 'DAT17', il: 'DAT17', chip: 'None early; 4D-62 on later',
-      sys: 'Subaru immobilizer on later', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DAT17',
-      obd: 'Yes on chipped', on: 'No', akl: 'Cut by code on non-chip; OBD + PIN otherwise', pin: 'Tool-dependent',
-      note: 'Early ones have no chip at all â€” check before quoting programming.', entry: 'Lishi DAT17' }),
-  V({ id: 'subaru-forester-2009-2013', mk: 'Subaru', md: 'Forester', y0: 2009, y1: 2013, b: 'suv',
-      kw: 'SUB4 / DAT17', il: 'SUB4-PT', chip: '4D-62 / ID46',
-      sys: 'Subaru immobilizer', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN/seed', pin: 'Tool-dependent', entry: 'Lishi SUB4' }),
-  V({ id: 'chevy-camaro-1993-2002', mk: 'Chevrolet', md: 'Camaro / Pontiac Firebird', y0: 1993, y1: 2002,
-      kw: 'B62 pellet (VATS)', il: 'B62-P1 .. B62-P15', chip: 'VATS resistor pellet',
-      sys: 'VATS / PASS-Key', clone: 'n/a â€” match the pellet value', sp: 6, dp: 4, cut: 'Edge cut',
-      dec: 'Lishi GM37 or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Read the pellet with a VATS interrogator, then cut and match',
-      note: '15 pellet values. Guessing burns the four-minute lockout each try â€” carry the set or an interrogator.',
-      entry: 'Lishi GM37 or wedge and reach' }),
-  V({ id: 'chevy-camaro-2003-2009', mk: 'Chevrolet', md: 'Camaro (not sold)', y0: 2003, y1: 2009,
-      kw: 'n/a â€” no such model year', chip: 'n/a', sys: 'n/a', clone: 'n/a',
-      cut: 'n/a', dec: 'n/a', obd: 'n/a', on: 'n/a', akl: 'n/a',
-      note: 'GM built no Camaro for 2003-2009. If a customer says they have one, it is a 2002 or a 2010.',
-      port: 'n/a', entry: 'n/a' }),
-  V({ id: 'nissan-pathfinder-1996-2004', mk: 'Nissan', md: 'Pathfinder', y0: 1996, y1: 2004, b: 'suv',
-      kw: 'DA31', il: 'DA31-PT', chip: 'None early; 4D-60 later',
-      sys: 'NATS on chipped', clone: 'Some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi DA31',
-      obd: 'Yes on chipped', on: 'No', akl: 'Cut by code on non-chip; OBD + PIN otherwise', pin: 'YES on chipped',
-      entry: 'Lishi DA31' }),
-  V({ id: 'nissan-pathfinder-2005-2012', mk: 'Nissan', md: 'Pathfinder', y0: 2005, y1: 2012, b: 'suv',
-      kw: 'NSN14 / DA31 by trim', il: 'DA34', chip: 'ID46 (Hitag2)',
-      sys: 'NATS 5', clone: 'No on Intelligent Key', sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived', entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-titan-2004-2015', mk: 'Nissan', md: 'Titan', y0: 2004, y1: 2015, b: 'truck',
-      kw: 'DA31 / NSN14 by trim', il: 'DA31-PT', chip: 'ID46',
-      sys: 'NATS 5', clone: 'Some', sp: 8, dp: 4, cut: 'Edge or laser by trim', dec: 'Lishi DA31 or NSN14',
-      obd: 'Yes', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” BCM-derived',
-      note: 'Armada and Infiniti QX56 of the same years share this platform.', entry: 'Lishi by keyway' }),
-  V({ id: 'kia-sorento-2003-2015', mk: 'Kia', md: 'Sorento', y0: 2003, y1: 2015, b: 'suv',
-      kw: 'KK10 / HY20 by year', il: 'KK10-PT', chip: 'None early; ID46 later',
-      sys: 'Kia immobilizer on chipped', clone: 'Varies', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi KIA7',
-      obd: 'Yes on chipped', on: 'No', akl: 'OBD + PIN', pin: 'YES â€” PIN by VIN',
-      note: 'Early Sorentos often shipped with no immobilizer at all.', entry: 'Lishi KIA7' }),
-  V({ id: 'jeep-cherokee-xj-1995-2001', mk: 'Jeep', md: 'Cherokee XJ', y0: 1995, y1: 2001, b: 'suv',
-      kw: 'Y157 / Y159', il: 'Y157', chip: 'None on most; SKIM from 1998 on some',
-      sys: 'SKIM on later', clone: 'Yes on chipped', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24 or impression',
-      obd: 'Yes on chipped', on: '2 working keys on SKIM cars', akl: 'Cut by code on non-chip; OBD + PIN otherwise',
-      pin: 'YES on SKIM cars',
-      note: 'The XJ is a different vehicle from the 2014+ Cherokee KL, which is Fiat-platform SIP22.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'toyota-4runner-1990-1995', mk: 'Toyota', md: '4Runner', y0: 1990, y1: 1995, b: 'suv',
-      kw: 'TOY43 / TR47', il: 'TOY43', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', entry: 'Wedge and reach' }),
-  /* =====================================================================
-     VINTAGE TIER â€” 1981 to the immobilizer era.
-     These are deliberately written per make and era rather than per model,
-     because that is how the keys actually work: a 1988 Chevrolet is a
-     1988 Chevrolet whatever badge is on the tailgate. The useful facts are
-     the keyway, whether anything electronic is fitted (usually nothing),
-     and that the job is cut-by-code or impression.
-     ===================================================================== */
-  V({ id: 'gm-vintage-1981-1995', mk: 'Chevrolet', md: 'Most GM cars and trucks (vintage)', y0: 1981, y1: 1995,
-      kw: 'B44 / B45 / B48 / B50', il: 'B44 / B45', chip: 'None (VATS pellet on some 1986+ performance cars)',
-      sys: 'None on most', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut',
-      dec: 'Impression, or decode the door lock; the code is often stamped on the lock face',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Two-key era: B44-family turns the ignition, B45-family the doors and trunk. Ask which one is lost. Corvette and F-body from 1986 add a VATS pellet â€” that is the exception, not the rule.',
-      port: 'n/a (pre-OBD-II)', entry: 'Wedge and reach, or decode the door' }),
-  V({ id: 'ford-vintage-1981-1995', mk: 'Ford', md: 'Most Ford cars and trucks (vintage)', y0: 1981, y1: 1995,
-      kw: 'H50 / H51 / H54 / H60', il: 'H50 / H54', chip: 'None (PATS arrives 1996)',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Also a two-key era â€” ignition and door/trunk keys differ. Lincoln and Mercury of these years are the same keys.',
-      port: 'n/a (pre-OBD-II)', entry: 'Wedge and reach' }),
-  V({ id: 'chrysler-vintage-1981-1995', mk: 'Chrysler', md: 'Most Chrysler / Dodge / Plymouth (vintage)', y0: 1981, y1: 1995,
-      kw: 'Y151 / Y152 / Y155', il: 'Y151 / Y152', chip: 'None (SKIM arrives 1998)',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Minivans of this era are constant lockout work and have nothing electronic in the key.',
-      port: 'n/a (pre-OBD-II)', entry: 'Wedge and reach' }),
-
-  /* ---- AMC ------------------------------------------------------------
-     AMC was its own make until Chrysler bought it in 1987, so it belongs
-     under AMC rather than folded into Jeep. The Renault-built cars (Alliance,
-     Encore) run Renault locks; the AMC-built cars run AMC's own. */
-
-  /* ---- GM: the nameplates the seed skipped ---------------------------- */
-  V({ id: 'chevy-avalanche-2002-2013', mk: 'Chevrolet', md: 'Avalanche', y0: 2002, y1: 2013, b: 'truck',
-      kw: 'B111 (B99 on the earliest)', il: 'B111-PT',
-      chip: 'PK3+ / ID46 (Hitag2) on later', sys: 'Passlock / PK3+', clone: 'No â€” must be programmed',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi B111 on the door',
-      obd: 'Yes', on: '30-minute relearn on Passlock trucks', akl: 'OBD, or the 30-minute relearn three times over',
-      note: 'The half-ton pickup with the midgate. Same key family as the Silverado of its year â€” check the year before you assume which.',
-      entry: 'Lishi B111 on the door' }),
-  V({ id: 'chevy-monte-carlo-1995-2007', mk: 'Chevrolet', md: 'Monte Carlo', y0: 1995, y1: 2007, b: 'car',
-      kw: 'B91 / B97 (VATS), B111 from 2006', il: 'B91 / B111-PT',
-      chip: 'VATS resistor pellet, then PK3', sys: 'VATS / Passlock', clone: 'Pellet: read and match',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Read the pellet value with a VATS tester',
-      obd: 'Later years only', on: '10-minute relearn on Passlock', akl: 'Match the pellet, or the relearn',
-      note: 'VATS cars need the right resistor pellet, not just the right cut â€” 15 values, and the wrong one leaves you waiting out a lockout timer.',
-      entry: 'Wedge and reach, or Lishi on the door' }),
-  V({ id: 'chevy-aveo-2004-2011', mk: 'Chevrolet', md: 'Aveo / Daewoo Kalos', y0: 2004, y1: 2011, b: 'car',
-      kw: 'DWO4R', il: 'DWO4R',
-      chip: 'ID48 / Megamos on later', sys: 'Daewoo immobilizer', clone: 'ID48 clones on some',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with a Daewoo-capable tool', on: 'No', akl: 'OBD with PIN from the tool',
-      note: 'A Daewoo under a bowtie. It does not share a keyway with any other Chevrolet of the era, and the usual GM tool coverage often does not reach it.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'chevy-sonic-spark-2012-2022', mk: 'Chevrolet', md: 'Sonic / Spark', y0: 2012, y1: 2022, b: 'car',
-      kw: 'HU100', il: 'B119-PT',
-      chip: 'ID46 (Hitag2)', sys: 'GM immobilizer', clone: 'No â€” must be programmed',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100 on the door',
-      obd: 'Yes', on: 'No', akl: 'OBD, 10 or 30-minute security wait depending on tool',
-      note: 'Korean-built small cars on the modern GM laser key.',
-      entry: 'Lishi HU100' }),
-  V({ id: 'chevy-bolt-2017-2023', mk: 'Chevrolet', md: 'Bolt EV / Bolt EUV', y0: 2017, y1: 2023, b: 'car',
-      kw: 'HU100 emergency blade in the fob', chip: 'Proximity', sys: 'GM smart key', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
-      obd: 'Yes', on: 'No', akl: 'OBD with a GM-capable tool',
-      note: 'Push-button start. The blade in the fob opens the door and nothing else â€” the car will not move on it.',
-      entry: 'Blade in the fob, or Lishi HU100' }),
-  V({ id: 'chevy-trailblazer-2021-2024', mk: 'Chevrolet', md: 'TrailBlazer (2021 on)', y0: 2021, y1: 2024, b: 'suv',
-      kw: 'HU100 emergency blade in the fob', chip: 'Proximity', sys: 'GM smart key', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
-      obd: 'Yes', on: 'No', akl: 'OBD with a GM-capable tool',
-      note: 'Not the 2002-2009 TrailBlazer â€” same name, completely different vehicle and key, and no US TrailBlazer at all from 2010 to 2020, so that gap is real. The 2024-on Trax is this same key.',
-      entry: 'Blade in the fob' }),
-  V({ id: 'chevy-uplander-2005-2009', mk: 'Chevrolet', md: 'Uplander / Venture / Pontiac Montana', y0: 1997, y1: 2009, b: 'van',
-      kw: 'B91 / B97, B111 from 2006', il: 'B91 / B111-PT',
-      chip: 'VATS then PK3', sys: 'VATS / Passlock', clone: 'Pellet: read and match',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: '10-minute relearn', akl: 'Pellet match or relearn',
-      note: 'The GM minivans. Sliding door locks are often seized on these â€” check before you quote a lockout.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-grand-am-1999-2005', mk: 'Pontiac', md: 'Grand Am / Oldsmobile Alero', y0: 1999, y1: 2005, b: 'car',
-      kw: 'B91 / B97', il: 'B91',
-      chip: 'Passlock (no chip in the key)', sys: 'Passlock II', clone: 'n/a â€” no transponder',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'No', on: '10-minute relearn if the module was disturbed', akl: 'Cut by code or decode â€” no programming needed',
-      note: 'Passlock reads the lock cylinder, not a chip, so a correctly cut key with no transponder starts it. A failing Passlock sensor is the usual reason one will not.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-grand-prix-1997-2008', mk: 'Pontiac', md: 'Grand Prix', y0: 1997, y1: 2008, b: 'car',
-      kw: 'B91 / B97, B111 from 2004', il: 'B91 / B111-PT',
-      chip: 'Passlock, PK3 on later', sys: 'Passlock / PK3', clone: 'No',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: '10-minute relearn', akl: 'Relearn, or OBD on the later cars',
-      entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-sunfire-cavalier-1995-2005', mk: 'Pontiac', md: 'Sunfire / Chevrolet Cavalier', y0: 1995, y1: 2005, b: 'car',
-      kw: 'B91 / B97', il: 'B91',
-      chip: 'Passlock (no chip in the key)', sys: 'Passlock', clone: 'n/a â€” no transponder',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'No', on: '10-minute relearn', akl: 'Cut by code or decode',
-      note: 'A plain cut key starts these. Common, cheap, and one of the easier all-keys-lost jobs still on the road.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-bonneville-1992-2005', mk: 'Pontiac', md: 'Bonneville / Buick LeSabre / Park Avenue', y0: 1992, y1: 2005, b: 'car',
-      kw: 'B91 / B97 (VATS)', il: 'B91',
-      chip: 'VATS resistor pellet', sys: 'VATS', clone: 'Read and match the pellet',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Read the pellet with a VATS tester',
-      obd: 'No', on: 'No', akl: 'Match the pellet and cut by code',
-      note: 'GM full-size sedans of the VATS era. Fifteen pellet values â€” measure, do not guess, because a wrong one starts a lockout timer.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-aztek-vibe-2001-2010', mk: 'Pontiac', md: 'Aztek / Vibe / Torrent / Solstice / G5', y0: 2001, y1: 2010, b: 'suv',
-      kw: 'B91 / B111 depending on year', il: 'B91 / B111-PT',
-      chip: 'Passlock or PK3+', sys: 'Passlock / PK3+', clone: 'No',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: '10 or 30-minute relearn', akl: 'Relearn, or OBD on the later cars',
-      note: 'The Vibe is a Toyota Matrix underneath but keeps the GM key. The Solstice and G5 follow the Cobalt.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'buick-century-regal-1997-2005', mk: 'Buick', md: 'Century / Regal', y0: 1997, y1: 2005, b: 'car',
-      kw: 'B91 / B97', il: 'B91',
-      chip: 'Passlock', sys: 'Passlock', clone: 'n/a â€” no transponder',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'No', on: '10-minute relearn', akl: 'Cut by code or decode',
-      entry: 'Wedge and reach' }),
-  V({ id: 'buick-rendezvous-rainier-2002-2007', mk: 'Buick', md: 'Rendezvous / Rainier / Terraza', y0: 2002, y1: 2007, b: 'suv',
-      kw: 'B111', il: 'B111-PT',
-      chip: 'PK3+ / ID46', sys: 'PK3+', clone: 'No â€” must be programmed',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi B111 on the door',
-      obd: 'Yes', on: '30-minute relearn', akl: 'OBD, or the relearn three times over',
-      entry: 'Lishi B111' }),
-  V({ id: 'buick-lucerne-2006-2011', mk: 'Buick', md: 'Lucerne / Cadillac DTS', y0: 2006, y1: 2011, b: 'car',
-      kw: 'B111', il: 'B111-PT',
-      chip: 'PK3+ / ID46', sys: 'PK3+', clone: 'No â€” must be programmed',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi B111 on the door',
-      obd: 'Yes', on: '30-minute relearn', akl: 'OBD with a GM-capable tool',
-      entry: 'Lishi B111' }),
-  V({ id: 'buick-verano-envision-2012-2024', mk: 'Buick', md: 'Verano / Envision / Encore GX / Envista', y0: 2012, y1: 2024, b: 'car',
-      kw: 'HU100 (blade in the fob on prox cars)', il: 'B119-PT',
-      chip: 'ID46 (Hitag2), later Hitag Pro', sys: 'GM immobilizer', clone: 'No â€” must be programmed',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100 on the door',
-      obd: 'Yes', on: 'No', akl: 'OBD, 10 or 30-minute wait depending on tool',
-      entry: 'Lishi HU100' }),
-  V({ id: 'cadillac-deville-seville-1994-2005', mk: 'Cadillac', md: 'DeVille / Seville / Eldorado', y0: 1994, y1: 2005, b: 'car',
-      kw: 'B91 / B97 (VATS)', il: 'B91',
-      chip: 'VATS resistor pellet', sys: 'VATS / Passkey', clone: 'Read and match the pellet',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Read the pellet with a VATS tester',
-      obd: 'No', on: 'No', akl: 'Match the pellet and cut by code',
-      entry: 'Wedge and reach' }),
-  V({ id: 'cadillac-xt-ct-2017-2024', mk: 'Cadillac', md: 'XT4 / XT5 / XT6 / CT4 / CT5', y0: 2017, y1: 2024, b: 'suv',
-      kw: 'HU100 emergency blade in the fob', chip: 'Proximity (Hitag Pro)', sys: 'GM smart key', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
-      obd: 'Yes', on: 'No', akl: 'OBD with a GM-capable tool',
-      note: 'Push-button start. Some carry no external door cylinder at all â€” check before you plan a lockout.',
-      entry: 'Blade in the fob if there is a cylinder; otherwise air wedge and long reach' }),
-
-  /* ---- FORD ---- */
-  V({ id: 'ford-windstar-freestar-1995-2007', mk: 'Ford', md: 'Windstar / Freestar / Mercury Monterey', y0: 1995, y1: 2007, b: 'van',
-      kw: 'H72 / H75', il: 'H72 / H75-PT',
-      chip: '4C then 4D-63', sys: 'PATS', clone: '4C clones; 4D-63 with the right tool',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Yes with a PATS-capable tool', on: '2-key onboard on many', akl: 'OBD, 10-minute PATS wait',
-      note: 'Two working keys will program a third onboard. With none, it is OBD and a ten-minute wait.',
-      entry: 'Lishi FO38, or wedge and reach' }),
-  V({ id: 'ford-five-hundred-2005-2007', mk: 'Ford', md: 'Five Hundred / Freestyle / Mercury Montego', y0: 2005, y1: 2007, b: 'car',
-      kw: 'H84', il: 'H84-PT',
-      chip: '4D-63 (40-bit)', sys: 'PATS', clone: 'Yes with a 4D-capable cloner',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Yes', on: '2-key onboard', akl: 'OBD, 10-minute PATS wait',
-      note: 'Volvo platform under a Ford badge, but the key is straight Ford PATS.',
-      entry: 'Lishi FO38' }),
-  V({ id: 'ford-excursion-2000-2005', mk: 'Ford', md: 'Excursion', y0: 2000, y1: 2005, b: 'suv',
-      kw: 'H72', il: 'H72-PT',
-      chip: '4C then 4D-63', sys: 'PATS', clone: '4C clones',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Yes', on: '2-key onboard', akl: 'OBD, 10-minute PATS wait',
-      note: 'Super Duty running gear under an SUV body â€” the key follows the F-250 of the same year.',
-      entry: 'Lishi FO38' }),
-  V({ id: 'ford-bronco-maverick-2021-2024', mk: 'Ford', md: 'Bronco / Bronco Sport / Maverick', y0: 2021, y1: 2024, b: 'suv',
-      kw: 'HU101 emergency blade in the fob', chip: 'ID49 (Hitag Pro)', sys: 'PATS / IPC', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
-      obd: 'Yes with an ID49-capable tool', on: 'No', akl: 'OBD, and many need the dealer parameter reset',
-      note: 'Push-button start on most trims. All-keys-lost on the newest Fords is a tool-capability question before it is a locksmithing one.',
-      entry: 'Blade in the fob, or Lishi HU101' }),
-  V({ id: 'ford-escort-contour-1995-2003', mk: 'Ford', md: 'Escort / ZX2 / Contour / Mercury Mystique', y0: 1995, y1: 2003, b: 'car',
-      kw: 'H72 / H75', il: 'H72 / H75',
-      chip: 'None early, 4C from 1998 on some', sys: 'PATS on later', clone: '4C clones',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'Later years', on: '2-key onboard where PATS is fitted', akl: 'Cut by code; OBD if chipped',
-      note: 'Early ones have no transponder at all â€” a cut key starts them. Check for the PATS light before quoting.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'ford-thunderbird-2002-2005', mk: 'Ford', md: 'Thunderbird / Lincoln LS', y0: 2000, y1: 2006, b: 'car',
-      kw: 'H84 / H86', il: 'H84-PT',
-      chip: '4D-63 (40-bit)', sys: 'PATS', clone: 'Yes with a 4D-capable cloner',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Yes', on: '2-key onboard', akl: 'OBD, 10-minute PATS wait',
-      entry: 'Lishi FO38' }),
-
-  /* ---- STELLANTIS ---- */
-  V({ id: 'chrysler-lh-1998-2004', mk: 'Chrysler', md: 'Concorde / 300M / LHS / Dodge Intrepid', y0: 1993, y1: 2004, b: 'car',
-      kw: 'Y155 / Y157', il: 'Y157-PT',
-      chip: 'None early, 4D-64 Sentry Key from 1998', sys: 'Sentry Key (SKIM)', clone: 'Yes on 4D-64',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard from 1998', akl: 'OBD with the SKIM PIN', pin: 'Yes â€” PIN by VIN',
-      note: 'The LH cars. Sentry Key arrives in 1998; before that a cut key is the whole job.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'chrysler-cirrus-neon-1995-2006', mk: 'Chrysler', md: 'Cirrus / Stratus / Breeze / Dodge Neon', y0: 1995, y1: 2006, b: 'car',
-      kw: 'Y155 / Y157', il: 'Y157-PT',
-      chip: 'None early, 4D-64 Sentry Key on later', sys: 'Sentry Key (SKIM)', clone: 'Yes on 4D-64',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard where fitted', akl: 'OBD with the SKIM PIN', pin: 'Yes on chipped cars',
-      entry: 'Wedge and reach' }),
-  V({ id: 'chrysler-ptcruiser-2001-2010', mk: 'Chrysler', md: 'PT Cruiser', y0: 2001, y1: 2010, b: 'car',
-      kw: 'Y159 / Y160', il: 'Y160-PT',
-      chip: '4D-64 Sentry Key', sys: 'Sentry Key (SKIM)', clone: 'Yes',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard', akl: 'OBD with the SKIM PIN', pin: 'Yes â€” PIN by VIN',
-      entry: 'Wedge and reach' }),
-  V({ id: 'chrysler-aspen-2007-2009', mk: 'Chrysler', md: 'Aspen', y0: 2007, y1: 2009, b: 'suv',
-      kw: 'Y160', il: 'Y160-PT',
-      chip: '4D-64 Sentry Key', sys: 'Sentry Key (SKREEM)', clone: 'Yes',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN',
-      note: 'A Dodge Durango in a dinner jacket, and three model years only.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'dodge-caliber-nitro-2007-2012', mk: 'Dodge', md: 'Caliber / Nitro', y0: 2007, y1: 2012, b: 'suv',
-      kw: 'Y160', il: 'Y160-PT',
-      chip: '4D-64 Sentry Key, ID46 on later', sys: 'Sentry Key (SKREEM)', clone: 'Yes on 4D-64',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN',
-      entry: 'Wedge and reach' }),
-  V({ id: 'dodge-avenger-2008-2014', mk: 'Dodge', md: 'Avenger', y0: 2008, y1: 2014, b: 'car',
-      kw: 'Y160', il: 'Y160-PT',
-      chip: '4D-64 Sentry Key, ID46 on later', sys: 'Sentry Key (SKREEM)', clone: 'Yes on 4D-64',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN',
-      entry: 'Wedge and reach' }),
-  V({ id: 'chrysler-crossfire-2004-2008', mk: 'Chrysler', md: 'Crossfire', y0: 2004, y1: 2008, b: 'car',
-      kw: 'HU64', chip: 'Mercedes infrared key', sys: 'Mercedes DAS', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / 4-track', dec: 'Not from the lock',
-      obd: 'No â€” Mercedes procedure', on: 'No', akl: 'Dealer or a Mercedes-capable specialist',
-      note: 'A Mercedes SLK with Chrysler badges. Nothing about the key is Chrysler â€” do not quote it as one.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'dodge-dart-hornet-2013-2025', mk: 'Dodge', md: 'Dart / Hornet', y0: 2013, y1: 2025, b: 'car',
-      kw: 'SIP22 (emergency blade on prox)',
-      chip: 'ID46 (Hitag2), Hitag AES on the Hornet', sys: 'Fiat / Alfa immobilizer', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi SIP22 on the door',
-      obd: 'Yes with PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes',
-      note: 'Fiat underneath, not Chrysler. The Hornet is an Alfa Tonale with a different badge, and it keys like one.',
-      entry: 'Lishi SIP22' }),
-  V({ id: 'mitsubishi-raider-2006-2009', mk: 'Mitsubishi', md: 'Raider', y0: 2006, y1: 2009, b: 'truck',
-      kw: 'Y160', il: 'Y160-PT',
-      chip: '4D-64 Sentry Key', sys: 'Sentry Key', clone: 'Yes',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN',
-      note: 'A Dodge Dakota with Mitsubishi badges. Key it as a Dodge, not a Mitsubishi.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'vw-routan-2009-2014', mk: 'Volkswagen', md: 'Routan', y0: 2009, y1: 2014, b: 'van',
-      kw: 'Y160', il: 'Y160-PT',
-      chip: '4D-64 / ID46', sys: 'Chrysler Sentry Key', clone: 'Yes on 4D-64',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN', on: '2-key onboard', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN',
-      note: 'A Chrysler Town and Country with a VW badge. Nothing about the key is Volkswagen.',
-      entry: 'Wedge and reach' }),
-
-  /* ---- NISSAN / INFINITI ---- */
-  V({ id: 'nissan-z-1989-2009', mk: 'Nissan', md: '240SX / 300ZX / 350Z', y0: 1989, y1: 2009, b: 'car',
-      kw: 'DA31 / DA34, NSN14 on the 350Z', il: 'DA31 / DA34',
-      chip: 'None early, ID46 on the 350Z', sys: 'None / NATS', clone: 'ID46 with the right tool',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi NSN14 on the later cars',
-      obd: '350Z only', on: 'No', akl: 'Cut by code on the early cars; OBD on the 350Z',
-      note: 'Enthusiast cars, often modified, often with an aftermarket alarm wired into the start circuit. Ask before you cut.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'nissan-xterra-quest-1999-2016', mk: 'Nissan', md: 'Xterra / Quest', y0: 1999, y1: 2016, b: 'suv',
-      kw: 'DA34 then NSN14', il: 'DA34',
-      chip: 'ID46 (NATS 5/6)', sys: 'NATS', clone: 'No â€” must be programmed',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi NSN14 on the door',
-      obd: 'Yes with the BCM PIN', on: 'No', akl: 'OBD with the PIN from the BCM code', pin: 'Yes â€” BCM to PIN',
-      entry: 'Lishi NSN14' }),
-  V({ id: 'nissan-cube-juke-kicks-2009-2024', mk: 'Nissan', md: 'Cube / Juke / Kicks', y0: 2009, y1: 2024, b: 'car',
-      kw: 'NSN14 (emergency blade on prox)',
-      chip: 'ID46, Hitag AES on the newest', sys: 'NATS', clone: 'No',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi NSN14 on the door',
-      obd: 'Yes with the BCM PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes â€” BCM to PIN',
-      entry: 'Lishi NSN14' }),
-
-  /* ---- TOYOTA ---- */
-  V({ id: 'toyota-celica-echo-1990-2006', mk: 'Toyota', md: 'Celica / Echo / MR2 Spyder / Paseo', y0: 1990, y1: 2006, b: 'car',
-      kw: 'TOY43', il: 'TOY43',
-      chip: 'None early, 4C then 4D-67 on later', sys: 'None / Toyota immobilizer', clone: '4C and 4D clone well',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43 on the door',
-      obd: 'Later years', on: 'Some accept the 2-key onboard procedure', akl: 'OBD, or the reset with a Toyota-capable tool',
-      note: 'Many of these have no transponder at all â€” check for the security light before you assume a chip.',
-      entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-mirai-crown-2016-2024', mk: 'Toyota', md: 'Mirai / Crown / Corolla Cross / Grand Highlander', y0: 2016, y1: 2024, b: 'car',
-      kw: 'TOY48 emergency blade in the fob',
-      chip: '8A / H chip (128-bit AES)', sys: 'Toyota smart key', clone: 'No â€” must be programmed',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
-      obd: 'Yes with an H-chip capable tool', on: 'No', akl: 'OBD plus the 16-minute immobilizer reset on most',
-      note: 'H-chip Toyotas are where the cheap clone tools stop. Bring the good tool.',
-      entry: 'Blade in the fob, or Lishi TOY48' }),
-
-  /* ---- HONDA / ACURA ---- */
-  V({ id: 'honda-prelude-s2000-1992-2009', mk: 'Honda', md: 'Prelude / S2000 / del Sol', y0: 1992, y1: 2009, b: 'car',
-      kw: 'HD106 / HO01', il: 'HD106 / HO01',
-      chip: 'None early, ID46 on later', sys: 'None / Honda immobilizer', clone: 'ID46 with the right tool',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: 'No', akl: 'Cut by code early; OBD once chipped',
-      entry: 'Wedge and reach' }),
-  V({ id: 'honda-passport-crosstour-2010-2024', mk: 'Honda', md: 'Crosstour / Passport / Clarity', y0: 2010, y1: 2024, b: 'suv',
-      kw: 'HON66 (emergency blade on prox)',
-      chip: 'ID46 then ID47 (Hitag3)', sys: 'Honda immobilizer', clone: 'No on Hitag3',
-      sp: 6, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66 on the door',
-      obd: 'Yes', on: 'No', akl: 'OBD with a Honda-capable tool',
-      note: 'The 1994-2002 Passport is a rebadged Isuzu Rodeo and shares nothing with this one â€” check the year first.',
-      entry: 'Lishi HON66' }),
-  V({ id: 'acura-ilx-rlx-2013-2024', mk: 'Acura', md: 'ILX / RLX / ZDX / Integra (new)', y0: 2013, y1: 2024, b: 'car',
-      kw: 'HON66 (emergency blade on prox)',
-      chip: 'ID47 (Hitag3)', sys: 'Honda immobilizer', clone: 'No',
-      sp: 6, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66 on the door',
-      obd: 'Yes', on: 'No', akl: 'OBD with a Honda-capable tool',
-      entry: 'Lishi HON66' }),
-  V({ id: 'acura-rl-integra-1994-2012', mk: 'Acura', md: 'RL / Integra / RSX / Legend / CL / Vigor', y0: 1990, y1: 2012, b: 'car',
-      kw: 'HD106 / HO01', il: 'HD106 / HO01',
-      chip: 'None early, ID46 on later', sys: 'None / Honda immobilizer', clone: 'ID46 with the right tool',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: 'No', akl: 'Cut by code early; OBD once chipped',
-      note: 'Integras and RSXs are among the most stolen cars of their era, so expect an aftermarket immobilizer or a replaced ignition.',
-      entry: 'Wedge and reach' }),
-
-  /* ---- HYUNDAI / KIA ---- */
-  V({ id: 'hyundai-azera-genesis-2006-2016', mk: 'Hyundai', md: 'Azera / Genesis / Genesis Coupe / Equus / Entourage', y0: 2006, y1: 2016, b: 'car',
-      kw: 'HY15 / HY20', il: 'HY20-PT',
-      chip: 'ID46 (Hitag2)', sys: 'Hyundai immobilizer', clone: 'No â€” must be programmed',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HY20 on the door',
-      obd: 'Yes with PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN from a code service',
-      entry: 'Lishi HY20' }),
-  V({ id: 'hyundai-kona-ioniq-2017-2024', mk: 'Hyundai', md: 'Kona / Venue / Ioniq / Ioniq 5 / Santa Cruz', y0: 2017, y1: 2024, b: 'suv',
-      kw: 'HY22 (emergency blade on prox)',
-      chip: 'ID47 / Hitag3, Hitag AES on the newest', sys: 'Hyundai smart key', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HY22 on the door',
-      obd: 'Yes with PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes',
-      note: 'The 2011-2021 Hyundai and Kia theft problem is about the immobilizer being absent on some trims, not about the key. Check whether one is fitted before you diagnose a no-start.',
-      entry: 'Lishi HY22' }),
-  V({ id: 'kia-amanti-cadenza-2004-2020', mk: 'Kia', md: 'Amanti / Borrego / Cadenza / K900 / Rondo / Spectra', y0: 2000, y1: 2020, b: 'car',
-      kw: 'KK7 / KK10, KK12 on later', il: 'KK10-PT',
-      chip: 'ID46 (Hitag2)', sys: 'Kia immobilizer', clone: 'No â€” must be programmed',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi KK10 on the door',
-      obd: 'Yes with PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes â€” PIN by VIN',
-      entry: 'Lishi KK10' }),
-  V({ id: 'kia-k5-ev6-2018-2024', mk: 'Kia', md: 'K5 / Seltos / Niro / Stinger / EV6 / EV9', y0: 2018, y1: 2024, b: 'car',
-      kw: 'KK12 (emergency blade on prox)',
-      chip: 'ID47 / Hitag3, Hitag AES on the newest', sys: 'Kia smart key', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi KK12 on the door',
-      obd: 'Yes with PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes',
-      entry: 'Lishi KK12' }),
-
-  /* ---- MAZDA / SUBARU / MITSUBISHI ---- */
-  V({ id: 'mazda-cx3-cx50-2016-2024', mk: 'Mazda', md: 'CX-3 / CX-50 / CX-90 / MX-30', y0: 2016, y1: 2024, b: 'suv',
-      kw: 'MAZ24 (emergency blade on prox)',
-      chip: 'ID49 (Hitag Pro)', sys: 'Mazda smart key', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi MAZ24 on the door',
-      obd: 'Yes with a Mazda-capable tool', on: 'No', akl: 'OBD, and many need the 16-digit outcode/incode',
-      entry: 'Lishi MAZ24' }),
-  V({ id: 'mazda-rx8-tribute-1995-2012', mk: 'Mazda', md: 'RX-8 / Millenia / Protege / MPV / CX-7', y0: 1995, y1: 2012, b: 'car',
-      kw: 'MZ31 / MAZ24', il: 'MZ31',
-      chip: 'None early, 4D-63 on later', sys: 'Mazda immobilizer', clone: 'Yes on 4D',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: 'No', akl: 'Cut by code early; OBD once chipped',
-      note: 'The Tribute of this era is a Ford Escape and keys as a Ford, not a Mazda â€” check the badge against the keyway.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'subaru-brz-tribeca-2003-2024', mk: 'Subaru', md: 'BRZ / Baja / Tribeca / Solterra', y0: 2003, y1: 2024, b: 'car',
-      kw: 'SUB4 (emergency blade on prox)',
-      chip: 'ID46 then ID47', sys: 'Subaru immobilizer', clone: 'No on the newer chips',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi SUB4 on the door',
-      obd: 'Yes with a Subaru-capable tool', on: 'No', akl: 'OBD; some need the security access code',
-      note: 'The BRZ is a Toyota 86 twin but keeps the Subaru key. The Solterra is the other way around.',
-      entry: 'Lishi SUB4' }),
-  V({ id: 'mitsubishi-galant-montero-1992-2012', mk: 'Mitsubishi', md: 'Galant / Diamante / Endeavor / Montero', y0: 1992, y1: 2012, b: 'car',
-      kw: 'MIT8 / MIT11', il: 'MIT8 / MIT11',
-      chip: 'None early, ID46 on later', sys: 'None / Mitsubishi immobilizer', clone: 'ID46 with the right tool',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: 'No', akl: 'Cut by code early; OBD once chipped',
-      entry: 'Wedge and reach' }),
-
-  /* ---- VW / AUDI ---- */
-  V({ id: 'vw-cc-touareg-2004-2017', mk: 'Volkswagen', md: 'CC / Eos / Touareg / Phaeton', y0: 2004, y1: 2017, b: 'car',
-      kw: 'HU66',
-      chip: 'ID48 (Megamos), ID48 AES on later', sys: 'VW immobilizer', clone: 'ID48 clones with the right tool',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66 on the door',
-      obd: 'Yes with a VAG-capable tool', on: 'No', akl: 'OBD; many need the component security PIN read from the cluster',
-      note: 'The Touareg is a Porsche Cayenne underneath and can need the same dealer-level access. Do not quote it as a Jetta.',
-      entry: 'Lishi HU66' }),
-  V({ id: 'vw-arteon-id4-2019-2024', mk: 'Volkswagen', md: 'Arteon / Taos / ID.4', y0: 2019, y1: 2024, b: 'car',
-      kw: 'HU162T (emergency blade on prox)',
-      chip: 'ID48 AES / MQB', sys: 'VW MQB immobilizer', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU162T on the door',
-      obd: 'Yes with an MQB-capable tool', on: 'No', akl: 'MQB all-keys-lost needs a tool that can do it â€” many cannot',
-      note: 'MQB is the wall on modern VW. Confirm your tool covers it before you take the job, not after.',
-      entry: 'Lishi HU162T' }),
-  V({ id: 'audi-a3-a5-q3-2006-2024', mk: 'Audi', md: 'A3 / A5 / A7 / Q3', y0: 2006, y1: 2024, b: 'car',
-      kw: 'HU66 then HU162T',
-      chip: 'ID48 then ID48 AES (MQB)', sys: 'Audi immobilizer', clone: 'ID48 clones on the older cars',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66 or HU162T on the door',
-      obd: 'Yes with a VAG-capable tool', on: 'No', akl: 'OBD on older; MQB needs a tool that covers it',
-      entry: 'Lishi HU66 / HU162T' }),
-
-  /* ---- BMW / MINI / MERCEDES / VOLVO ---- */
-  V({ id: 'bmw-1-2-4-series-2004-2024', mk: 'BMW', md: '1 Series / 2 Series / 4 Series / Z4', y0: 2004, y1: 2024, b: 'car',
-      kw: 'HU92 then HU100R',
-      chip: 'ID46 (CAS3) then Hitag Pro (FEM/BDC)', sys: 'CAS / FEM / BDC', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / 2-track', dec: 'Lishi HU92 or HU100R on the door',
-      obd: 'Yes on CAS3 with the right tool', on: 'No', akl: 'CAS3 by OBD; FEM/BDC usually needs the module on the bench',
-      note: 'FEM and BDC cars are a bench job on all keys lost. Know which one you are looking at before you quote.',
-      entry: 'Lishi HU92 / HU100R' }),
-  V({ id: 'bmw-5-7-x-series-1997-2024', mk: 'BMW', md: '5 Series / 7 Series / X1 / X7 / i3 / i4', y0: 1997, y1: 2024, b: 'car',
-      kw: 'HU92 then HU100R',
-      chip: 'EWS then CAS then FEM/BDC', sys: 'EWS / CAS / FEM / BDC', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / 2-track', dec: 'Lishi HU92 or HU100R on the door',
-      obd: 'Depends entirely on the module', on: 'No', akl: 'EWS and CAS on the bench; FEM/BDC on the bench',
-      note: 'The comfort-access cars often have no door cylinder at all â€” check for one before you plan the entry. Note the NHTSA index lists pre-2012 BMWs under their engine designation (528i, 740i) rather than the series name, so searching "5 Series" there will not reach the older cars.',
-      entry: 'Lishi HU92 / HU100R, or air wedge where there is no cylinder' }),
-  V({ id: 'mini-clubman-countryman-2008-2024', mk: 'Mini', md: 'Clubman / Countryman', y0: 2008, y1: 2024, b: 'car',
-      kw: 'HU92 then HU100R',
-      chip: 'ID46 (CAS) then Hitag Pro (FEM/BDC)', sys: 'CAS / FEM / BDC', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / 2-track', dec: 'Lishi HU92 or HU100R on the door',
-      obd: 'CAS by OBD with the right tool', on: 'No', akl: 'Usually a bench job',
-      note: 'A BMW in every way that matters to this job.',
-      entry: 'Lishi HU92 / HU100R' }),
-  V({ id: 'mercedes-clk-cla-1998-2024', mk: 'Mercedes-Benz', md: 'CLK / CLA / A-Class / B-Class / CLS / GLC / GLE', y0: 1998, y1: 2024, b: 'car',
-      kw: 'HU64',
-      chip: 'Infrared key (DAS/FBS)', sys: 'Mercedes DAS / FBS', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / 4-track', dec: 'Lishi HU64 on the door',
-      obd: 'No â€” Mercedes procedure', on: 'No', akl: 'EIS/ESL work on the bench, or the dealer',
-      note: 'Mercedes keys are not an OBD job. FBS4 cars are dealer-only for practical purposes â€” say so early rather than after you are committed.',
-      entry: 'Lishi HU64' }),
-  V({ id: 'volvo-s60-s80-1999-2024', mk: 'Volvo', md: 'S60 / V60 / S80 / S40 / XC40 / C70', y0: 1999, y1: 2024, b: 'car',
-      kw: 'HU56R then HU101',
-      chip: 'ID48 then Hitag Pro', sys: 'Volvo immobilizer / CEM', clone: 'No on the newer chips',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU56R or HU101 on the door',
-      obd: 'Yes with a Volvo-capable tool', on: 'No', akl: 'Often needs CEM access; the newest are dealer-leaning',
-      note: 'Volvo moved to the Ford HU101 profile during the Ford ownership years, then away again. Check the blade, not the badge.',
-      entry: 'Lishi HU56R / HU101' }),
-
-
-  /* ---- LINCOLN / MERCURY: dead badges, live cars ---------------------- */
-  V({ id: 'lincoln-aviator-2003-2024', mk: 'Lincoln', md: 'Aviator / Corsair / Nautilus', y0: 2003, y1: 2024, b: 'suv',
-      kw: 'H84 then HU101',
-      chip: '4D-63 then ID49 (Hitag Pro)', sys: 'PATS / IPC', clone: 'No on ID49',
-      sp: 10, dp: 4, cut: 'Edge then laser', dec: 'Lishi HU101 on the door',
-      obd: 'Yes with an ID49-capable tool', on: 'No on the modern cars', akl: 'OBD; many need the dealer parameter reset',
-      entry: 'Lishi HU101, or the blade in the fob' }),
-  V({ id: 'lincoln-continental-mark-1988-2020', mk: 'Lincoln', md: 'Continental / Mark VII / Mark VIII', y0: 1988, y1: 2020, b: 'car',
-      kw: 'H72 / H75, HU101 on the 2017 car', il: 'H72',
-      chip: 'None early, 4C then 4D-63, ID49 on the last car', sys: 'None / PATS',
-      clone: '4C clones', sp: 8, dp: 5, cut: 'Edge, laser on the last car', dec: 'Lishi FO38 or HU101',
-      obd: 'Later years', on: '2-key onboard where PATS is fitted', akl: 'Cut by code on the early cars; OBD once chipped',
-      note: 'A long-lived nameplate with a gap: no Continental from 2003 until the 2017 car, so the year matters more than usual here.',
-      entry: 'Lishi FO38 / HU101' }),
-  V({ id: 'mercury-sable-cougar-1996-2011', mk: 'Mercury', md: 'Sable / Cougar / Mystique / Tracer', y0: 1995, y1: 2009, b: 'car',
-      kw: 'H72 / H75, H84 on later', il: 'H72-PT',
-      chip: 'None early, 4C then 4D-63', sys: 'PATS', clone: '4C clones',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Yes once chipped', on: '2-key onboard', akl: 'OBD, 10-minute PATS wait',
-      note: 'Taurus, Contour and Escort under Mercury badges. Key them as the Ford.',
-      entry: 'Lishi FO38' }),
-  V({ id: 'mercury-mountaineer-mariner-1997-2011', mk: 'Mercury', md: 'Mountaineer / Mariner / Milan / Montego / Monterey', y0: 1997, y1: 2011, b: 'suv',
-      kw: 'H72 / H84', il: 'H84-PT',
-      chip: '4C then 4D-63', sys: 'PATS', clone: '4C clones; 4D-63 with the right tool',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38 on the door',
-      obd: 'Yes', on: '2-key onboard', akl: 'OBD, 10-minute PATS wait',
-      note: 'Explorer, Escape, Fusion, Five Hundred and Freestar with a different grille.',
-      entry: 'Lishi FO38' }),
-  V({ id: 'mercury-villager-1993-2002', mk: 'Mercury', md: 'Villager', y0: 1993, y1: 2002, b: 'van',
-      kw: 'DA31 / DA34', il: 'DA31', chip: 'None', sys: 'None',
-      clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or decode',
-      note: 'GOTCHA: a Nissan Quest with a Mercury badge, built alongside it. Nissan keyway, not Ford â€” the only Mercury in this database that is not a Ford underneath.',
-      entry: 'Wedge and reach' }),
-
-  /* ---- OLDSMOBILE / BUICK / PONTIAC / CADILLAC / SATURN --------------- */
-  V({ id: 'oldsmobile-cutlass-1981-1999', mk: 'Oldsmobile', md: 'Cutlass / Cutlass Ciera / Cutlass Supreme / Achieva', y0: 1981, y1: 1999, b: 'car',
-      kw: 'B44 / B45 / B62 pellet / B91', il: 'B44 / B91',
-      chip: 'VATS resistor pellet on many', sys: 'VATS', clone: 'Read and match the pellet',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Read the pellet with a VATS tester',
-      obd: 'No', on: 'No', akl: 'Match the pellet and cut by code',
-      note: 'Dead brand, live cars. Carry the B62 pellet set for the VATS years.', entry: 'Wedge and reach' }),
-  V({ id: 'oldsmobile-88-98-1981-1999', mk: 'Oldsmobile', md: 'Eighty Eight / Ninety Eight / LSS / Regency / Toronado', y0: 1981, y1: 1999, b: 'car',
-      kw: 'B44 / B62 pellet / B91', il: 'B44 / B91',
-      chip: 'VATS resistor pellet', sys: 'VATS', clone: 'Read and match the pellet',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Read the pellet with a VATS tester',
-      obd: 'No', on: 'No', akl: 'Match the pellet and cut by code', entry: 'Wedge and reach' }),
-  V({ id: 'buick-riviera-roadmaster-1981-1999', mk: 'Buick', md: 'Riviera / Roadmaster / Skylark / Electra', y0: 1981, y1: 1999, b: 'car',
-      kw: 'B44 / B62 pellet / B91', il: 'B44 / B91',
-      chip: 'VATS resistor pellet on many', sys: 'VATS', clone: 'Read and match the pellet',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Read the pellet with a VATS tester',
-      obd: 'No', on: 'No', akl: 'Match the pellet and cut by code', entry: 'Wedge and reach' }),
-  V({ id: 'buick-cascada-allure-2005-2019', mk: 'Buick', md: 'Cascada / Allure', y0: 2005, y1: 2019, b: 'car',
-      kw: 'HU100 (blade in the fob on the Cascada)', il: 'B119-PT',
-      chip: 'ID46 (Hitag2)', sys: 'GM immobilizer', clone: 'No', sp: 8, dp: 4,
-      cut: 'Laser / sidewinder', dec: 'Lishi HU100 on the door',
-      obd: 'Yes', on: 'No', akl: 'OBD with a GM-capable tool',
-      note: 'The Cascada is an Opel convertible; the Allure is the Canadian LaCrosse.', entry: 'Lishi HU100' }),
-  V({ id: 'pontiac-fiero-sunbird-1981-1998', mk: 'Pontiac', md: 'Fiero / Sunbird / LeMans / 6000 / Parisienne', y0: 1981, y1: 1995, b: 'car',
-      kw: 'B44 / B45 / B62 pellet', il: 'B44',
-      chip: 'VATS pellet on some', sys: 'None / VATS', clone: 'Read and match the pellet',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Decode the door, or read the pellet',
-      obd: 'No', on: 'No', akl: 'Cut by code; match the pellet where fitted', entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-g8-gto-2004-2009', mk: 'Pontiac', md: 'GTO / G8', y0: 2004, y1: 2009, b: 'car',
-      kw: 'Holden (GM Australia)', chip: 'ID46 (Hitag2)', sys: 'Holden immobilizer', clone: 'No',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with a tool that covers Holden', on: 'No', akl: 'OBD; US GM coverage often does not reach these',
-      note: 'GOTCHA: built by Holden in Australia. Neither the keyway nor the tool coverage follows the rest of Pontiac. The Chevrolet SS of 2014-2017 is the same car and the same problem.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-g3-2009-2010', mk: 'Pontiac', md: 'G3 / Wave', y0: 2007, y1: 2010, b: 'car',
-      kw: 'DWO4R', il: 'DWO4R', chip: 'ID48 / Megamos', sys: 'Daewoo immobilizer',
-      clone: 'ID48 clones on some', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with a Daewoo-capable tool', on: 'No', akl: 'OBD with PIN from the tool',
-      note: 'A Chevrolet Aveo, which is a Daewoo. Key it as a Daewoo.', entry: 'Wedge and reach' }),
-  V({ id: 'cadillac-catera-1997-2001', mk: 'Cadillac', md: 'Catera', y0: 1997, y1: 2001, b: 'car',
-      kw: 'HU43 / HU46', chip: 'Opel immobilizer', sys: 'Opel',
-      clone: 'No', sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Decode the door',
-      obd: 'Limited â€” Opel procedure', on: 'No', akl: 'Opel-capable tool or the dealer',
-      note: 'GOTCHA: an Opel Omega with a wreath on it. Nothing about the key is Cadillac, and US GM tool coverage usually misses it entirely.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'cadillac-fleetwood-brougham-1981-1996', mk: 'Cadillac', md: 'Fleetwood / Brougham / Allante', y0: 1981, y1: 1996, b: 'car',
-      kw: 'B44 / B62 pellet', il: 'B44',
-      chip: 'VATS resistor pellet', sys: 'VATS', clone: 'Read and match the pellet',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Read the pellet with a VATS tester',
-      obd: 'No', on: 'No', akl: 'Match the pellet and cut by code', entry: 'Wedge and reach' }),
-  V({ id: 'cadillac-xlr-elr-2004-2017', mk: 'Cadillac', md: 'XLR / ELR / CT6', y0: 2004, y1: 2020, b: 'car',
-      kw: 'B111 then HU100 (blade in the fob)', il: 'B111-PT / B119-PT',
-      chip: 'PK3+ then ID46 / Hitag Pro', sys: 'GM immobilizer', clone: 'No',
-      sp: 10, dp: 4, cut: 'Edge then laser', dec: 'Lishi B111 or HU100 on the door',
-      obd: 'Yes', on: '30-minute relearn on the older cars', akl: 'OBD with a GM-capable tool',
-      note: 'The XLR is a Corvette underneath and was among the first GM cars with no mechanical cylinder on the door â€” check before you plan a lockout.',
-      entry: 'Lishi B111 / HU100, or air wedge where there is no cylinder' }),
-  V({ id: 'saturn-s-series-1991-2002', mk: 'Saturn', md: 'S-series (SL / SC / SW)', y0: 1991, y1: 2002, b: 'car',
-      kw: 'Saturn S-series', il: 'B88 / S-series',
-      chip: 'None', sys: 'None', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or decode',
-      note: 'Its own keyway, not a GM one, and no transponder at all â€” a cut key starts it. Plastic body panels, steel doors: the lock is normal even when the car is not.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'saturn-l-series-2000-2005', mk: 'Saturn', md: 'L-series (LS / LW / L200 / L300)', y0: 2000, y1: 2005, b: 'car',
-      kw: 'B91 / B97', il: 'B91', chip: 'Passlock', sys: 'Passlock',
-      clone: 'n/a â€” no transponder', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'No', on: '10-minute relearn', akl: 'Cut by code or decode',
-      note: 'An Opel Vectra assembled in Delaware, but on the GM keyway rather than the Opel one.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'eagle-1988-1998', mk: 'Eagle', md: 'Talon / Summit / Vision / Premier', y0: 1988, y1: 1998, b: 'car',
-      kw: 'MIT3 / MIT8 on the Talon, Y155 on the Vision', il: 'MIT3 / Y155',
-      chip: 'None', sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or decode',
-      note: 'Chrysler badge-engineering at its most confusing. The Talon is a Mitsubishi Eclipse and takes a Mitsubishi key; the Vision is an LH car and takes a Chrysler one; the Summit is a Mitsubishi Mirage. Identify the car, not the badge.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'lotus-1990-2021', mk: 'Lotus', md: 'Esprit / Elise / Exige / Evora', y0: 1990, y1: 2021, b: 'car',
-      kw: 'Varies by donor', chip: 'None early, later share GM and Toyota parts', sys: 'Varies',
-      clone: 'Varies', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Limited', on: 'No', akl: 'Specialist or factory',
-      note: 'Low volume and heavily parts-shared: the Elise and Evora use Toyota drivetrains and some Toyota switchgear, earlier cars borrow from GM and Vauxhall. The blade in your hand tells you more than the badge does. Verify everything before ordering.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'aston-martin-1994-2021', mk: 'Aston Martin', md: 'DB7 / DB9 / DBS / Vantage / Rapide', y0: 1994, y1: 2021, b: 'car',
-      kw: 'Ford-era HU101 on many, Mercedes-era HU64 on the newest',
-      chip: 'Ford PATS on the Ford-era cars, Mercedes on the newest', sys: 'Varies by era',
-      clone: 'No', sp: 10, dp: 4, cut: 'Laser', dec: 'Lishi HU101 where fitted',
-      obd: 'Depends entirely on the era', on: 'No', akl: 'Specialist or factory',
-      note: 'Ford owned Aston Martin from 1994 to 2007 and the cars carry Ford electronics from that period â€” a DB9 key is closer to a Jaguar than to anything exotic. The later Mercedes-engined cars move to Mercedes systems. The era decides the job.',
-      entry: 'Lishi HU101 where fitted' }),
-  V({ id: 'rolls-royce-2003-2024', mk: 'Rolls-Royce', md: 'Phantom / Ghost / Wraith / Cullinan', y0: 2003, y1: 2024, b: 'car',
-      kw: 'HU92 / HU100R',
-      chip: 'BMW CAS then FEM/BDC', sys: 'BMW CAS / FEM / BDC', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / 2-track', dec: 'Lishi HU92 or HU100R on the door',
-      obd: 'CAS by OBD with the right tool', on: 'No', akl: 'Usually a bench job on the module',
-      note: 'BMW-owned since 2003 and BMW underneath from the key outward. Key it as a 7 Series and price the car, not the key. The NHTSA index stops at 2020 for this make, so the lookup will not offer the newest cars.',
-      entry: 'Lishi HU92 / HU100R' }),
-  V({ id: 'lamborghini-2004-2024', mk: 'Lamborghini', md: 'Gallardo / Huracan / Aventador / Urus', y0: 2004, y1: 2024, b: 'car',
-      kw: 'HU66 then HU162T',
-      chip: 'ID48 then ID48 AES (MQB)', sys: 'VAG immobilizer', clone: 'ID48 clones on the older cars',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66 or HU162T on the door',
-      obd: 'Yes with a VAG-capable tool', on: 'No', akl: 'As per the Audi of the same year; MQB needs a tool that covers it',
-      note: 'Audi underneath since 1998. The Gallardo and Huracan share their key system with the R8, and the Urus with the Q8. The NHTSA index stops at 2020 for this make, so the lookup will not offer the newest cars.',
-      entry: 'Lishi HU66 / HU162T' }),
-
-  /* ---- FILLING IN THE MAKES WE ALREADY CARRY --------------------------- */
-  V({ id: 'chrysler-lebaron-newyorker-1981-1997', mk: 'Chrysler', md: 'LeBaron / New Yorker / Fifth Avenue / Imperial', y0: 1981, y1: 1997, b: 'car',
-      kw: 'Y151 / Y152 / Y155', il: 'Y152', chip: 'None', sys: 'None',
-      clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or decode', entry: 'Wedge and reach' }),
-  V({ id: 'dodge-colt-shadow-1981-1995', mk: 'Dodge', md: 'Colt / Shadow / Spirit / Stealth / Monaco', y0: 1981, y1: 1995, b: 'car',
-      kw: 'Y151 / Y155 on the Chryslers, MIT3 on the Mitsubishis', il: 'Y155 / MIT3',
-      chip: 'None', sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or decode',
-      note: 'The Colt and Stealth are Mitsubishis; the Shadow, Spirit and Monaco are Chryslers. Same showroom, two keyways.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'dodge-ramvan-1981-2003', mk: 'Dodge', md: 'Ram Van / Ram Wagon / B-series', y0: 1981, y1: 2003, b: 'van',
-      kw: 'Y151 / Y155 / Y157', il: 'Y157', chip: 'None early, 4D-64 on the last years',
-      sys: 'None / Sentry Key', clone: 'Yes on 4D-64', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Last years only', on: '2-key onboard where fitted', akl: 'Cut by code; OBD with PIN once chipped',
-      note: 'Still working as shuttles, plumbers vans and conversions long after the model died.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'dodge-viper-1992-2017', mk: 'Dodge', md: 'Viper', y0: 1992, y1: 2017, b: 'car',
-      kw: 'Y157 / Y160', il: 'Y160-PT',
-      chip: 'None early, 4D-64 Sentry Key from 1998', sys: 'Sentry Key', clone: 'Yes on 4D-64',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Yes with PIN once chipped', on: '2-key onboard', akl: 'OBD with the PIN', pin: 'Yes on chipped cars',
-      note: 'Low volume, high value, and usually stored. Expect a dead battery before a lock problem. The Prowler is on the Plymouth record, not here.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'toyota-previa-pickup-1984-1998', mk: 'Toyota', md: 'Previa / Pick-Up / T100', y0: 1984, y1: 1998, b: 'truck',
-      kw: 'TR47 / TOY40 / TOY43', il: 'TR47',
-      chip: 'None', sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The pickup that became the Tacoma. Still working trucks, and the locks are usually the most worn part of them.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'scion-2004-2016', mk: 'Scion', md: 'xA / iQ / iM', y0: 2004, y1: 2016, b: 'car',
-      kw: 'TOY43 / TOY44, MAZ24 on the iA', il: 'TOY43 / TOY44-PT',
-      chip: '4D-67 (G chip) on most', sys: 'Toyota immobilizer', clone: 'G chip clones with the right tool',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43 on the door',
-      obd: 'Yes', on: 'Some accept the onboard procedure', akl: 'OBD plus the 16-minute reset on most',
-      note: 'The Scions without a record of their own. The iA and FR-S are filed separately because they are a Mazda2 and a Subaru BRZ underneath â€” these three are Toyota.',
-      entry: 'Lishi TOY43' }),
-  V({ id: 'mazda-626-929-1988-2002', mk: 'Mazda', md: '626 / 929 / MX-6', y0: 1988, y1: 2002, b: 'car',
-      kw: 'MZ31 / MAZ13', il: 'MZ31', chip: 'None early, 4D-63 on later',
-      sys: 'None / Mazda immobilizer', clone: 'Yes on 4D', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'Later years', on: 'No', akl: 'Cut by code early; OBD once chipped', entry: 'Wedge and reach' }),
-  V({ id: 'mazda-bseries-2-5-1994-2021', mk: 'Mazda', md: 'B-Series / Mazda2 / Mazda5 / RX-7', y0: 1981, y1: 2021, b: 'truck',
-      kw: 'H72 on the B-Series, MAZ24 on the rest', il: 'H72 / MAZ24',
-      chip: '4C / 4D-63 then ID49', sys: 'PATS on the B-Series, Mazda on the rest', clone: 'Depends which',
-      sp: 8, dp: 4, cut: 'Edge then laser', dec: 'Lishi FO38 or MAZ24 on the door',
-      obd: 'Yes on the chipped cars', on: '2-key onboard on the B-Series', akl: 'OBD; the B-Series follows Ford PATS',
-      note: 'GOTCHA: the B-Series is a Ford Ranger and keys as a Ford, PATS and all. The Mazda2 that became the Scion iA and the Toyota Yaris iA is the reverse trade.',
-      entry: 'Lishi FO38 / MAZ24' }),
-  V({ id: 'nissan-pickup-200sx-1981-1998', mk: 'Nissan', md: 'Pickup / Hardbody / 200SX', y0: 1981, y1: 1998, b: 'truck',
-      kw: 'DA23 / DA25 / DA31', il: 'DA31', chip: 'None', sys: 'None',
-      clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or decode',
-      note: 'The Hardbody that became the Frontier. Working trucks with worn cylinders.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'nissan-z-ariya-2023-2024', mk: 'Nissan', md: 'Z / Ariya', y0: 2022, y1: 2024, b: 'car',
-      kw: 'NSN14 emergency blade in the fob',
-      chip: 'Hitag AES', sys: 'Nissan smart key', clone: 'No', sp: 8, dp: 4, cut: 'Edge cut',
-      dec: 'Blade cuts the door only', obd: 'Yes with the BCM PIN', on: 'No',
-      akl: 'OBD with the PIN; the newest need a tool that covers Hitag AES', pin: 'Yes â€” BCM to PIN',
-      entry: 'Blade in the fob, or Lishi NSN14' }),
-  V({ id: 'vw-cabrio-eurovan-1985-2009', mk: 'Volkswagen', md: 'Cabrio / Corrado / EuroVan / Rabbit', y0: 1985, y1: 2009, b: 'car',
-      kw: 'VW1 / HU49, HU66 on later', il: 'VW1',
-      chip: 'None early, ID48 on later', sys: 'None / VW immobilizer', clone: 'ID48 clones on the later cars',
-      sp: 8, dp: 4, cut: 'Edge then laser', dec: 'Decode the door',
-      obd: 'Later years with a VAG tool', on: 'No', akl: 'Cut by code early; OBD once chipped',
-      entry: 'Wedge and reach' }),
-  V({ id: 'audi-q8-r8-2008-2024', mk: 'Audi', md: 'Q8 / Q4 / R8 / S and RS models', y0: 2008, y1: 2024, b: 'suv',
-      kw: 'HU66 then HU162T',
-      chip: 'ID48 then ID48 AES (MQB)', sys: 'Audi immobilizer', clone: 'ID48 clones on the older cars',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66 or HU162T on the door',
-      obd: 'Yes with a VAG-capable tool', on: 'No', akl: 'MQB needs a tool that covers it',
-      note: 'The R8 shares its key system with the Lamborghini Gallardo and Huracan.',
-      entry: 'Lishi HU66 / HU162T' }),
-
-  V({ id: 'tesla-model-s-x-2012-2024', mk: 'Tesla', md: 'Model S / Model X', y0: 2012, y1: 2024, b: 'car',
-      kw: 'None', il: 'n/a',
-      chip: 'Tesla proprietary fob (LF wake, UHF link); key card and phone key from the 2021 refresh',
-      sys: 'Tesla BLE / RF', clone: 'No',
-      rem: [['fob', '', '', 'Car-shaped fob, press the body panel for frunk / trunk / doors']],
-      sp: '', dp: '', cut: 'n/a', dec: 'n/a',
-      obd: 'No OBD-II port in the usual place â€” Tesla uses its own diagnostic connector',
-      on: 'Pair a new fob from the touchscreen with an already-paired fob or the phone app',
-      akl: 'Tesla service. There is no cylinder to pick and no code to cut.',
-      note: 'Lockouts on these are a 12V problem more often than a key problem. If the low-voltage battery is flat the door handles will not present and the fob does nothing â€” power the external terminals to open the frunk, then jump the 12V. On the pre-2021 Model S the terminals sit behind the tow-eye cover in the nose; on the Model X and the refresh they are behind the front bumper cover on the passenger side.',
-      port: 'Under the driver-side dash trim on some years; not a standard OBD-II pinout',
-      entry: 'No cylinder. Do not wedge the frameless glass â€” the doors are powered and the seal loads the glass edge.' }),
-  V({ id: 'tesla-cybertruck-2024-2026', mk: 'Tesla', md: 'Cybertruck', y0: 2024, y1: 2026, b: 'truck',
-      kw: 'None', il: 'n/a', chip: 'Key card (NFC), phone key (BLE), optional fob',
-      sys: 'Tesla BLE / NFC', clone: 'No',
-      obd: 'No standard OBD-II', on: 'Add a key card from the touchscreen with an authenticated key present',
-      akl: 'Tesla service', pin: 'No',
-      note: 'The NFC reader is in the driver door pillar. Stainless body panels are not something to pry against â€” there is no cylinder behind any of them.',
-      port: 'n/a', entry: 'No cylinder' }),
-  V({ id: 'tesla-roadster-2008-2012', mk: 'Tesla', md: 'Roadster (first generation)', y0: 2008, y1: 2012, b: 'car',
-      kw: '', il: '', chip: 'Immobilizer fob',
-      sys: 'Tesla / Lotus hybrid', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: '',
-      obd: 'No', on: 'No', akl: 'Tesla service â€” the supply chain for these has largely dried up',
-      note: 'Built on the Lotus Elise chassis in Hethel, so the door and ignition hardware is Lotus, not Tesla. Fewer than 2,500 exist. I have not been able to source a keyway or a code series I can stand behind, so both stay blank here â€” decode the lock rather than trusting a cross-reference on this one.',
-      port: 'n/a', entry: 'Composite body panels over an aluminum tub. Wedge nothing.' }),
-
-  V({ id: 'chevy-ck-pickup-1988-2002', mk: 'Chevrolet', md: 'C/K Pickup and Suburban (GMT400)', y0: 1988, y1: 2002, b: 'truck',
-      kw: 'B44 / B45 through 1994, B102 / B106 from 1995', il: 'B44 / B45 / B106',
-      chip: 'None through 1996; Passlock (resistor in the cylinder) on later years',
-      sys: 'None, then Passlock', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut',
-      dec: 'Lishi GM37, or impression. The door lock face is often code-stamped on the early trucks.',
-      obd: 'n/a before 1996', on: '10-min relearn once Passlock appears', akl: 'Cut by code, or 30-min x3 relearn on Passlock',
-      note: 'Two eras under one body. Through 1994 it is the old two-key A/B system â€” ask whether the ignition or the door key is lost before you cut anything. From 1995 GM went to the single 10-cut key. The 3/4 and 1-ton kept selling as the "Classic" body through 2002 alongside the new GMT800, so a 2000 model year can be either truck: read the VIN, not the year.',
-      port: 'Under dash from 1996', entry: 'Lishi GM37 or wedge and reach â€” no shield worth speaking of' }),
-  V({ id: 'chevy-lumina-beretta-corsica-1987-2001', mk: 'Chevrolet', md: 'Lumina / Beretta / Corsica / Celebrity', y0: 1987, y1: 2001,
-      kw: 'B44 / B45, B62 pellet on VATS trims', il: 'B44 / B45 / B62-P',
-      chip: 'None on most; VATS resistor pellet on Z34 and later Lumina',
-      sys: 'None or VATS', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code; on VATS read the pellet value first',
-      note: 'Check the blade before you cut. A plain B44 and a B62 pellet key look alike at a glance across a counter, and the pellet ones will not start the car no matter how well the cuts read.',
-      port: 'Under dash (OBD-I on the early cars)', entry: 'Wedge and reach' }),
-  V({ id: 'chevy-caprice-1981-1996', mk: 'Chevrolet', md: 'Caprice / Impala SS / Wagon', y0: 1981, y1: 1996, b: 'car',
-      kw: 'B44 / B45, B62 pellet on 1994-1996 Impala SS', il: 'B44 / B45 / B62-P',
-      chip: 'None; VATS pellet on the LT1 cars', sys: 'None or VATS', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door', obd: 'n/a', on: 'n/a',
-      akl: 'Cut by code or impression',
-      note: 'The 1991-1996 B-body is heavy fleet and taxi work â€” a lot of these still on the road are on their third lock set and the code sticker is long gone.',
-      port: 'n/a on most', entry: 'Wedge and reach' }),
-  V({ id: 'chevy-s10-sonoma-1994-2004', mk: 'Chevrolet', md: 'S-10 / GMC Sonoma pickup', y0: 1994, y1: 2004, b: 'truck',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'None early, Passlock later',
-      sys: 'None or Passlock', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
-      obd: 'Limited', on: '10-min relearn on Passlock', akl: '30-min x3 relearn on Passlock, otherwise cut by code',
-      note: 'Same locks as the S-10 Blazer of the same years. Passlock has no chip in the key at all â€” a plain mechanical copy starts the truck, which surprises people who expect a transponder job.',
-      entry: 'Lishi GM37' }),
-  V({ id: 'chevy-ev-2022-2026', mk: 'Chevrolet', md: 'Silverado EV / Blazer EV / Equinox EV', y0: 2022, y1: 2026, b: 'truck',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'Passive entry / push start, Ultium platform', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob',
-      akl: 'Confirm tool coverage before you commit to the job â€” these are new enough that aftermarket support is uneven',
-      note: 'The blade in the fob opens the driver door only. On a dead 12V there is no powered handle, so the blade is the way in.',
-      entry: 'Lishi HU100' }),
-
-  V({ id: 'ford-aerostar-1986-1997', mk: 'Ford', md: 'Aerostar', y0: 1986, y1: 1997, b: 'van',
-      kw: 'H50 / H51', il: 'H50 / H51', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Two-key era â€” ignition and door take different blanks.',
-      port: 'n/a', entry: 'Wedge and reach; the sliding door lock is often the easier one to decode' }),
-  V({ id: 'ford-probe-1989-1997', mk: 'Ford', md: 'Probe', y0: 1989, y1: 1997, b: 'car',
-      kw: 'Mazda MZ-series, not Ford H-series', il: 'X184 / MZ13 family', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Wears a Ford badge and takes a Mazda key â€” it is a 626 underneath, built in Flat Rock. Do not pull an H50 for it.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'ford-festiva-aspire-1988-1997', mk: 'Ford', md: 'Festiva / Aspire', y0: 1988, y1: 1997, b: 'car',
-      kw: 'Kia / Mazda pattern, not Ford H-series', il: '', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: '', dp: '', cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Impression, or decode the door lock',
-      note: 'Built by Kia in Korea on a Mazda design. Another Ford badge that will not take a Ford blank. I do not have a keyway for these I can cite, so it is blank rather than guessed â€” decode the lock.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'ford-transit-connect-2010-2013', mk: 'Ford', md: 'Transit Connect (first generation)', y0: 2010, y1: 2013, b: 'van',
-      kw: 'FO21 (Tibbe)', il: 'FO21', chip: '4D-60', sys: 'PATS',
-      clone: 'Yes on 4D-60', sp: 6, dp: 4, cut: 'Tibbe â€” needs a Tibbe machine or a tubular-style cutter',
-      dec: 'Lishi FO21 / Tibbe decoder',
-      obd: 'Yes', on: '2 working keys: insert / turn cycle', akl: 'OBD + timed access',
-      note: 'European Transit Connect, so it takes the Tibbe key the Jaguars of that era use â€” not a Ford H-series and not the HU101 the 2015-on van uses. Carry the Tibbe decoder or you are not cutting this one roadside.',
-      entry: 'Lishi FO21' }),
-  V({ id: 'ford-ev-2021-2026', mk: 'Ford', md: 'Mustang Mach-E / F-150 Lightning', y0: 2021, y1: 2026, b: 'suv',
-      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'ID49 (Hitag Pro)',
-      sys: 'PATS / phone-as-a-key', clone: 'No',
-      rem: [['prox', '', '', '4B / 5B, plus phone key over BLE']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob',
-      akl: 'OBD + security access',
-      note: 'The Mach-E has no exterior door cylinder at all â€” there is a keypad on the B-pillar and a hidden mechanical release under the rear seat area for the frunk. The Lightning keeps a normal driver-door cylinder. Do not assume the Mach-E has one because the Lightning does.',
-      entry: 'Lightning: Lishi HU101 on the driver door. Mach-E: no cylinder â€” keypad code, or a jump to the 12V through the frunk terminals.' }),
-
-  V({ id: 'hyundai-tiburon-scoupe-1991-2008', mk: 'Hyundai', md: 'Tiburon / Scoupe', y0: 1991, y1: 2008, b: 'car',
-      kw: 'HY14 / HY15', il: 'HY14 / HY15', chip: 'None early; 4D-60 on later Tiburon',
-      sys: 'None, then Hyundai immobilizer', clone: 'Yes on 4D-60',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HY15 or impression',
-      obd: 'Yes on the immobilized years', on: 'No', akl: 'PIN by VIN, then OBD',
-      pin: 'Yes on immobilized years',
-      note: 'The immobilizer does not arrive across the whole line at once â€” check for a key ring antenna at the cylinder before you quote a chip job.',
-      entry: 'Lishi HY15' }),
-  V({ id: 'hyundai-excel-early-1986-2000', mk: 'Hyundai', md: 'Excel / Sonata (early) / Elantra (early)', y0: 1986, y1: 2000, b: 'car',
-      kw: 'HY6 / HY14', il: 'HY6 / HY14', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Mitsubishi running gear under a Hyundai body on the early cars, so some hardware cross-references to Mitsubishi of the same years.',
-      port: 'n/a on the earliest', entry: 'Wedge and reach' }),
-  V({ id: 'hyundai-veracruz-xg-2001-2012', mk: 'Hyundai', md: 'Veracruz / XG300 / XG350', y0: 2001, y1: 2012, b: 'suv',
-      kw: 'HY15 / HY18', il: 'HY15 / HY18', chip: '4D-60 / ID46',
-      sys: 'Hyundai immobilizer', clone: 'Yes on 4D-60',
-      rem: [['fob', '', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi HY15 / HY18', obd: 'Yes',
-      on: 'No', akl: 'PIN by VIN, then OBD', pin: 'Yes',
-      note: 'Veracruz smart-key trims carry an emergency blade in the fob.',
-      entry: 'Lishi HY15 / HY18' }),
-
-  V({ id: 'lincoln-mks-mkt-zephyr-2006-2019', mk: 'Lincoln', md: 'MKS / MKT / Zephyr', y0: 2006, y1: 2019, b: 'car',
-      kw: 'HU101', il: 'HU101-PT', chip: '4D-63 80-bit, then ID49 on the later cars',
-      sys: 'PATS / IPC', clone: 'Depends on the year â€” 80-bit needs a capable cloner, Hitag Pro does not clone',
-      rem: [['prox', 'M3N5WY8406', '', '4B / 5B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes', on: '2 working keys / 2 fobs in the cup holder', akl: 'OBD + 10-min timed access',
-      note: 'The Zephyr becomes the MKZ for 2007 â€” one car, two names, and the MKZ already has its own record here for 2013 on.',
-      entry: 'Lishi HU101' }),
-  V({ id: 'lincoln-mark-lt-blackwood-2002-2008', mk: 'Lincoln', md: 'Mark LT / Blackwood', y0: 2002, y1: 2008, b: 'truck',
-      kw: 'H92 / H84', il: 'H92-PT', chip: '4D-63 40-bit', sys: 'PATS', clone: 'Yes',
-      rem: [['fob', 'CWTWB1U331', '', '4B']],
-      sp: 8, dp: 5, cut: 'Edge cut', dec: 'Lishi FO38', obd: 'Yes',
-      on: '2 working keys: insert, on/off, second key, on/off, new key', akl: 'OBD + 10-min timed access',
-      note: 'An F-150 in a dinner jacket â€” same keys, same PATS, same procedure. The Blackwood sold about 3,300 units in one year and is mostly a curiosity now.',
-      entry: 'Lishi FO38' }),
-
-  V({ id: 'chrysler-300-2011-2023', mk: 'Chrysler', md: '300', y0: 2011, y1: 2023, b: 'car',
-      kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: 'ID46 (Hitag2), later 4A',
-      sys: 'SKREEM / RF Hub', clone: 'ID46 yes',
-      rem: [['prox', 'M3N-40821302', '68051387', '4B / 5B']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes with a PIN', on: 'Two working fobs: on-screen add through the EVIC on some years',
-      akl: 'PIN from the dealer or read the RF Hub â€” the 2018-on cars are the hard ones',
-      pin: 'Yes',
-      note: 'Shares everything with the Charger and Challenger of the same years, which already have their own record. From roughly 2018 the security gateway blocks a lot of aftermarket write access â€” check your tool covers the exact year before you quote.',
-      entry: 'Lishi CY24 on the driver door' }),
-  V({ id: 'chrysler-voyager-2020-2024', mk: 'Chrysler', md: 'Voyager', y0: 2020, y1: 2024, b: 'van',
-      kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: '4A (Hitag AES)',
-      sys: 'RF Hub / security gateway', clone: 'No',
-      rem: [['prox', 'M3N-97395900', '', '3B / 5B'], ['fob', '', '', 'Base trims ship a blade-and-remote head, not a prox']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes through the security gateway with a current tool', on: 'No', akl: 'Gateway bypass or a tool with AutoAuth',
-      pin: 'Yes',
-      note: 'The Voyager is the fleet-and-value trim of the Pacifica, sold alongside it. Base trims genuinely have no proximity system â€” confirm which you are looking at before you order a fob.',
-      entry: 'Lishi CY24' }),
-
-  V({ id: 'jaguar-xe-epace-ipace-2017-2025', mk: 'Jaguar', md: 'XE / E-PACE / I-PACE', y0: 2017, y1: 2025, b: 'suv',
-      kw: 'HU101 (emergency blade)', il: 'HU101-PT', chip: 'Hitag Pro / AES',
-      sys: 'JLR keyless', clone: 'No',
-      rem: [['prox', '', '', '3B, plus the Activity Key wristband on some trims']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Dealer-level tool or a JLR-capable aftermarket tool', on: 'No',
-      akl: 'Specialist work â€” plan on module access, not an OBD add',
-      note: 'Post-Tibbe JLR. The emergency blade hides in the fob and the driver door cylinder is behind a cap on the handle â€” pop the cap, do not pry the handle.',
-      entry: 'Cap off the driver handle, then Lishi HU101' }),
-  V({ id: 'landrover-freelander-lr2-2002-2015', mk: 'Land Rover', md: 'Freelander / LR2', y0: 2002, y1: 2015, b: 'suv',
-      kw: 'Tibbe on the early cars, HU101 on the LR2', il: 'FO21 / HU101-PT',
-      chip: 'ID46 / Hitag2', sys: 'Land Rover immobilizer', clone: 'ID46 yes',
-      rem: [['fob', '', '', '3B']],
-      sp: '', dp: '', cut: 'Tibbe, then laser', dec: 'Lishi FO21 or HU101 depending on the year',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist',
-      note: 'Two different key systems under one nameplate. The Freelander 1 is Tibbe like the Jaguars of its era; the LR2 from 2008 moves to the two-track laser key. Ask for the year before you load the van.',
-      entry: 'Lishi FO21 or HU101 to suit' }),
-
-  V({ id: 'kia-sephia-sportage-1994-2004', mk: 'Kia', md: 'Sephia / Sportage (first generation)', y0: 1994, y1: 2004, b: 'suv',
-      kw: 'Kia KK-series', il: '', chip: 'None on most', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the door',
-      obd: 'n/a on the early cars', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Kia before the Hyundai merger settled the parts bin. The Sephia is Mazda-derived, the first Sportage is its own thing, and neither is safe to assume from a later Kia.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'kia-k4-ev3-2025-2026', mk: 'Kia', md: 'K4 / EV3', y0: 2025, y1: 2026, b: 'car',
-      kw: 'KK12 / HY22 (emergency blade)', il: '', chip: 'Hyundai/Kia AES',
-      sys: 'Kia smart key', clone: 'No',
-      rem: [['prox', '', '', '4B / 5B']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: '',
-      obd: 'Current tool with PIN-by-VIN coverage', on: 'No', akl: 'PIN then OBD, if the tool covers the year',
-      pin: 'Yes',
-      note: 'Replaces the Forte. Too new for me to give you a blank number I would stand behind â€” verify against your supplier before you order.',
-      entry: 'Emergency blade in the fob; driver door cylinder behind the handle cap' }),
-  V({ id: 'genesis-gv60-2023-2026', mk: 'Genesis', md: 'GV60 / Electrified G80', y0: 2023, y1: 2026, b: 'suv',
-      kw: 'HY22 (emergency blade)', il: '', chip: 'Hyundai AES',
-      sys: 'Genesis smart key, plus fingerprint and face recognition on the GV60', clone: 'No',
-      rem: [['prox', '', '', '4B, plus phone-as-a-key']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: '',
-      obd: 'Current tool with Hyundai group coverage', on: 'No', akl: 'PIN then OBD', pin: 'Yes',
-      note: 'The NHTSA index does not list the GV60 before 2024, so a 2023 will not appear in the year picker. The GV60 can be driven with no key at all if the owner is enrolled by fingerprint â€” worth asking before you write it up as a lockout.',
-      entry: 'Emergency blade behind the handle cap' }),
-
-  V({ id: 'cadillac-sts-dts-2005-2011', mk: 'Cadillac', md: 'STS / DTS', y0: 2005, y1: 2011, b: 'car',
-      kw: 'B111 / B106', il: 'B111-PT', chip: 'GM 46 (Hitag2) on the prox cars',
-      sys: 'GM passive entry', clone: 'No on the prox',
-      rem: [['prox', 'M3N5WY7777A', '', '5B â€” the whole fob is the key']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM39 / HU100 depending on the cylinder',
-      obd: 'Yes with a GM-capable tool', on: '30-min x3 relearn on some', akl: 'OBD + relearn',
-      note: 'The STS has no ignition cylinder on prox trims â€” the fob slots into a receptacle or the car is push-button. The valet blade opens the door and the glovebox and nothing else.',
-      entry: 'Valet blade cylinder in the driver door' }),
-  V({ id: 'cadillac-escalade-2021-2024', mk: 'Cadillac', md: 'Escalade', y0: 2021, y1: 2024, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'Passive entry / push start', clone: 'No',
-      rem: [['prox', 'YG0G21TB2', '', '6B with power-hatch and remote start']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
-      note: 'Shares the fob and the blade with the 2021-on Tahoe and Yukon.',
-      entry: 'Lishi HU100 on the driver door' }),
-  V({ id: 'cadillac-lyriq-2023-2026', mk: 'Cadillac', md: 'Lyriq / Celestiq / Escalade IQ', y0: 2023, y1: 2026, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'Ultium passive entry, phone-as-a-key', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Confirm tool coverage â€” these are new', on: 'Add-a-fob with a working fob',
-      akl: 'Dealer on most tools today',
-      note: 'The door handles are powered. On a flat 12V the blade in the fob is the only way in, same as the other Ultium cars.',
-      entry: 'Blade from the fob; the cylinder is behind a cap on the driver handle' }),
-
-  V({ id: 'gmc-yukon-2021-2024', mk: 'GMC', md: 'Yukon / Yukon XL', y0: 2021, y1: 2024, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'Passive entry / push start', clone: 'No',
-      rem: [['prox', 'YG0G21TB2', '', '5B / 6B']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
-      note: 'Same platform and same key as the 2021-on Tahoe, Suburban and Escalade.',
-      entry: 'Lishi HU100' }),
-  V({ id: 'gmc-hummer-ev-2022-2026', mk: 'GMC', md: 'Hummer EV', y0: 2022, y1: 2026, b: 'truck',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'Ultium passive entry', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Confirm tool coverage', on: 'Add-a-fob with a working fob', akl: 'Dealer on most tools today',
-      note: 'Nothing in common with the H1/H2/H3 Hummers, which have their own record under the Hummer make.',
-      entry: 'Blade from the fob' }),
-
-  V({ id: 'volvo-850-70series-1993-2000', mk: 'Volvo', md: '850 / S70 / V70 / 940 / 960', y0: 1993, y1: 2000, b: 'car',
-      kw: 'VO-series (NE66 family)', il: '', chip: 'None early; Volvo immobilizer from roughly 1998',
-      sys: 'None, then Volvo immobilizer', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'Volvo-capable tool on the immobilized cars', on: 'No', akl: 'Specialist on immobilized years',
-      note: 'The immobilizer arrives partway through the run and not on every market at once. Look for the ring antenna at the cylinder before you quote â€” a 1998 can be either.',
-      entry: 'Wedge and reach' }),
-  V({ id: 'volvo-s90-v90-2017-2025', mk: 'Volvo', md: 'S90 / V90 / XC70 / V90 Cross Country', y0: 2017, y1: 2025, b: 'car',
-      kw: 'HU101-style laser (emergency blade)', il: '', chip: 'Volvo AES',
-      sys: 'Volvo keyless (SPA platform)', clone: 'No',
-      rem: [['prox', '', '', '4B / 5B, plus the Care Key and phone key']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Volvo-capable tool', on: 'No', akl: 'Specialist â€” plan on module work',
-      note: 'Same SPA generation as the XC60 and XC90 that already have a record here. The emergency blade lives in the fob and the driver door cylinder is behind a cap on the handle.',
-      entry: 'Cap off the driver handle, then the blade cylinder' }),
-
-  V({ id: 'mercedes-g-class-1990-2024', mk: 'Mercedes-Benz', md: 'G-Class (W463 / W461)', y0: 1990, y1: 2024, b: 'suv',
-      kw: 'HU64 (emergency blade)', il: 'HU64', chip: 'Mercedes infrared then DAS / FBS',
-      sys: 'DAS / FBS3 / FBS4 by year', clone: 'No',
-      rem: [['prox', '', '', 'Chrome fob, IR on the early trucks']],
-      sp: 4, dp: '', cut: 'Laser / four-track', dec: 'Lishi HU64',
-      obd: 'DAS3 yes with the right tool; FBS4 from roughly 2015 is dealer or specialist',
-      on: 'No', akl: 'EIS / ESL work â€” not an OBD job',
-      note: 'Mercedes did not sell the G officially in the US until 2002 â€” anything older on your bench is a grey import, and the NHTSA index will not offer those years. Wide year span, three security generations. The 1990s trucks are infrared, the 2000s are DAS3, the 2019-on W464 is FBS4. Ask the year first; the quote is not the same job.',
-      entry: 'Lishi HU64 on the driver door' }),
-  V({ id: 'mercedes-ml-gl-glk-1998-2024', mk: 'Mercedes-Benz', md: 'ML / GL / GLS / GLK / R-Class', y0: 1998, y1: 2024, b: 'suv',
-      kw: 'HU64 (emergency blade)', il: 'HU64', chip: 'DAS / FBS',
-      sys: 'DAS2 / DAS3 / FBS4 by year', clone: 'No',
-      rem: [['prox', '', '', 'Chrome fob, slots into the EIS on the older trucks']],
-      sp: 4, dp: '', cut: 'Laser / four-track', dec: 'Lishi HU64',
-      obd: 'DAS3 with a capable tool; FBS4 is dealer or specialist',
-      on: 'No', akl: 'EIS / ESL work',
-      note: 'The NHTSA index lists these under the individual model numbers rather than the class name, so early years will not appear in the year picker. The W163 ML of 1998-2005 is the one that eats ignition switches â€” a "no crank, key will not turn" call on one of those is often the EIS, not the cylinder.',
-      entry: 'Lishi HU64' }),
-  V({ id: 'mercedes-sl-slk-amggt-1990-2024', mk: 'Mercedes-Benz', md: 'SL / SLK / SLC / AMG GT', y0: 1990, y1: 2024, b: 'car',
-      kw: 'HU64 (emergency blade)', il: 'HU64', chip: 'Mercedes infrared then DAS / FBS',
-      sys: 'DAS / FBS by year', clone: 'No',
-      sp: 4, dp: '', cut: 'Laser / four-track', dec: 'Lishi HU64',
-      obd: 'DAS3 with a capable tool; FBS4 is dealer or specialist', on: 'No', akl: 'EIS / ESL work',
-      note: 'The R129 SL of the 1990s uses the infrared system â€” the emergency blade opens the door but will not disarm it, so expect the alarm.',
-      entry: 'Lishi HU64' }),
-
-  V({ id: 'maserati-grecale-mc20-2021-2025', mk: 'Maserati', md: 'Grecale / MC20 / GranTurismo (new)', y0: 2021, y1: 2025, b: 'suv',
-      kw: 'SIP22 (emergency blade)', il: 'FT48-PT', chip: 'Stellantis AES',
-      sys: 'Maserati keyless', clone: 'No',
-      rem: [['prox', '', '', '3B / 4B']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Dealer or a Stellantis tool with gateway access', on: 'No', akl: 'Dealer',
-      note: 'Stellantis-era Maserati, so the security gateway story is the same as a late Chrysler â€” an AutoAuth-capable tool or nothing.',
-      entry: 'Blade from the fob' }),
-  V({ id: 'maserati-coupe-spyder-1998-2007', mk: 'Maserati', md: '3200 GT / Coupe / Spyder / Quattroporte (V)', y0: 1998, y1: 2007, b: 'car',
-      kw: 'SIP22', il: 'FT48-PT', chip: 'ID48 / Fiat code system',
-      sys: 'Fiat-derived immobilizer', clone: 'ID48 yes',
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: 'Lishi SIP22',
-      obd: 'Fiat-capable tool on some years', on: 'No', akl: 'Specialist',
-      note: 'Ferrari built these while it owned Maserati, but the locks and the immobilizer come out of the Fiat parts bin â€” a Fiat-capable tool gets further than an exotic-specific one.',
-      entry: 'Lishi SIP22' }),
-
-  V({ id: 'mini-cooper-r50-2002-2006', mk: 'Mini', md: 'Cooper (R50 / R52 / R53)', y0: 2002, y1: 2006, b: 'car',
-      kw: 'HU92', il: 'HU92', chip: 'ID46 / EWS',
-      sys: 'BMW EWS3', clone: 'No â€” EWS is a write, not a clone',
-      rem: [['fob', '', '', 'Oval fob that slots into the dash on later trims']],
-      sp: '', dp: '', cut: 'Laser / two-track', dec: 'Lishi HU92',
-      obd: 'EWS work with a BMW-capable tool', on: 'No', akl: 'EWS module read and write',
-      note: 'First BMW-built Mini, and it is a BMW underneath â€” EWS3, HU92, the lot. Nothing in common with the classic Mini and different enough from the 2007-on R56 that it deserves its own line.',
-      entry: 'Lishi HU92' }),
-
-  V({ id: 'isuzu-f-series-1996-2026', mk: 'Isuzu', md: 'FTR / FVR / F-Series (medium duty)', y0: 1996, y1: 2026, b: 'truck',
-      kw: 'Isuzu cabover pattern', il: '', chip: 'None on most',
-      sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code â€” the code is often on a tag in the glovebox or stamped on the cylinder',
-      note: 'Class 6-7 cabover, sibling to the NPR/NQR record already here. Fleet trucks, so ask the fleet manager for the key code before you drive out â€” most of them have it and will not think to offer it.',
-      port: 'n/a on most', entry: 'Cabover door, wedge and reach; the vent window on the older cabs is the easier way' }),
-
-  V({ id: 'ferrari-modern-2000-2025', mk: 'Ferrari', md: '360 / F430 / 458 / 488 / F8 / 812 / Roma / Portofino', y0: 2000, y1: 2025, b: 'car',
-      kw: 'SIP22 on the earlier cars', il: 'FT48-PT', chip: 'ID48 then Ferrari proprietary',
-      sys: 'Ferrari immobilizer (Fiat-derived on the earlier cars)', clone: 'ID48 yes on the 360 and F430 era',
-      rem: [['fob', '', '', 'Master (red) and service (black) keys on the 360 and F430']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: 'Lishi SIP22 on the earlier cars',
-      obd: 'Specialist', on: 'No', akl: 'Dealer or Ferrari specialist',
-      note: 'The NHTSA index stops at 2021 for Ferrari, so the year picker will not offer the newest cars even though the record covers them. The 360 and F430 ship a red master key â€” no master, no new keys taught, and the owner has usually lost it. Ask for it before you take the job. Later cars move away from the Fiat system entirely.',
-      entry: 'Do not wedge. These have painted aluminum and carbon panels and the door glass is frameless.' }),
-  V({ id: 'ferrari-classic-1985-2004', mk: 'Ferrari', md: '328 / 348 / F355 / 550 / 575 / Testarossa', y0: 1985, y1: 2004, b: 'car',
-      kw: '', il: '', chip: 'None early; Fiat code system on the F355 and later',
-      sys: 'None, then Fiat-derived', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on most', on: 'n/a', akl: 'Specialist, or cut by code',
-      note: 'The NHTSA index stops at 2001 for these, so the year picker runs short of the 575M. Keyway varies by year and market and I have nothing I can cite, so it is blank rather than guessed. These are high-value cars â€” decode the lock, do not experiment on it.',
-      port: 'n/a', entry: 'Do not wedge' }),
-
-  V({ id: 'rollsroyce-silver-spirit-1981-2002', mk: 'Rolls-Royce', md: 'Silver Spirit / Silver Spur / Corniche / Silver Seraph', y0: 1981, y1: 2002, b: 'car',
-      kw: '', il: '', chip: 'None on most; Silver Seraph carries a BMW-derived immobilizer',
-      sys: 'None, then BMW EWS on the Seraph', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on most', on: 'n/a', akl: 'Specialist',
-      note: 'Crewe-built, pre-BMW, and nothing to do with the Goodwood Phantom that has its own record here. The 1998-2002 Silver Seraph is the odd one out â€” BMW V12 and BMW electrics under a Crewe body. Different car, different job.',
-      port: 'n/a on most', entry: 'Hand-painted coachwork over a steel monocoque. Wedge nothing.' }),
-  V({ id: 'lamborghini-countach-diablo-1981-2010', mk: 'Lamborghini', md: 'Countach / Diablo / Murcielago', y0: 1981, y1: 2010, b: 'car',
-      kw: '', il: '', chip: 'None on the Countach; Fiat-derived then Audi-derived later',
-      sys: 'None, then immobilized', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on the early cars', on: 'No', akl: 'Specialist',
-      note: 'Pre-Audi Lamborghini is a parts-bin car â€” Countach and Diablo hardware is not the Gallardo hardware in the other record here. The Murcielago straddles the takeover. No keyway I can cite for any of them.',
-      port: 'n/a on the early cars', entry: 'Scissor doors, frameless glass, painted composite. Do not wedge.' }),
-  V({ id: 'astonmartin-db11-dbx-2016-2025', mk: 'Aston Martin', md: 'DB11 / DBX / Vantage (new) / DBS Superleggera', y0: 2016, y1: 2025, b: 'car',
-      kw: 'HU101-style laser (emergency blade)', il: '', chip: 'Mercedes-derived AES',
-      sys: 'Aston keyless (Mercedes electrical architecture)', clone: 'No',
-      rem: [['prox', '', '', 'Glass-and-metal ECU key']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Dealer or a Mercedes-capable specialist tool', on: 'No', akl: 'Dealer',
-      note: 'The NHTSA index stops at 2021 for Aston Martin, so the year picker will not offer the newest cars. Daimler supplies the electrical architecture on these, so the security behaves more like a late Mercedes than like the older DB9. The emergency blade is inside the fob and the cylinder is hidden behind a cap on the driver handle.',
-      entry: 'Cap off the driver handle. Do not wedge â€” aluminum and composite panels.' }),
-  V({ id: 'bentley-arnage-1998-2020', mk: 'Bentley', md: 'Arnage / Azure / Brooklands / Mulsanne', y0: 1998, y1: 2020, b: 'car',
-      kw: 'HU66 on the VW-era cars', il: 'HU66', chip: 'ID48 then AES',
-      sys: 'BMW-derived on the earliest Arnage, VW-derived after', clone: 'ID48 yes on some',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'VAG-capable tool on the later cars', on: 'No', akl: 'Specialist',
-      note: 'The 1998-1999 Arnage is BMW-powered and BMW-wired; from 2000 Volkswagen owns Crewe and the electrics turn into VAG. One nameplate, two completely different jobs â€” the model year decides which.',
-      entry: 'Lishi HU66 on the later cars' }),
-
-  V({ id: 'bmw-3series-g20-2019-2025', mk: 'BMW', md: '3 Series (G20)', y0: 2019, y1: 2025, b: 'car',
-      kw: 'HU100R (emergency blade)', il: 'BMW1', chip: 'BMW AES (FEM/BDC2)',
-      sys: 'FEM / BDC2', clone: 'No',
-      rem: [['prox', '', '', '3B / 4B, plus Display Key and phone key on some trims']],
-      sp: '', dp: '', cut: 'Laser / two-track', dec: 'Lishi HU100R',
-      obd: 'BDC2 needs bench work on most tools today', on: 'No', akl: 'Module read on the bench',
-      pin: 'No â€” ISN, not a PIN',
-      note: 'BDC2 largely closed the OBD path that worked on FEM. Confirm your tool covers the exact build before you commit; a lot of "BMW capable" tools stop at FEM. The G22 4 Series from 2021 is the same electronics and the same job.',
-      entry: 'Lishi HU100R â€” the cylinder is behind a cap on the driver handle' }),
-  V({ id: 'bmw-x3-x5-2019-2025', mk: 'BMW', md: 'X3 (G01) / X5 (G05) / X7', y0: 2019, y1: 2025, b: 'suv',
-      kw: 'HU100R (emergency blade)', il: 'BMW1', chip: 'BMW AES (BDC2)',
-      sys: 'BDC2', clone: 'No',
-      rem: [['prox', '', '', '3B / 4B, Display Key on some trims']],
-      sp: '', dp: '', cut: 'Laser / two-track', dec: 'Lishi HU100R',
-      obd: 'Bench work on most tools', on: 'No', akl: 'Module read on the bench',
-      note: 'Same generation of electronics as the G20. The earlier X3 and X5 through 2018 are the separate record here and are a different job.',
-      entry: 'Lishi HU100R behind the handle cap' }),
-  V({ id: 'audi-a4-2017-2025', mk: 'Audi', md: 'A4 (B9) / A5 / Q5 (new)', y0: 2017, y1: 2025, b: 'car',
-      kw: 'HU162T (emergency blade)', il: 'HU162T', chip: 'ID48 AES (MQB / MLB)',
-      sys: 'VAG MQB / MLB immobilizer', clone: 'No',
-      rem: [['prox', '', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU162T',
-      obd: 'MQB-capable tool with the right adapter', on: 'No', akl: 'Component protection work, not a quick OBD add',
-      note: 'MQB brought component protection â€” a key alone is not enough, the cluster and the ECU have to agree. Confirm coverage for the exact platform before you quote.',
-      entry: 'Lishi HU162T behind the handle cap' }),
-  V({ id: 'porsche-911-992-2020-2025', mk: 'Porsche', md: '911 (992) / 718 (current)', y0: 2020, y1: 2025, b: 'car',
-      kw: 'HU66 (emergency blade)', il: 'HU66', chip: 'VAG AES',
-      sys: 'Porsche immobilizer (VAG-derived)', clone: 'No',
-      rem: [['prox', '', '', '3B, car-silhouette fob']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Porsche-capable tool', on: 'No', akl: 'Specialist',
-      note: 'The ignition is on the left, as ever, and on the 992 it is a twist knob rather than a cylinder â€” there is nothing there to pick. The 718 through 2019 sits in the 997/991 record here; the key system is the same across the two.',
-      entry: 'Lishi HU66 on the driver door' }),
-  V({ id: 'vw-jetta-2019-2025', mk: 'Volkswagen', md: 'Jetta (Mk7) / Golf (Mk8)', y0: 2019, y1: 2025, b: 'car',
-      kw: 'HU162T', il: 'HU162T', chip: 'ID48 AES (MQB)',
-      sys: 'VAG MQB immobilizer', clone: 'No',
-      rem: [['prox', '', '', '4B'], ['flip', '', '', '3B / 4B on base trims']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU162T',
-      obd: 'MQB-capable tool', on: 'No', akl: 'Component protection work',
-      note: 'Component protection again â€” budget the time, this is not the Mk4 Jetta that took ten minutes.',
-      entry: 'Lishi HU162T' }),
-  V({ id: 'vw-tiguan-2009-2017', mk: 'Volkswagen', md: 'Tiguan (first generation)', y0: 2009, y1: 2017, b: 'suv',
-      kw: 'HU66', il: 'HU66-PT', chip: 'ID48 (Megamos crypto)',
-      sys: 'VAG immobilizer 4', clone: 'Yes with an ID48 cloner on most',
-      rem: [['flip', '', '', '3B / 4B flip key']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU66',
-      obd: 'Yes with a VAG tool and the component security PIN', on: 'No', akl: 'OBD on most, PIN required',
-      pin: 'Yes',
-      note: 'Pre-MQB, so this is the friendly generation â€” ID48 clones and OBD works. The 2018-on Tiguan in the other record is a different animal.',
-      entry: 'Lishi HU66' }),
-
-  V({ id: 'jeep-wagoneer-2022-2025', mk: 'Jeep', md: 'Wagoneer / Grand Wagoneer / Grand Cherokee (WL)', y0: 2022, y1: 2025, b: 'suv',
-      kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: '4A (Hitag AES)',
-      sys: 'RF Hub / security gateway', clone: 'No',
-      rem: [['prox', '', '', '5B / 6B with power liftgate and remote start']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Through the security gateway with an AutoAuth-capable tool', on: 'No', akl: 'Gateway access required',
-      pin: 'Yes',
-      note: 'The gateway is the whole job on these. Without AutoAuth or a bypass you will read data and write nothing.',
-      entry: 'Lishi CY24 â€” the cylinder is behind a cap on the driver handle' }),
-  V({ id: 'acura-mdx-2001-2013', mk: 'Acura', md: 'MDX', y0: 2001, y1: 2013, b: 'suv',
-      kw: 'HO01 / HO03', il: 'HO03-PT', chip: '4C then ID46',
-      sys: 'Honda immobilizer', clone: '4C yes; ID46 yes with a capable cloner',
-      rem: [['fob', 'OUCG8D-387H-A', '', '3B / 4B']],
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi HON66 / HO01',
-      obd: 'Yes with a Honda-capable tool', on: 'No', akl: 'OBD, PIN on some years', pin: 'Sometimes',
-      note: 'First-generation MDX is an Odyssey underneath. The 2014-on MDX already has its own record here and moves to the HO05 laser key.',
-      entry: 'Lishi HON66 / HO01' }),
-  V({ id: 'acura-mdx-2022-2025', mk: 'Acura', md: 'MDX / RDX (current)', y0: 2022, y1: 2025, b: 'suv',
-      kw: 'HO05 (emergency blade)', il: 'HO05-PT', chip: 'Honda AES / ID47',
-      sys: 'Honda smart entry', clone: 'No',
-      rem: [['prox', '', '', '5B with remote start']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Yes with a current Honda-capable tool', on: 'No', akl: 'OBD, immobilizer PIN on some',
-      pin: 'Sometimes',
-      note: 'Acura skipped the 2021 model year on the MDX entirely â€” the 2020 is the last third-generation car and the 2022 is the first fourth-generation one. That one-year hole in the coverage here is real, not missing data. The emergency blade opens the driver door only; the cylinder is behind a cap on the handle.',
-      entry: 'Cap off the driver handle, then Lishi HON66' }),
-  V({ id: 'subaru-legacy-2015-2025', mk: 'Subaru', md: 'Legacy / Outback (Legacy trims)', y0: 2015, y1: 2025, b: 'car',
-      kw: 'SUB4 / DAT17 (emergency blade)', il: '', chip: 'Subaru / Denso G',
-      sys: 'Subaru immobilizer', clone: 'No on the G chip',
-      rem: [['prox', '', '', '4B with remote start']],
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Lishi SUB4',
-      obd: 'Yes with a Subaru-capable tool and the PIN', on: 'No', akl: 'PIN then OBD',
-      pin: 'Yes',
-      note: 'The Legacy sedan and the Outback share the platform but the Outback already has its own records here for 2015-2019 and 2020-2024 â€” this line is for the sedan.',
-      entry: 'Lishi SUB4' }),
-  V({ id: 'mitsubishi-outlander-sport-2011-2024', mk: 'Mitsubishi', md: 'Outlander Sport / RVR / Eclipse Cross', y0: 2011, y1: 2024, b: 'suv',
-      kw: 'MIT11 / MIT17', il: 'MIT11-PT', chip: 'ID46 (Hitag2), later AES',
-      sys: 'Mitsubishi immobilizer', clone: 'ID46 yes',
-      rem: [['prox', 'OUCJ166N', '', '3B / 4B'], ['fob', '', '', 'Blade-and-remote head on base trims']],
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Lishi MIT11',
-      obd: 'Yes with a Mitsubishi-capable tool', on: 'No', akl: 'OBD with a PIN on most',
-      pin: 'Yes',
-      note: 'A different vehicle from the full-size Outlander in the other record, despite the name. The Eclipse Cross from 2018 shares this platform and this key, and has nothing to do with the old Eclipse coupe.',
-      entry: 'Lishi MIT11' }),
-  V({ id: 'toyota-sequoia-bz4x-2023-2026', mk: 'Toyota', md: 'Sequoia (new) / bZ4X / Tundra hybrid', y0: 2023, y1: 2026, b: 'suv',
-      kw: 'TOY51 (emergency blade)', il: '', chip: 'Toyota AES (8A-BA / H+)',
-      sys: 'Toyota smart key', clone: 'No',
-      rem: [['prox', '', '', '4B / 5B with power liftgate']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Current tool with Toyota AES coverage', on: 'Some trims still allow the ignition-cycle add with two working keys',
-      akl: 'Seed-key work â€” confirm coverage for the exact year',
-      note: 'The bZ4X has no exterior cylinder on some trims. Check the driver handle for a cap before you plan on picking anything.',
-      entry: 'Emergency blade behind the handle cap where fitted' }),
-  V({ id: 'lexus-tx-rz-lm-2023-2026', mk: 'Lexus', md: 'TX / RZ / LM', y0: 2023, y1: 2026, b: 'suv',
-      kw: 'TOY51 (emergency blade)', il: '', chip: 'Toyota AES (H+)',
-      sys: 'Lexus smart key', clone: 'No',
-      rem: [['prox', '', '', '4B / 5B']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Current tool with Lexus AES coverage', on: 'No', akl: 'Seed-key work',
-      note: 'Newest Lexus platforms. Aftermarket coverage was still filling in as these shipped â€” verify before you quote all-keys-lost.',
-      entry: 'Emergency blade behind the handle cap' }),
-  V({ id: 'saab-900-9000-1994-1998', mk: 'Saab', md: '900 (NG) / 9000', y0: 1994, y1: 1998, b: 'car',
-      kw: '', il: '', chip: 'None on most; Saab immobilizer late in the run',
-      sys: 'None, then Saab immobilizer', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code, or specialist on immobilized cars',
-      note: 'The 1994-on 900 is GM-era and shares a platform with the Opel Vectra, but the locks are not GM. The ignition is on the floor console â€” that is a Saab thing, not a fault, and it catches people out on a lockout call.',
-      port: 'n/a on the earliest', entry: 'Wedge and reach' }),
-  V({ id: 'suzuki-samurai-sidekick-1986-1998', mk: 'Suzuki', md: 'Samurai / Sidekick / Swift / Esteem', y0: 1986, y1: 1998, b: 'suv',
-      kw: 'SZ-series (shares with Geo Tracker / Metro)', il: '', chip: 'None',
-      sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Badge-engineered as the Geo Tracker and Geo Metro, which have their own record here â€” same keys, so a cross-reference from either side works.',
-      port: 'n/a', entry: 'Soft top on a lot of Samurais â€” the easiest entry is often not the lock at all' }),
-  V({ id: 'suzuki-kizashi-verona-2004-2013', mk: 'Suzuki', md: 'Kizashi / Verona', y0: 2004, y1: 2013, b: 'car',
-      kw: 'SZ17 / SZ18', il: '', chip: 'ID46 on the Kizashi',
-      sys: 'Suzuki immobilizer', clone: 'ID46 yes',
-      rem: [['prox', '', '', '3B on Kizashi keyless trims']],
-      sp: '', dp: '', cut: 'Edge cut', dec: '',
-      obd: 'Tool-dependent', on: 'No', akl: 'Specialist â€” Suzuki left the US market in 2012 and support thinned out fast',
-      note: 'The Verona is a Daewoo underneath, the Kizashi is the Suzuki own. They share nothing but the badge.',
-      entry: 'Wedge and reach' }),
-
-  /* ---- Harley-Davidson ------------------------------------------------- */
-  V({ id: 'hd-sportster-1994-2022', mk: 'Harley-Davidson', md: 'Sportster / Iron / Nightster (XL)', y0: 1994, y1: 2022, b: 'moto',
-      kw: 'HD103', il: 'HD103', chip: 'None on most; H-D Smart Security fob where the option was ordered',
-      sys: 'None, or HDSSS', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the fork lock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code, or impression the ignition switch',
-      note: 'The ignition switch and the fork lock are two separate locks on a lot of Sportsters and they are not always keyed alike. Ask which one is actually locked before you quote. Where the security option is fitted, a five-digit PIN entered on the turn-signal switches disarms it without the fob.',
-      port: 'n/a', entry: 'No doors. The job is the ignition switch or the fork lock, nothing else.' }),
-  V({ id: 'hd-touring-softail-1993-2013', mk: 'Harley-Davidson', md: 'Touring / Softail / Dyna (pre-HFSM)', y0: 1993, y1: 2013, b: 'moto',
-      kw: 'HD103 / HD106', il: 'HD103', chip: 'None on most; HDSSS fob on security-optioned bikes',
-      sys: 'None, or HDSSS', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the saddlebag or fork lock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'On a bagger the saddlebag and tour-pack locks are usually keyed to the ignition, which gives you an easier lock to decode than the switch itself. From 2014 the Touring bikes move to the hands-free module and are a different job â€” that has its own record.',
-      port: 'n/a', entry: 'Decode a saddlebag lock and cut from that' }),
-  V({ id: 'hd-vrod-2002-2017', mk: 'Harley-Davidson', md: 'V-Rod (VRSC)', y0: 2002, y1: 2017, b: 'moto',
-      kw: 'HD103', il: 'HD103', chip: 'HDSSS fob on most', sys: 'HDSSS', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut the blade, then the PIN or a dealer fob pairing for the security',
-      note: 'Porsche-built engine, Harley locks. The security system is the fob-and-PIN one, so a cut key alone gets the fork lock but may not let it run.',
-      port: 'n/a', entry: 'Ignition switch or fork lock' }),
-  V({ id: 'hd-livewire-panamerica-2020-2026', mk: 'Harley-Davidson', md: 'LiveWire / Pan America', y0: 2020, y1: 2026, b: 'moto',
-      kw: 'None on LiveWire', il: '', chip: 'Proximity fob',
-      sys: 'Keyless (hands-free)', clone: 'No',
-      rem: [['prox', '', '', 'Hands-free fob, plus a phone key on LiveWire']],
-      sp: '', dp: '', cut: 'n/a on LiveWire', dec: 'n/a',
-      obd: 'Dealer', on: 'Fob pairing needs a working fob or dealer access', akl: 'Dealer',
-      note: 'The LiveWire has no ignition cylinder at all â€” it is fob or phone, and a flat 12V accessory battery leaves it dead with nothing to pick. The Pan America keeps a fork lock.',
-      port: 'n/a', entry: 'Nothing to pick on the LiveWire' }),
-  V({ id: 'buell-1995-2009', mk: 'Buell', md: 'Lightning / Firebolt / Ulysses / Blast', y0: 1995, y1: 2009, b: 'moto',
-      kw: 'HD103', il: 'HD103', chip: 'None on most', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the fork lock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Harley-owned for most of this run, so it takes Harley blanks. Parts support ended in 2009 and the ignition switches are getting scarce â€” decode rather than destructive entry.',
-      port: 'n/a', entry: 'Fork lock' }),
-
-  /* ---- Honda ----------------------------------------------------------- */
-  V({ id: 'honda-goldwing-1988-2000', mk: 'Honda', md: 'Gold Wing GL1500 / Valkyrie', y0: 1988, y1: 2000, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the saddlebag lock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code â€” the code is often on a tag the original owner kept',
-      note: 'Full-dress touring bike with saddlebag, trunk and helmet locks all keyed to the ignition, so there are four chances to find a lock that decodes cleanly. No chip on any of these.',
-      port: 'n/a', entry: 'Decode a saddlebag lock' }),
-  V({ id: 'honda-goldwing-2001-2017', mk: 'Honda', md: 'Gold Wing GL1800 / F6B', y0: 2001, y1: 2017, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'HISS transponder', sys: 'Honda HISS', clone: 'No',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the luggage lock',
-      obd: 'Honda-capable tool', on: 'Register a new key with the red master key present',
-      akl: 'Without the red master key this is an ECU job',
-      note: 'HISS bikes ship a RED master key. It is the one the owner leaves in a drawer, and it is the one that lets new keys be registered. Ask for it before you cut anything â€” no red key turns a two-hour job into an ECU replacement.',
-      port: 'n/a', entry: 'Decode a saddlebag or trunk lock' }),
-  V({ id: 'honda-goldwing-2018-2026', mk: 'Honda', md: 'Gold Wing (new) / Tour', y0: 2018, y1: 2026, b: 'moto',
-      kw: 'Emergency blade in the fob', il: '', chip: 'Honda smart key',
-      sys: 'Honda Smart Key (keyless)', clone: 'No',
-      rem: [['prox', '', '', 'Smart fob; the bike wakes on proximity']],
-      sp: '', dp: '', cut: '', dec: '',
-      obd: 'Honda-capable tool', on: 'Add a fob with a working fob present', akl: 'Dealer on most tools',
-      note: 'No ignition cylinder â€” a knob and a proximity fob. There is an emergency blade in the fob for the luggage. A flat battery on the bike means the knob will not release.',
-      port: 'n/a', entry: 'Emergency blade for the luggage; the ignition has nothing to pick' }),
-  V({ id: 'honda-cbr-cb-1987-2026', mk: 'Honda', md: 'CBR / CB / VFR / Interceptor', y0: 1987, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None early; HISS from the late 1990s on the sport bikes',
-      sys: 'None, then Honda HISS', clone: 'No on HISS',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Honda-capable tool on HISS bikes', on: 'Register with the red master key',
-      akl: 'No red master key means ECU work',
-      note: 'HISS arrives model by model rather than all at once â€” look for the HISS light in the dash before you promise a plain cut key will run it. The seat lock is usually keyed alike and is the easiest thing on the bike to decode.',
-      port: 'n/a', entry: 'Seat lock, then cut to it' }),
-  V({ id: 'honda-shadow-vtx-fury-1983-2026', mk: 'Honda', md: 'Shadow / VTX / Fury / Rebel / Sabre', y0: 1983, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None on most cruisers', sys: 'None on most', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat or helmet lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Honda kept the cruisers simple â€” most of this line has no transponder at all, which makes them the friendliest bike lockout on the list. Confirm by looking for a HISS light rather than by the year.',
-      port: 'n/a', entry: 'Seat lock or helmet lock' }),
-  V({ id: 'honda-adv-1988-2026', mk: 'Honda', md: 'Africa Twin / NC750X / CB500X / Transalp', y0: 1988, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'HISS on most of the modern bikes',
-      sys: 'Honda HISS', clone: 'No',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the seat lock',
-      obd: 'Honda-capable tool', on: 'Register with the red master key', akl: 'ECU work without the red key',
-      note: 'The DCT versions still use the same key and the same HISS â€” the gearbox changes nothing about the lock work.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'honda-grom-monkey-2014-2026', mk: 'Honda', md: 'Grom / Monkey / Navi / Trail 125', y0: 2014, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Small-bore Hondas with a plain wafer ignition and no chip. These get stolen and recovered a lot, so a fresh cylinder with no key is a common call.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'honda-scooter-1984-2026', mk: 'Honda', md: 'Ruckus / Metropolitan / PCX / Elite / Helix', y0: 1984, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None on most; smart key on the newest PCX and Forza',
-      sys: 'None, or Honda Smart Key', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the underseat lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Scooters are a steady lockout line â€” the key goes in the underseat storage and the seat latches. Many have a shutter over the ignition that needs the magnetic key cap to open, and the cap is part of the key, so a plain cut blade will not lift the shutter.',
-      port: 'n/a', entry: 'Underseat lock, if you can reach it' }),
-  V({ id: 'honda-atv-1980-2026', mk: 'Honda', md: 'FourTrax / Foreman / Rancher / Rubicon / Recon (ATV)', y0: 1980, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the code off the switch body',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code â€” the code is frequently stamped on the ignition switch itself',
-      note: 'Farm and ranch machines. The ignition switch is usually exposed on the handlebar cowl and the key code is stamped right on it, which makes these one of the few jobs where you read the code off the machine and cut from stock.',
-      port: 'n/a', entry: 'Read the switch body for a code' }),
-  V({ id: 'honda-sxs-2014-2026', mk: 'Honda', md: 'Pioneer / Talon (side-by-side)', y0: 2014, y1: 2026, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the code off the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Same wafer ignition as the ATVs. Doors, where fitted, do not lock.',
-      port: 'n/a', entry: 'Open cab on most trims â€” reach the switch' }),
-  V({ id: 'honda-moto-vintage-1965-1989', mk: 'Honda', md: 'CB / CX / Magna / Nighthawk (vintage)', y0: 1965, y1: 1989, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the helmet lock',
-      obd: 'n/a', on: 'n/a', akl: 'Impression the ignition, or decode any other lock on the bike',
-      note: 'Restoration work, mostly. Original switches are hard to replace, so impression rather than drill â€” a seized 1975 ignition is worth more intact than the labour you save.',
-      port: 'n/a', entry: 'Helmet lock or the toolbox lock' }),
-
-  /* ---- Yamaha ----------------------------------------------------------- */
-  V({ id: 'yamaha-r-series-1998-2026', mk: 'Yamaha', md: 'YZF-R1 / R6 / R7 / R3', y0: 1998, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'Yamaha immobilizer on the big bikes',
-      sys: 'Yamaha immobilizer', clone: 'No',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Yamaha-capable tool', on: 'Register a new key with the red master key',
-      akl: 'No red key means ECU replacement on most',
-      note: 'Yamaha ships a RED master key on the immobilized bikes and it is the only thing that registers new keys. Owners routinely do not know they have one. Ask before you start; without it the honest quote includes an ECU.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'yamaha-mt-fz-2001-2026', mk: 'Yamaha', md: 'MT / FZ / XSR / Niken', y0: 2001, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'Yamaha immobilizer on most',
-      sys: 'Yamaha immobilizer', clone: 'No',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the seat lock',
-      obd: 'Yamaha-capable tool', on: 'Red master key registers new keys', akl: 'ECU work without the red key',
-      note: 'Same red-master-key story as the R-series. The FZ badge becomes MT partway through â€” one bike, two names.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'yamaha-star-1996-2026', mk: 'Yamaha', md: 'V-Star / Bolt / Raider / Road Star / Stryker', y0: 1996, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'None on most cruisers', sys: 'None on most', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat or saddlebag lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Sold as Star Motorcycles for part of this run, so the badge on the tank may not say Yamaha. The keys and the locks are Yamaha either way.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'yamaha-touring-2003-2026', mk: 'Yamaha', md: 'FJR1300 / Star Venture / Eluder / Tracer', y0: 2003, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'Yamaha immobilizer; smart key on Venture and the newest Tracer',
-      sys: 'Yamaha immobilizer / smart key', clone: 'No',
-      rem: [['prox', '', '', 'Smart fob on Star Venture and Eluder']],
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode a luggage lock',
-      obd: 'Yamaha-capable tool', on: 'Red master key, or fob pairing on smart-key bikes', akl: 'Dealer on most',
-      note: 'The FJR is a red-master-key bike. The Star Venture is keyless and behaves like a car: a fob, a knob, and nothing to pick.',
-      port: 'n/a', entry: 'Luggage lock on the FJR; nothing on the Venture ignition' }),
-  V({ id: 'yamaha-dual-sport-1980-2026', mk: 'Yamaha', md: 'Tenere / Super Tenere / TW200 / XT / WR', y0: 1980, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'Immobilizer on the Super Tenere; none on the small dual-sports',
-      sys: 'None, or Yamaha immobilizer', clone: 'No where fitted',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression', obd: 'Tool-dependent', on: 'Red master key where fitted',
-      akl: 'Cut by code on the simple bikes; ECU work on the immobilized ones',
-      note: 'The little dual-sports are plain wafer keys and easy work. The Super Tenere is a red-key bike. Do not quote one from the other.',
-      port: 'n/a', entry: 'Seat lock where there is one' }),
-  V({ id: 'yamaha-atv-sxs-1985-2026', mk: 'Yamaha', md: 'Grizzly / Kodiak / Raptor / Wolverine / Viking / YXZ', y0: 1985, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the code off the switch body',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code â€” the switch is often code-stamped',
-      note: 'Plain wafer ignition, no chip. Same story as the Honda ATVs: look at the switch body before you set up to impression.',
-      port: 'n/a', entry: 'Reach the handlebar switch' }),
-  V({ id: 'yamaha-scooter-pwc-1985-2026', mk: 'Yamaha', md: 'Zuma / Vino / XMAX / WaveRunner', y0: 1985, y1: 2026, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the underseat lock',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The WaveRunner uses a floating lanyard key on the newer hulls rather than a cut key, and the RiDE models add a coded security setting â€” a cut blade alone will not always start one.',
-      port: 'n/a', entry: 'Underseat or glovebox lock' }),
-  V({ id: 'yamaha-moto-vintage-1965-1990', mk: 'Yamaha', md: 'XS / Virago / Seca / RD (vintage)', y0: 1965, y1: 1990, b: 'moto',
-      kw: 'YH35 / YA23', il: 'YH35', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the helmet lock',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'Restoration work. Impression rather than drill â€” the switches are not being made any more.',
-      port: 'n/a', entry: 'Helmet lock' }),
-  /* ---- Kawasaki --------------------------------------------------------- */
-  V({ id: 'kawasaki-ninja-1984-2026', mk: 'Kawasaki', md: 'Ninja / ZX / Z / W800', y0: 1984, y1: 2026, b: 'moto',
-      kw: 'KA13', il: 'KA13', chip: 'None early; Kawasaki immobilizer on the later big bikes',
-      sys: 'None, then Kawasaki immobilizer', clone: 'No where fitted',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Kawasaki-capable tool', on: 'No', akl: 'ECU work on immobilized bikes; cut by code on the rest',
-      note: 'The immobilizer arrives by model rather than by year. Look for the amber immobilizer light in the dash on key-on before you promise a plain cut key will start it.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'kawasaki-kipass-2008-2026', mk: 'Kawasaki', md: 'Concours 14 / ZX-14R / Versys 1000 (KIPASS)', y0: 2008, y1: 2026, b: 'moto',
-      kw: 'KA13 (emergency blade)', il: 'KA13', chip: 'KIPASS proximity fob',
-      sys: 'KIPASS', clone: 'No',
-      rem: [['prox', '', '', 'Card-style fob; the bike wakes when it is near']],
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression the fuel or seat lock',
-      obd: 'Kawasaki-capable tool', on: 'Register a fob with a working fob present', akl: 'Dealer on most tools',
-      note: 'KIPASS is Kawasaki proximity keyless. The ignition is a knob, not a cylinder, so there is nothing to pick â€” but there is a hidden emergency key for the fuel cap and the seat, and the fob has a low-battery limp mode where you hold it against the knob.',
-      port: 'n/a', entry: 'Emergency blade for the seat; the ignition knob has no cylinder' }),
-  V({ id: 'kawasaki-vulcan-1985-2026', mk: 'Kawasaki', md: 'Vulcan / Eliminator / Voyager', y0: 1985, y1: 2026, b: 'moto',
-      kw: 'KA13', il: 'KA13', chip: 'None on most cruisers', sys: 'None on most', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the saddlebag or seat lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The dressed Voyager has saddlebag and trunk locks keyed to the ignition â€” decode one of those instead of fighting the switch.',
-      port: 'n/a', entry: 'Saddlebag lock' }),
-  V({ id: 'kawasaki-klr-versys-1987-2026', mk: 'Kawasaki', md: 'KLR650 / Versys 650 / KLX', y0: 1987, y1: 2026, b: 'moto',
-      kw: 'KA13', il: 'KA13', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression', obd: 'n/a on most', on: 'n/a',
-      akl: 'Cut by code or impression',
-      note: 'The KLR is a fleet and adventure staple with a plain wafer ignition. Simple work.',
-      port: 'n/a', entry: 'Seat lock where fitted' }),
-  V({ id: 'kawasaki-utv-atv-1988-2026', mk: 'Kawasaki', md: 'Mule / Teryx / Brute Force / Jet Ski', y0: 1988, y1: 2026, b: 'moto',
-      kw: 'KA13', il: 'KA13', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the code off the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code â€” Mule switches are commonly code-stamped',
-      note: 'Mules are everywhere on ranches, campuses and job sites, and a fleet of them is often keyed alike from the factory â€” which cuts both ways. Ask whether one key is meant to run the whole fleet before you key one differently.',
-      port: 'n/a', entry: 'Open cab â€” reach the switch' }),
-
-  /* ---- Suzuki ----------------------------------------------------------- */
-  V({ id: 'suzuki-gsxr-1985-2026', mk: 'Suzuki', md: 'GSX-R / GSX-S / SV650 / Katana', y0: 1985, y1: 2026, b: 'moto',
-      kw: 'SUZ14 / SZ14', il: 'X257', chip: 'None early; Suzuki immobilizer on the later bikes',
-      sys: 'None, then Suzuki immobilizer', clone: 'No where fitted',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Suzuki-capable tool', on: 'No', akl: 'ECU work where the immobilizer is fitted',
-      note: 'The 2020-on Katana and the newest GSX-S are keyless â€” a knob, not a cylinder. Ask the year and look at the ignition before you load the van.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'suzuki-hayabusa-1999-2026', mk: 'Suzuki', md: 'Hayabusa', y0: 1999, y1: 2026, b: 'moto',
-      kw: 'SUZ14 / SZ14', il: 'X257', chip: 'Suzuki immobilizer; keyless from 2022',
-      sys: 'Suzuki immobilizer / keyless', clone: 'No',
-      rem: [['prox', '', '', 'Keyless fob on the 2022-on bike']],
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode the seat lock',
-      obd: 'Suzuki-capable tool', on: 'No', akl: 'Dealer or ECU work',
-      note: 'The 2022 redesign went keyless, so a Hayabusa call needs the year up front â€” the third-generation bike has no ignition cylinder to work with.',
-      port: 'n/a', entry: 'Seat lock on the earlier bikes' }),
-  V({ id: 'suzuki-boulevard-1985-2026', mk: 'Suzuki', md: 'Boulevard / Intruder / Volusia / Marauder', y0: 1985, y1: 2026, b: 'moto',
-      kw: 'SUZ14 / SZ14', il: 'X257', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The Intruder becomes the Boulevard for 2005 â€” same bikes, renamed.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'suzuki-vstrom-dr-1990-2026', mk: 'Suzuki', md: 'V-Strom / DR650 / DR-Z400 / Burgman', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'SUZ14 / SZ14', il: 'X257', chip: 'Immobilizer on the later V-Strom and Burgman',
-      sys: 'None, or Suzuki immobilizer', clone: 'No where fitted',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the underseat lock',
-      obd: 'Tool-dependent', on: 'No', akl: 'Cut by code on the simple bikes; dealer on immobilized ones',
-      note: 'The Burgman is a maxi-scooter and gets treated as one â€” the underseat storage lock is the easiest thing on it to decode.',
-      port: 'n/a', entry: 'Underseat lock' }),
-  V({ id: 'suzuki-atv-1983-2026', mk: 'Suzuki', md: 'KingQuad / QuadSport / Ozark (ATV)', y0: 1983, y1: 2026, b: 'moto',
-      kw: 'SUZ14 / SZ14', il: 'X257', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the code off the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Plain wafer ignition. Check the switch body for a stamped code first.',
-      port: 'n/a', entry: 'Reach the handlebar switch' }),
-
-  /* ---- BMW Motorrad ------------------------------------------------------ */
-  V({ id: 'bmw-moto-boxer-1994-2026', mk: 'BMW', md: 'R1200 / R1250 GS / RT / R nineT (motorcycle)', y0: 1994, y1: 2026, b: 'moto',
-      kw: 'BM6 (motorcycle)', il: '', chip: 'EWS ring antenna; Keyless Ride on the newer bikes',
-      sys: 'BMW Motorrad EWS', clone: 'No',
-      rem: [['prox', '', '', 'Keyless Ride fob where the option was ordered']],
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode a pannier lock',
-      obd: 'BMW Motorrad tool', on: 'No', akl: 'Dealer or a Motorrad specialist',
-      note: 'Not the same keys as a BMW car and not the same tooling either. A GS with panniers gives you three locks keyed alike, which is the way in on a decode job. Keyless Ride bikes have a knob rather than a cylinder.',
-      port: 'n/a', entry: 'Pannier or seat lock' }),
-  V({ id: 'bmw-moto-sf-series-1993-2026', mk: 'BMW', md: 'S1000RR / S1000XR / F / G / K series (motorcycle)', y0: 1993, y1: 2026, b: 'moto',
-      kw: 'BM6 (motorcycle)', il: '', chip: 'EWS ring antenna', sys: 'BMW Motorrad EWS', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'BMW Motorrad tool', on: 'No', akl: 'Dealer or specialist',
-      note: 'The seat lock on the S-series is a common decode target because the ignition sits behind the top yoke and is awkward to reach.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'bmw-moto-airhead-1970-1995', mk: 'BMW', md: 'R-series airhead / K100 (vintage motorcycle)', y0: 1970, y1: 1995, b: 'moto',
-      kw: 'BM6 (motorcycle)', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode a pannier lock',
-      obd: 'n/a', on: 'n/a', akl: 'Impression, or cut by code',
-      note: 'No electronics at all. The panniers, the seat and the ignition are usually one key, and the pannier lock is the easiest to read.',
-      port: 'n/a', entry: 'Pannier lock' }),
-  V({ id: 'bmw-moto-scooter-2012-2026', mk: 'BMW', md: 'C400 / C650 / CE 04 (scooter)', y0: 2012, y1: 2026, b: 'moto',
-      kw: 'BM6 (motorcycle)', il: '', chip: 'EWS; keyless on the CE 04',
-      sys: 'BMW Motorrad EWS / keyless', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression the underseat lock',
-      obd: 'BMW Motorrad tool', on: 'No', akl: 'Dealer',
-      note: 'The CE 04 electric scooter is keyless â€” nothing to pick, and a flat battery leaves the seat latched.',
-      port: 'n/a', entry: 'Underseat lock where fitted' }),
-
-  /* ---- Ducati / Triumph / KTM ------------------------------------------- */
-  V({ id: 'ducati-monster-ss-1993-2026', mk: 'Ducati', md: 'Monster / SuperSport / Scrambler', y0: 1993, y1: 2026, b: 'moto',
-      kw: 'ZD24', il: '', chip: 'Ducati immobilizer from about 2000',
-      sys: 'Ducati immobilizer', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Ducati diagnostic tool', on: 'Register a key with the red master key and the code card',
-      akl: 'Dealer without the red key and the card',
-      note: 'Ducati ships a RED master key plus a printed code card. Both matter: the card carries the immobilizer code and the red key authorises new keys. Owners lose the card first. No card and no red key means a dealer job, and it is worth saying so before you drive out.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'ducati-panigale-multistrada-2007-2026', mk: 'Ducati', md: 'Panigale / Streetfighter / Multistrada / Diavel', y0: 2007, y1: 2026, b: 'moto',
-      kw: 'Emergency blade in the fob', il: '', chip: 'Ducati hands-free proximity',
-      sys: 'Ducati hands-free', clone: 'No',
-      rem: [['prox', '', '', 'Hands-free fob; the bike wakes on approach']],
-      sp: '', dp: '', cut: '', dec: '',
-      obd: 'Ducati diagnostic tool', on: 'Dealer', akl: 'Dealer',
-      note: 'Hands-free bikes have no ignition cylinder. There is an emergency blade tucked in the fob for the seat and the fuel cap, and a backup PIN entered on the dash that lets the bike start with a dead fob â€” ask the owner whether they set one.',
-      port: 'n/a', entry: 'Emergency blade for the seat; nothing at the ignition' }),
-  V({ id: 'triumph-modern-classic-1995-2026', mk: 'Triumph', md: 'Bonneville / Thruxton / Scrambler / Speedmaster', y0: 1995, y1: 2026, b: 'moto',
-      kw: 'Triumph', il: '', chip: 'Immobilizer from the early 2000s',
-      sys: 'Triumph immobilizer', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Triumph dealer tool', on: 'No', akl: 'Dealer on most',
-      note: 'Hinckley Triumphs, not the 1970s Meriden bikes. The early ones are a plain wafer key; the immobilizer arrives in the early 2000s and turns it into a dealer job.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'triumph-triple-tiger-1994-2026', mk: 'Triumph', md: 'Speed Triple / Street Triple / Tiger / Rocket 3 / Daytona', y0: 1994, y1: 2026, b: 'moto',
-      kw: 'Triumph', il: '', chip: 'Triumph immobilizer on most', sys: 'Triumph immobilizer', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression or decode the seat lock',
-      obd: 'Triumph dealer tool', on: 'No', akl: 'Dealer on most',
-      note: 'The Tiger with panniers gives you extra locks keyed alike, which is the easier decode.',
-      port: 'n/a', entry: 'Seat or pannier lock' }),
-  V({ id: 'ktm-street-1994-2026', mk: 'KTM', md: 'Duke / RC / Adventure / Super Duke (street)', y0: 1994, y1: 2026, b: 'moto',
-      kw: 'KTM / Husqvarna', il: '', chip: 'Immobilizer on some street models',
-      sys: 'None, or KTM immobilizer', clone: 'No where fitted',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'KTM dealer tool', on: 'No', akl: 'Dealer where the immobilizer is fitted',
-      note: 'The smaller Dukes built in India by Bajaj and the Austrian bikes do not always share hardware. Confirm which you have before ordering anything.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'ktm-offroad-1990-2026', mk: 'KTM', md: 'SX / EXC / XC (off-road)', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'None â€” no ignition lock', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'n/a', dec: 'n/a',
-      obd: 'n/a', on: 'n/a', akl: 'n/a',
-      note: 'A motocross or enduro bike has no ignition lock and no key at all â€” it starts on a button or a kick. If a customer calls about a lost key for one of these, they have a truck or a trailer problem, not a bike problem. Worth asking on the phone rather than driving out.',
-      port: 'n/a', entry: 'Nothing to open' }),
-  V({ id: 'husqvarna-gasgas-1995-2026', mk: 'Husqvarna', md: 'Svartpilen / Vitpilen / Norden / FE / TE', y0: 1995, y1: 2026, b: 'moto',
-      kw: 'KTM / Husqvarna', il: '', chip: 'Immobilizer on the street models',
-      sys: 'None, or KTM-family immobilizer', clone: 'No where fitted',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression',
-      obd: 'KTM-group dealer tool', on: 'No', akl: 'Dealer on street models',
-      note: 'KTM-owned since 2013, so the modern Husqvarnas share hardware with the equivalent KTM. The dirt bikes, like the KTMs, have no ignition lock.',
-      port: 'n/a', entry: 'Seat lock on the street bikes; nothing on the dirt bikes' }),
-  /* ---- Indian / Victory / Polaris ---------------------------------------- */
-  V({ id: 'indian-thunderstroke-2014-2026', mk: 'Indian Motorcycle', md: 'Chief / Chieftain / Roadmaster / Springfield', y0: 2014, y1: 2026, b: 'moto',
-      kw: 'None â€” keyless', il: '', chip: 'Polaris proximity fob',
-      sys: 'Indian keyless (Polaris)', clone: 'No',
-      rem: [['prox', '', '', 'Fob in a pocket; the bike arms and disarms on proximity']],
-      sp: '', dp: '', cut: 'n/a', dec: 'n/a',
-      obd: 'Dealer', on: 'Pair a fob with a working fob, or a dealer tool', akl: 'Dealer',
-      note: 'Polaris-era Indian is keyless. There is no ignition cylinder and no blade â€” the fob stays in a pocket and the bike is armed with a switch. There is a numeric PIN backup entered on the dash for a dead fob, so ask whether the owner set one before you write it up as a tow.',
-      port: 'n/a', entry: 'Saddlebag locks on the dressers; nothing at the ignition' }),
-  V({ id: 'indian-scout-ftr-2015-2026', mk: 'Indian Motorcycle', md: 'Scout / FTR / Sport Chief', y0: 2015, y1: 2026, b: 'moto',
-      kw: 'Polaris', il: '', chip: 'Fob on some trims', sys: 'Polaris', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Dealer', on: 'No', akl: 'Dealer on fob trims; cut by code on keyed ones',
-      note: 'Unlike the big Thunder Stroke bikes, the Scout keeps a keyed ignition on most trims. Confirm which before you quote â€” the two Indians in the same garage are not the same job.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'victory-2009-2017', mk: 'Victory', md: 'Vegas / Cross Country / Octane / Hammer', y0: 2009, y1: 2017, b: 'moto',
-      kw: 'Polaris', il: '', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the saddlebag lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Polaris shut Victory down in 2017. Dealer support is gone, so a lock you can decode is worth more than one you replace â€” the parts are getting hard to find.',
-      port: 'n/a', entry: 'Saddlebag lock on the dressers' }),
-  V({ id: 'polaris-sportsman-1985-2026', mk: 'Polaris', md: 'Sportsman / Scrambler / Outlaw (ATV)', y0: 1985, y1: 2026, b: 'moto',
-      kw: 'Polaris', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or read the code off the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Plain wafer ignition. Fleets of these are commonly keyed alike from the dealer â€” ask before you rekey one out of the set.',
-      port: 'n/a', entry: 'Reach the handlebar switch' }),
-  V({ id: 'polaris-slingshot-2015-2026', mk: 'Polaris', md: 'Slingshot', y0: 2015, y1: 2026, b: 'moto',
-      kw: 'Polaris', il: '', chip: 'Immobilizer on later years', sys: 'Polaris', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression',
-      obd: 'Dealer tool', on: 'No', akl: 'Dealer on immobilized years',
-      note: 'Registered as an autocycle in most states and driven like a car, but it is a Polaris underneath and takes Polaris keys, not car keys. Open cockpit, so a lockout is usually a key problem rather than an entry problem.',
-      port: 'Under the dash on the driver side', entry: 'Open cockpit on most; the glovebox is the only lock' }),
-  V({ id: 'polaris-snowmobile-1980-2026', mk: 'Polaris', md: 'Indy / RMK / Switchback (snowmobile)', y0: 1980, y1: 2026, b: 'moto',
-      kw: 'Polaris', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'A snowmobile ignition is a simple wafer switch and a tether. The tether cap is not a key and cannot be cut â€” if the tether is what is missing, that is a parts order, not a locksmith job.',
-      port: 'n/a', entry: 'Nothing to open' }),
-
-  /* ---- Can-Am / BRP ------------------------------------------------------ */
-  V({ id: 'canam-spyder-ryker-2008-2026', mk: 'Can-Am', md: 'Spyder / Ryker', y0: 2008, y1: 2026, b: 'moto',
-      kw: 'D.E.S.S. RFID key', il: '', chip: 'BRP D.E.S.S. RFID',
-      sys: 'BRP D.E.S.S.', clone: 'No',
-      sp: '', dp: '', cut: 'Not a cut key', dec: 'n/a',
-      obd: 'BRP BUDS dealer tool', on: 'No', akl: 'Dealer â€” the key has to be programmed to the cluster',
-      note: 'The D.E.S.S. key is an RFID cap on a lanyard, not a cut blade. There is nothing to impression and nothing to decode. A replacement is a dealer part programmed to the vehicle, so the honest answer on a lost D.E.S.S. key is to send them to a BRP dealer rather than to try.',
-      port: 'n/a', entry: 'Frunk and glovebox locks on the Spyder use a separate cut key' }),
-  V({ id: 'canam-offroad-2006-2026', mk: 'Can-Am', md: 'Outlander / Renegade / Commander (off-road)', y0: 2006, y1: 2026, b: 'moto',
-      kw: 'Can-Am / Ski-Doo / Sea-Doo', il: '', chip: 'D.E.S.S. on some; a plain key on others',
-      sys: 'None, or BRP D.E.S.S.', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut where a cut key is used', dec: 'Impression',
-      obd: 'BRP BUDS dealer tool', on: 'No', akl: 'Cut by code on keyed machines; dealer on D.E.S.S.',
-      note: 'BRP mixes the two systems across the off-road line and even across trims of one model. Ask the customer to photograph the key before you go â€” a cap on a lanyard is a dealer job and a cut blade is not.',
-      port: 'n/a', entry: 'Open cab' }),
-  V({ id: 'brp-skidoo-seadoo-1990-2026', mk: 'Ski-Doo', md: 'Ski-Doo snowmobile / Sea-Doo PWC', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'D.E.S.S. lanyard post', il: '', chip: 'BRP D.E.S.S. RFID',
-      sys: 'BRP D.E.S.S.', clone: 'No',
-      sp: '', dp: '', cut: 'Not a cut key', dec: 'n/a',
-      obd: 'BRP BUDS dealer tool', on: 'No', akl: 'Dealer',
-      note: 'The lanyard cap clips over a post â€” there is no cylinder. Sea-Doos also carry a Learning Key that limits speed, which is a different cap programmed differently. Neither is something you cut.',
-      port: 'n/a', entry: 'The storage hatch is the only lock, and often not one' }),
-  V({ id: 'arcticcat-1990-2026', mk: 'Arctic Cat', md: 'Wildcat / Prowler / Alterra / snowmobile', y0: 1990, y1: 2026, b: 'moto',
-      kw: 'Arctic Cat', il: '', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or read the code off the switch',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Textron-owned since 2017 and badged Textron Off Road for a few years. Plain wafer ignition on most of the line.',
-      port: 'n/a', entry: 'Open cab' }),
-
-  /* ---- Euro and small-displacement --------------------------------------- */
-  V({ id: 'vespa-piaggio-1996-2026', mk: 'Vespa', md: 'GTS / Primavera / Sprint / LX', y0: 1996, y1: 2026, b: 'moto',
-      kw: 'Piaggio / Vespa', il: '', chip: 'Piaggio immobilizer on most modern scooters',
-      sys: 'Piaggio immobilizer', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the underseat lock',
-      obd: 'Piaggio diagnostic tool', on: 'Register with the master key and the code card',
-      akl: 'Dealer without the master key or the card',
-      note: 'Piaggio ships a master key and a code card, the same idea as Ducati. The ignition also has a shutter that the key cap unlocks magnetically, so a plain cut blade will not reach the cylinder â€” the cap is part of the key.',
-      port: 'n/a', entry: 'Underseat lock' }),
-  V({ id: 'aprilia-motoguzzi-1995-2026', mk: 'Aprilia', md: 'RSV4 / Tuono / Tuareg / Moto Guzzi V7 / V85', y0: 1995, y1: 2026, b: 'moto',
-      kw: 'Piaggio / Vespa', il: '', chip: 'Piaggio-group immobilizer',
-      sys: 'Piaggio immobilizer', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the seat lock',
-      obd: 'Piaggio diagnostic tool', on: 'Master key and code card', akl: 'Dealer',
-      note: 'Both marques are Piaggio-owned, so the immobilizer and the code-card procedure are the same as a Vespa even though the bikes could not be less alike.',
-      port: 'n/a', entry: 'Seat lock' }),
-  V({ id: 'royalenfield-2000-2026', mk: 'Royal Enfield', md: 'Classic / Meteor / Hunter / Himalayan / Interceptor 650', y0: 2000, y1: 2026, b: 'moto',
-      kw: 'Royal Enfield', il: '', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the toolbox or seat lock',
-      obd: 'n/a on most', on: 'n/a', akl: 'Impression, or cut by code',
-      note: 'Selling in real numbers now and simple to work on â€” a plain wafer ignition with no chip on most of the line. Cheap bikes get cheap aftermarket switches fitted, so check what is actually on the bike rather than what left the factory.',
-      port: 'n/a', entry: 'Toolbox or seat lock' }),
-  V({ id: 'zero-electric-2010-2026', mk: 'Zero Motorcycles', md: 'S / DS / SR / FX', y0: 2010, y1: 2026, b: 'moto',
-      kw: 'Simple wafer ignition on most', il: '', chip: 'None on most; fob on later models',
-      sys: 'None, or Zero fob', clone: 'No',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression',
-      obd: 'Zero dealer tool', on: 'No', akl: 'Dealer',
-      note: 'Electric, so a flat pack means nothing works, key or not. The ignition itself is a plain switch on most of the range. I do not have a keyway for these I can cite â€” decode the lock rather than trusting a cross-reference.',
-      port: 'n/a', entry: 'Nothing much to open' }),
-  V({ id: 'kymco-sym-genuine-1995-2026', mk: 'Kymco', md: 'Kymco / SYM / Genuine / Lance scooters', y0: 1995, y1: 2026, b: 'moto',
-      kw: 'Taiwanese scooter pattern', il: '', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the underseat lock',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'Taiwanese-built scooters, better made than the mainland clones and sold through real dealers. Most have the magnetic shutter over the ignition, so the key cap matters as much as the blade.',
-      port: 'n/a', entry: 'Underseat lock' }),
-  V({ id: 'gy6-scooter-1995-2026', mk: 'Taotao', md: 'GY6 scooters and clones (Taotao / Vitacci / Jonway)', y0: 1995, y1: 2026, b: 'moto',
-      kw: 'GY6 universal pattern', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or just try the pattern set',
-      obd: 'n/a', on: 'n/a', akl: 'A GY6 tryout set opens most of these in under a minute',
-      note: 'Imported 50cc and 150cc scooters built on the GY6 engine, sold under dozens of badges. The ignitions come from a handful of Chinese suppliers and the keying is shallow â€” a tryout set is genuinely the right tool. Price these as a small job; the customer paid a thousand dollars for the whole machine.',
-      port: 'n/a', entry: 'Underseat lock, or the tryout set' }),
-  V({ id: 'moped-vintage-1965-1990', mk: 'Puch', md: 'Puch / Tomos / Sachs / Motobecane (moped)', y0: 1965, y1: 1990, b: 'moto',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression',
-      obd: 'n/a', on: 'n/a', akl: 'Impression â€” assume no code record exists',
-      note: 'Restoration work with no parts supply worth speaking of. Many have no ignition lock at all, just a kill switch, and the only lock on the machine is a fork lock. I have no keyway for these I can cite.',
-      port: 'n/a', entry: 'Fork lock, if there is one' }),
-
-  /* ---- Freightliner / Western Star / Sterling ---------------------------- */
-  V({ id: 'freightliner-cascadia-2008-2026', mk: 'Freightliner', md: 'Cascadia', y0: 2008, y1: 2026, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None',
-      sys: 'None â€” no transponder on the ignition', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the code off the switch face, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code â€” the ignition switch is usually code-stamped',
-      note: 'Class 8 tractors have no transponder. The whole job is a wafer switch and a five-cut key, which surprises people who expect a truck to be harder than a car. Two things to establish first: the ignition and the door are commonly different keys, and a fleet yard is often keyed alike across every truck on it. Ask the fleet manager before you key one differently and strand the next driver.',
-      port: 'Under the dash, driver side (J1939 on a 9-pin round connector, not OBD-II)',
-      entry: 'Door lock is a separate wafer cylinder. Air-ride cabs sit high â€” bring the ladder.' }),
-  V({ id: 'freightliner-classic-1990-2011', mk: 'Freightliner', md: 'Columbia / Century / Classic / FLD', y0: 1990, y1: 2011, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'The NHTSA index does not list these before 2001, so the early 1990s trucks will not appear in the year picker. The pre-Cascadia fleet, still working hard in owner-operator hands. Same key system as everything else Freightliner built. On a truck this old the switch has often been replaced with whatever the shop had, so read what is fitted rather than what left the factory.',
-      port: 'Under the dash (J1587/J1708 on the oldest)',
-      entry: 'Door cylinder, or the sleeper window on a condo cab' }),
-  V({ id: 'freightliner-m2-2003-2026', mk: 'Freightliner', md: 'M2 106 / M2 112 (Business Class)', y0: 2003, y1: 2026, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'The most common medium-duty chassis on the road and the one under most box trucks, bucket trucks, ambulances and dump bodies. If a customer says "box truck" without a badge, start here.',
-      port: 'Under the dash, driver side',
-      entry: 'Door cylinder. The box body has its own lock and it is never the same key.' }),
-  V({ id: 'freightliner-fl-series-1990-2003', mk: 'Freightliner', md: 'FL60 / FL70 / FL80 / FL106', y0: 1990, y1: 2003, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The Business Class before the M2. Municipal fleets kept these a long time.',
-      port: 'n/a on the earliest', entry: 'Door cylinder' }),
-  V({ id: 'freightliner-mt-stepvan-1996-2026', mk: 'Freightliner', md: 'MT45 / MT55 step van chassis', y0: 1996, y1: 2026, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'The parcel truck â€” this is the chassis under most of what UPS and FedEx Ground run, bodied by Utilimaster or Morgan Olson. The cab door usually does not lock at all and the driver works from a roll-up rear door with its own padlock or T-handle, so a "locked out of my truck" call on one of these is often not about the ignition at all.',
-      port: 'Under the dash', entry: 'Often no cab door lock. The bulkhead and rear-door locks are body hardware, not chassis.' }),
-  V({ id: 'freightliner-xc-chassis-1997-2026', mk: 'Freightliner', md: 'XC / XCS motorhome chassis', y0: 1997, y1: 2026, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Under most diesel-pusher Class A motorhomes. The ignition is a Freightliner truck switch; the coach door and every bay door are RV hardware on completely different keys, usually Bauer, TriMark or Global Link. Three separate key systems on one vehicle â€” establish which one the customer is locked out of before you quote.',
-      port: 'Under the dash', entry: 'Coach entry door is RV hardware, not chassis hardware' }),
-  V({ id: 'westernstar-1990-2026', mk: 'Western Star', md: '4900 / 4700 / 49X / 47X / 57X', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Daimler-owned alongside Freightliner, so the key system is shared. Heavy vocational work: logging, mining, oilfield, heavy haul.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'sterling-1998-2009', mk: 'Sterling', md: 'Acterra / Bullet / L-Line / A-Line', y0: 1998, y1: 2009, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code',
-      note: 'The NHTSA index does not list Sterling before 2001, though the badge launched for 1998. Freightliner built these out of the old Ford heavy-truck line, and Daimler killed the brand in 2009. Parts support went with it, so decode the switch rather than planning to replace it. The Bullet is a rebadged Dodge Ram 4500/5500 and is a Chrysler key, not a Sterling one â€” that one catches people out.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-
-  /* ---- PACCAR: Peterbilt and Kenworth ------------------------------------ */
-  V({ id: 'peterbilt-classic-1980-2026', mk: 'Peterbilt', md: '379 / 389 / 359 / 388 / 367', y0: 1980, y1: 2026, b: 'truck',
-      kw: 'Peterbilt / Kenworth', il: '1642 / RA4', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch face, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code â€” most run a very short code series',
-      note: 'The long-nose owner-operator truck. PACCAR ignitions run on a short list of codes and a small tryout set opens most of them, which is exactly why the door is usually keyed separately and why the sleeper gets a padlock. Do not assume one key does both.',
-      port: 'Under the dash (9-pin round J1939 connector)',
-      entry: 'Door cylinder on a separate code. Vent window on the older cabs is the quicker way in.' }),
-  V({ id: 'peterbilt-aero-2010-2026', mk: 'Peterbilt', md: '579 / 587 / 567', y0: 2010, y1: 2026, b: 'truck',
-      kw: 'Peterbilt / Kenworth', il: '1642 / RA4', chip: 'None on the ignition',
-      sys: 'None on the ignition; keyless entry fob on some trims', clone: 'n/a',
-      rem: [['fob', '', '', 'Remote door lock where the option was ordered']],
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Newer sheet metal, same wafer ignition underneath. Some trims add a keyless-entry fob for the doors only â€” the truck still starts on a cut key, so a lost fob is not a no-start.',
-      port: 'Under the dash', entry: 'Door cylinder, or the fob if one is paired' }),
-  V({ id: 'peterbilt-medium-2000-2026', mk: 'Peterbilt', md: '220 / 330 / 337 / 348 / 520', y0: 2000, y1: 2026, b: 'truck',
-      kw: 'Peterbilt / Kenworth', il: '1642 / RA4', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Medium-duty Peterbilts under box bodies, refuse packers and municipal equipment. The 220 is a cabover and shares its cab with the Kenworth K270.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'kenworth-classic-1980-2026', mk: 'Kenworth', md: 'W900 / T800 / C500 / W990', y0: 1980, y1: 2026, b: 'truck',
-      kw: 'Peterbilt / Kenworth', il: '1642 / RA4', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'PACCAR, same as Peterbilt, so the ignition key crosses between the two badges. The door is a separate code on most.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'kenworth-aero-2008-2026', mk: 'Kenworth', md: 'T680 / T880 / T660 / T700', y0: 2008, y1: 2026, b: 'truck',
-      kw: 'Peterbilt / Kenworth', il: '1642 / RA4', chip: 'None on the ignition',
-      sys: 'None on the ignition; keyless entry on some trims', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Shares its cab and its key system with the Peterbilt 579. Keyless entry, where fitted, is doors only.',
-      port: 'Under the dash', entry: 'Door cylinder, or the fob if paired' }),
-  V({ id: 'kenworth-medium-2008-2026', mk: 'Kenworth', md: 'T170 / T270 / T370 / K270 / K370', y0: 2008, y1: 2026, b: 'truck',
-      kw: 'Peterbilt / Kenworth', il: '1642 / RA4', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Medium-duty PACCAR. The K-series are cabovers and share their cab with the Peterbilt 220.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-
-  /* ---- International / Navistar ------------------------------------------ */
-  V({ id: 'international-highway-1990-2026', mk: 'International', md: 'ProStar / LT / LoneStar / 9000 series', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'International / Navistar', il: '1554 / 1559', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Navistar highway tractors. Same story as the rest of Class 8: a plain wafer ignition, no transponder, and a fleet that is often keyed alike. Traton owns Navistar now but the key hardware has not changed.',
-      port: 'Under the dash (9-pin round J1939)', entry: 'Door cylinder' }),
-  V({ id: 'international-durastar-1990-2026', mk: 'International', md: 'DuraStar 4300 / 4400 / MV / CV / 4700', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'International / Navistar', il: '1554 / 1559', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'The medium-duty workhorse â€” box trucks, bucket trucks, flatbeds, rollbacks. The CV is a rebadged Chevrolet Silverado 4500HD and takes GM keys, not Navistar ones. Read the badge and then read the switch.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'international-vocational-1990-2026', mk: 'International', md: 'WorkStar / PayStar / HX / HV / 5000 series', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'International / Navistar', il: '1554 / 1559', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Dump trucks, mixers, plows and refuse. These live on job sites, so the code sticker is long gone and the switch is often full of grit â€” decode carefully rather than forcing.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-
-  /* ---- Mack and Volvo Trucks --------------------------------------------- */
-  V({ id: 'mack-highway-1990-2026', mk: 'Mack', md: 'Anthem / Pinnacle / Vision / CH / CX', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'Mack / Volvo Truck', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Volvo has owned Mack since 2001, and the modern trucks share a platform and a key system with the Volvo VNL. No transponder anywhere in the line.',
-      port: 'Under the dash (9-pin round J1939)', entry: 'Door cylinder' }),
-  V({ id: 'mack-vocational-1990-2026', mk: 'Mack', md: 'Granite / TerraPro / LR / MRU (vocational)', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'Mack / Volvo Truck', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Refuse, mixer and dump work. The LR refuse chassis has a right-hand stand-up drive position on many builds, so there may be two doors and two cylinders â€” ask which side.',
-      port: 'Under the dash', entry: 'Door cylinder, either side on a dual-drive refuse cab' }),
-  V({ id: 'volvo-truck-1996-2026', mk: 'Volvo Truck', md: 'VNL / VNR / VHD / VN / VAH', y0: 1996, y1: 2026, b: 'truck',
-      kw: 'Mack / Volvo Truck', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Filed apart from Volvo cars on purpose â€” Volvo Trucks and Volvo Cars have been separate companies since 1999 and share nothing. A Volvo car key will not help you here, and neither will a Volvo car tool.',
-      port: 'Under the dash (9-pin round J1939)', entry: 'Door cylinder' }),
-  V({ id: 'autocar-2001-2026', mk: 'Autocar', md: 'ACX / DC / Xpeditor / ACMD', y0: 2001, y1: 2026, b: 'truck',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Impression, or read the switch',
-      note: 'Refuse and terminal work, built in Alabama. Autocar buys switches from the same suppliers as everyone else in Class 8, but I have no keyway for the line I can cite â€” read what is actually fitted rather than ordering from a cross-reference.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  /* ---- Medium-duty cabovers and chassis ---------------------------------- */
-  V({ id: 'hino-conventional-2004-2026', mk: 'Hino', md: '155 / 195 / 258 / 268 / 338', y0: 2004, y1: 2026, b: 'truck',
-      kw: 'Hino / NPR / UD cabover', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code â€” the code tag often survives in the glovebox',
-      note: 'Toyota-owned, sold through its own dealer network, and common under landscape and delivery bodies. Hino paused US sales in 2023 over an emissions certification problem, so parts and dealer support got thin â€” decode rather than plan on a new switch.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'hino-xl-2020-2026', mk: 'Hino', md: 'XL7 / XL8', y0: 2020, y1: 2026, b: 'truck',
-      kw: 'Hino / NPR / UD cabover', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Hino moving up into Class 8 with a conventional cab. Same key system as the medium-duty line.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'fuso-canter-1985-2026', mk: 'Mitsubishi Fuso', md: 'FE / FG / FEC / Canter', y0: 1985, y1: 2026, b: 'truck',
-      kw: 'Hino / NPR / UD cabover', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Daimler-owned and unrelated to Mitsubishi cars despite the badge â€” do not pull a MIT11 for one. Tilt-cab, so the whole cab lifts for engine access and there is nothing behind it worth wedging for.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'ud-trucks-1990-2011', mk: 'UD Trucks', md: 'UD 1200 / 1400 / 2600 / 3300 (Nissan Diesel)', y0: 1990, y1: 2011, b: 'truck',
-      kw: 'Hino / NPR / UD cabover', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or read the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'Nissan Diesel cabovers, sold in the US through 2011 and then withdrawn. Volvo owns the brand now but not the US business, so there is no dealer to call â€” whatever is on the truck is what you work with.',
-      port: 'n/a on most', entry: 'Door cylinder' }),
-  V({ id: 'chevy-kodiak-topkick-1990-2009', mk: 'Chevrolet', md: 'Kodiak / GMC TopKick (C4500-C8500)', y0: 1990, y1: 2009, b: 'truck',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'None on most; Passlock on later light-medium builds',
-      sys: 'None, or Passlock', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37, or impression',
-      obd: 'Limited', on: '10-min relearn where Passlock is fitted', akl: 'Cut by code, or 30-min relearn',
-      note: 'The NHTSA index does not list the Kodiak or the TopKick at all, so neither will appear in the year picker. A GM truck, so it takes GM keys and a GM Lishi â€” not a Class 8 fleet key. That is the whole point of this record: a "medium-duty truck" call is not automatically a fleet-key job. GM ended the line in 2009.',
-      port: 'Under the dash, driver side', entry: 'Lishi GM37' }),
-  V({ id: 'chevy-lcf-2016-2026', mk: 'Chevrolet', md: 'Low Cab Forward 3500 / 4500 / 5500 / 6500', y0: 2016, y1: 2026, b: 'truck',
-      kw: 'Hino / NPR / UD cabover', il: '', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'The NHTSA index stops at 2023 for this one; the truck is still being built. A rebadged Isuzu N-series with a bowtie on the nose. It takes Isuzu cabover keys, not GM keys â€” the badge is the only GM part of the lock system. The existing Isuzu NPR record covers the same truck.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-  V({ id: 'chevy-silverado-md-2019-2026', mk: 'Chevrolet', md: 'Silverado 4500HD / 5500HD / 6500XD', y0: 2019, y1: 2026, b: 'truck',
-      kw: 'B119', il: 'B119-PT', chip: 'GM 46E / AES', sys: 'GM immobilizer', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Yes with a GM-capable tool', on: 'Add-a-key with a working key', akl: 'OBD + security relearn',
-      note: 'Built with Navistar and sold as the International CV under the other badge. Unlike almost everything else in medium duty, this one does have a transponder â€” it is a Silverado from the cab forward and it keys like one.',
-      port: 'Under the dash, driver side', entry: 'Lishi HU100' }),
-  V({ id: 'ford-f650-f750-1999-2026', mk: 'Ford', md: 'F-650 / F-750', y0: 1999, y1: 2026, b: 'truck',
-      kw: 'H92 / H84 then HU101', il: 'H92-PT', chip: '4D-63 then ID49 by year',
-      sys: 'PATS', clone: 'Depends on the year',
-      sp: 8, dp: 5, cut: 'Edge cut, then laser on the newer trucks', dec: 'Lishi FO38 or HU101',
-      obd: 'Yes with a Ford-capable tool', on: '2 working keys on most', akl: 'OBD + timed security access',
-      note: 'A Super Duty from the cab forward, so it carries PATS and a real transponder â€” unlike the Class 8 trucks parked next to it. Built with Navistar through 2015 and by Ford alone after; the key system follows the Ford truck of the same year, so date it and use the F-Series record for the year.',
-      port: 'Driver side under the dash', entry: 'Lishi to suit the year' }),
-  V({ id: 'ford-lcf-2006-2009', mk: 'Ford', md: 'Low Cab Forward (LCF)', y0: 2006, y1: 2009, b: 'truck',
-      kw: 'Hino / NPR / UD cabover', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or read the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'A rebadged Fuso cabover with a Blue Oval on it, sold for four years and then dropped. It is not a Ford key. Another badge that will not take the blank the badge suggests.',
-      port: 'n/a', entry: 'Door cylinder' }),
-  V({ id: 'ford-f53-f59-chassis-1990-2026', mk: 'Ford', md: 'F-53 / F-59 stripped chassis', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'H92 / H84 then HU101', il: 'H92-PT', chip: 'PATS by year', sys: 'PATS',
-      clone: 'Depends on the year', sp: 8, dp: 5, cut: 'Edge cut, then laser',
-      dec: 'Lishi FO38 or HU101 to suit', obd: 'Yes with a Ford-capable tool', on: '2 working keys on most',
-      akl: 'OBD + timed access',
-      note: 'The NHTSA index does not carry the stripped chassis under its own name, so it will not appear in the year picker. The chassis under most gas Class A motorhomes and a lot of step vans. Ford keys the ignition; the coach door and the bays are RV hardware on other keys entirely. Three systems on one vehicle, same as the Freightliner XC.',
-      port: 'Driver side under the dash', entry: 'Coach door is RV hardware, not Ford' }),
-  V({ id: 'ram-chassis-cab-2008-2026', mk: 'Ram', md: '3500 / 4500 / 5500 Chassis Cab', y0: 2008, y1: 2026, b: 'truck',
-      kw: 'CY24', il: 'Y170-PT', chip: 'ID46 (Hitag2), later 4A', sys: 'SKREEM / RF Hub',
-      clone: 'ID46 yes', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Yes with a PIN; gateway access on the newer trucks', on: 'No', akl: 'PIN, or RF Hub access',
-      pin: 'Yes',
-      note: 'The 2008-2010 chassis cabs are titled as Dodge, not Ram, so the NHTSA index files them under the other make and the year picker starts at 2011. Keys exactly like the Ram pickup of the same year, transponder and all. Under flatbeds, service bodies, dumps and tow rigs. The Sterling Bullet of 2008-2009 is this truck with a different badge.',
-      port: 'Driver side under the dash', entry: 'Lishi CY24' }),
-  V({ id: 'stepvan-body-1985-2026', mk: 'Utilimaster', md: 'Step van bodies (Utilimaster / Morgan Olson / Grumman)', y0: 1985, y1: 2026, b: 'truck',
-      kw: 'CH751 on most compartment hardware', il: 'CH751', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Most compartment locks are stamped or standard',
-      obd: 'n/a', on: 'n/a', akl: 'Standard blanks cover most of the body hardware',
-      note: 'The body, not the chassis â€” bolted onto a Freightliner MT, a Ford F-59 or a P30. Body hardware and chassis hardware are separate jobs with separate keys: the rear roll-up, the bulkhead door and the side compartments are body locks, and a lot of them are CH751 or an equally common cam lock. The ignition belongs to whatever is under the cab.',
-      port: 'n/a â€” see the chassis record', entry: 'Bulkhead or roll-up door; the cab door often does not lock at all' }),
-
-  /* ---- Vans and light commercial ----------------------------------------- */
-  V({ id: 'ford-etransit-2022-2026', mk: 'Ford', md: 'E-Transit', y0: 2022, y1: 2026, b: 'van',
-      kw: 'HU101', il: 'HU101-PT', chip: 'ID49 (Hitag Pro)', sys: 'PATS / phone-as-a-key',
-      clone: 'No', rem: [['prox', '', '', '4B, plus phone key on some trims']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU101',
-      obd: 'Yes with a current tool', on: 'Add-a-key with a working key', akl: 'OBD + security access',
-      note: 'The NHTSA index folds the electric van into Transit rather than listing E-Transit separately, so the year picker will not offer it by name. Same key system as the diesel and gas Transit. The high-voltage pack does not power the door locks â€” a flat 12V accessory battery leaves it as dead as any other van, and the blade is the way in.',
-      port: 'Driver side under the dash', entry: 'Lishi HU101' }),
-  V({ id: 'brightdrop-zevo-2022-2026', mk: 'BrightDrop', md: 'Zevo 400 / Zevo 600', y0: 2022, y1: 2026, b: 'van',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES', sys: 'GM passive entry',
-      clone: 'No', rem: [['prox', '', '', 'Fob, plus a keypad on some fleet builds']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'GM-capable tool', on: 'Add-a-fob with a working fob', akl: 'Confirm coverage before quoting',
-      note: 'The NHTSA index does not carry BrightDrop as a make, so nothing here will appear in the year picker. GM electric delivery vans, sold to fleets rather than to the public â€” FedEx and Walmart run most of them. Ultium platform, so the keys and the security behave like the other GM EVs. Fleet builds often add a keypad, which is worth asking about before you plan an entry.',
-      port: 'Under the dash', entry: 'Blade from the fob, or the fleet keypad code' }),
-  V({ id: 'mercedes-esprinter-2023-2026', mk: 'Mercedes-Benz', md: 'eSprinter', y0: 2023, y1: 2026, b: 'van',
-      kw: 'HU64 (emergency blade)', il: 'HU64', chip: 'Mercedes FBS4', sys: 'FBS4',
-      clone: 'No', sp: 4, dp: '', cut: 'Laser / four-track', dec: 'Lishi HU64',
-      obd: 'Dealer or specialist on FBS4', on: 'No', akl: 'Dealer',
-      note: 'Keys like the current diesel Sprinter, which means FBS4 and a dealer-level job for all-keys-lost. The existing Sprinter records cover the diesel vans.',
-      port: 'Under the dash', entry: 'Lishi HU64' }),
-  /* ---- Buses -------------------------------------------------------------- */
-  V({ id: 'bluebird-schoolbus-1990-2026', mk: 'Blue Bird', md: 'Vision / All American / school bus', y0: 1990, y1: 2026, b: 'bus',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code, or copy from the district spare',
-      note: 'A school district runs its whole fleet on one or two key codes so any driver can take any bus, and the transportation office keeps a drawer of them. Before you cut anything, ask the district for a spare â€” it is faster, it is what they expect, and rekeying one bus out of the fleet is the opposite of what they want. I have no keyway for the line I can cite; read what is fitted.',
-      port: 'Under the dash or on the front console',
-      entry: 'The service door is air or electric on most and there is no exterior lock worth picking. The driver-side window and the rear emergency door are the usual ways in.' }),
-  V({ id: 'thomas-schoolbus-1990-2026', mk: 'Thomas Built', md: 'Saf-T-Liner C2 / HDX / EFX', y0: 1990, y1: 2026, b: 'bus',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code, or ask the district for a spare',
-      note: 'Daimler-owned and built on Freightliner running gear, so the ignition follows the Freightliner key system. Same fleet-keyed-alike caution as any school district bus.',
-      port: 'Under the dash', entry: 'Service door is not a picking job â€” the driver window is' }),
-  V({ id: 'icbus-schoolbus-2002-2026', mk: 'IC Bus', md: 'CE / RE / TerraStar school bus', y0: 2002, y1: 2026, b: 'bus',
-      kw: 'International / Navistar', il: '1554 / 1559', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code, or ask the district',
-      note: 'Navistar built, so it takes the International key. Fleet-keyed-alike applies.',
-      port: 'Under the dash', entry: 'Driver window' }),
-  V({ id: 'cutaway-shuttle-1990-2026', mk: 'Starcraft', md: 'Cutaway shuttle bodies (Starcraft / Glaval / Turtle Top)', y0: 1990, y1: 2026, b: 'bus',
-      kw: 'CH751 on most body hardware', il: 'CH751', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Most body locks are standard or code-stamped',
-      obd: 'n/a â€” see the chassis record', on: 'n/a', akl: 'Standard blanks cover most body hardware',
-      note: 'Hotel and church shuttles are a body bolted to a Ford E-450 or a Chevrolet Express cutaway. The ignition is the chassis key and belongs to those records; the passenger door, the luggage bay and the wheelchair-lift compartment are body hardware on different keys. Establish which lock the caller means.',
-      port: 'n/a â€” see the chassis record', entry: 'Passenger door is body hardware; the cab doors are the chassis' }),
-  V({ id: 'motorcoach-1990-2026', mk: 'MCI', md: 'MCI / Prevost / Van Hool / Setra motorcoach', y0: 1990, y1: 2026, b: 'bus',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Operator spare, or impression',
-      note: 'Charter coaches. The ignition is often a simple switch and sometimes not keyed at all â€” a battery master and a start button. The baggage bay doors are the locks that actually get called in, and they are usually a common cam lock across the whole coach. A Prevost shell converted into a tour bus adds a third set of locks that belong to whoever did the conversion.',
-      port: 'Under the dash or in the driver console',
-      entry: 'Baggage bay first; the entry door is air-operated' }),
-  V({ id: 'transitbus-1990-2026', mk: 'Gillig', md: 'Gillig / New Flyer / Nova transit bus', y0: 1990, y1: 2026, b: 'bus',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or read the switch',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Transit agency spare',
-      note: 'City transit buses are agency property with an agency key system and an agency maintenance shop. A call on one of these is nearly always the shop wanting compartment or panel locks rekeyed rather than a lost ignition key. Ask what they actually need before you quote a bus.',
-      port: 'In the driver area', entry: 'Agency procedure, not a picking job' }),
-
-  /* ---- Emergency and specialty -------------------------------------------- */
-  V({ id: 'fire-apparatus-1990-2026', mk: 'Pierce', md: 'Pierce / E-One / Rosenbauer / Spartan apparatus', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'Compartment hardware varies; CH751 is common', il: 'CH751',
-      chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Most compartment locks are standard or code-stamped',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Department spare',
-      note: 'Fire apparatus is department property and the ignition is frequently a switch with no key at all â€” a battery master and a start button, because nobody wants a pump truck that will not start at 3am. The real work is the equipment compartments, and a department wanting every rig on one key is a legitimate and common job. Ask the chief, not the driver.',
-      port: 'In the cab', entry: 'Compartment doors; the cab is rarely locked' }),
-  V({ id: 'ambulance-body-1990-2026', mk: 'Wheeled Coach', md: 'Ambulance bodies (Wheeled Coach / Braun / Horton / AEV)', y0: 1990, y1: 2026, b: 'truck',
-      kw: 'CH751 and similar on compartment hardware', il: 'CH751', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Most module locks are standard',
-      obd: 'n/a â€” see the chassis record', on: 'n/a', akl: 'Service spare',
-      note: 'A module bolted to a Ford E-450, an F-550 or a Freightliner M2. The chassis key is the chassis record; the patient compartment, the exterior cabinets and the narcotics box are body hardware. The narcotics box is a controlled item â€” a service will have a documented procedure for it and you should follow theirs rather than opening it on a verbal request.',
-      port: 'n/a â€” see the chassis record', entry: 'Module doors are body hardware' }),
-  V({ id: 'terminal-tractor-1990-2026', mk: 'Kalmar Ottawa', md: 'Ottawa / Capacity / TICO terminal tractor', y0: 1990, y1: 2026, b: 'truck',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Yard spare, or impression',
-      note: 'Yard goats â€” the short tractors that shuffle trailers around a distribution centre. They never leave the property, so a whole yard is usually keyed alike and the switch is a plain ignition of the same kind you would find on a forklift. Ask the yard supervisor for a spare first.',
-      port: 'In the cab', entry: 'Cab door, where one is fitted at all' }),
-  V({ id: 'reefer-unit-1990-2026', mk: 'Thermo King', md: 'Thermo King / Carrier reefer unit', y0: 1990, y1: 2026, b: 'equip',
-      kw: 'Reefer access panel locks', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Most access panels are a standard cam lock',
-      obd: 'n/a', on: 'n/a', akl: 'Standard blanks cover most access panels',
-      note: 'The refrigeration unit on the nose of a trailer. It runs on its own engine and its own controller, and it does not have an ignition key â€” the access panels are cam-locked to keep people out of the fuel and the controls. That is what a call about a "locked reefer" usually means.',
-      port: 'n/a', entry: 'Access panel cam locks' }),
-
-  /* ---- Yard equipment ------------------------------------------------------ */
-  V({ id: 'forklift-common-1970-2026', mk: 'Toyota Forklift', md: 'Forklift (Toyota / Hyster / Yale / Clark / Crown / Nissan)', y0: 1970, y1: 2026, b: 'equip',
-      kw: 'Forklift ignition (common set)', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Match to the brand key, not to the machine',
-      obd: 'n/a', on: 'n/a', akl: 'Carry the brand set â€” a lost forklift key is a stock item, not a decode job',
-      note: 'Every forklift of a given brand runs the same key. One Toyota key starts every Toyota lift in the building, and the same is true of Hyster, Yale, Clark and Crown. A small set of brand keys covers almost any warehouse call, and cutting to code is the wrong approach â€” you are matching a brand, not a machine. Say so on the phone and quote the trip, not a decode.',
-      port: 'n/a', entry: 'Open operator station' }),
-  V({ id: 'golfcart-common-1980-2026', mk: 'Club Car', md: 'Golf cart (Club Car / E-Z-GO / Yamaha)', y0: 1980, y1: 2026, b: 'equip',
-      kw: 'Golf cart ignition', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Match to the brand key',
-      obd: 'n/a', on: 'n/a', akl: 'Three brand blanks cover almost every cart on the property',
-      note: 'Same idea as forklifts: one key per brand, across the whole fleet. A course, a resort or a retirement community runs hundreds of carts on three key patterns. Worth carrying the three blanks permanently â€” the call comes in constantly and it is a two-minute job.',
-      port: 'n/a', entry: 'Open cart' }),
-  V({ id: 'compact-equipment-1970-2026', mk: 'Bobcat', md: 'Bobcat / Kubota / Case / Komatsu / JCB', y0: 1970, y1: 2026, b: 'equip',
-      kw: 'Bobcat / Kubota / Komatsu / JCB', il: '', chip: 'None on most; keypad start on some newer machines',
-      sys: 'None, or a keypad code', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Match to the brand key',
-      obd: 'n/a', on: 'n/a', akl: 'Brand master blanks',
-      note: 'Skid steers, mini excavators and compact tractors. Like Cat and Deere, each brand runs one ignition key across the line â€” which is exactly why these get stolen off job sites, and why an owner asking you to make one unique is a reasonable request you can actually fulfil. Some newer Bobcats use a keypad code instead of a key.',
-      port: 'n/a', entry: 'Open cab, or a cab door with a simple cam lock' }),
-  V({ id: 'marine-ignition-1970-2026', mk: 'Mercury Marine', md: 'Outboard and helm ignition (Mercury / Johnson / Evinrude)', y0: 1970, y1: 2026, b: 'equip',
-      kw: 'Marine helm / outboard ignition', il: '', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Short standard code series â€” read the switch',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code from the switch',
-      note: 'Helm switches run a short standard code series, so the switch itself usually tells you what to cut. The lanyard kill switch is not a key and cannot be cut. A locked cabin or a locked console on a bigger boat is separate hardware again, often a common cam lock.',
-      port: 'n/a', entry: 'Console or cabin hardware, not the ignition' }),
-  V({ id: 'rv-entry-1980-2026', mk: 'Winnebago', md: 'RV entry and compartment locks (Bauer / TriMark / Global Link)', y0: 1980, y1: 2026, b: 'equip',
-      kw: 'Bauer / TriMark / Global Link', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'The code is usually stamped on the lock face or the latch',
-      obd: 'n/a â€” see the chassis record', on: 'n/a', akl: 'Cut by code off the stamped lock',
-      note: 'The coach side of an RV, whatever is under it. Entry doors are Bauer, TriMark or Global Link and the code is normally stamped right on the lock, which makes this one of the easier calls on the list. Baggage bays are frequently CH751 â€” the same key opens every bay on the rig and, uncomfortably, every bay on the rig parked next to it. Owners are often glad to hear that and will pay to change it.',
-      port: 'n/a â€” see the chassis record', entry: 'Read the code off the lock face' }),
-
-  /* ---- GM nameplates the catalog had skipped ----------------------------- */
-  V({ id: 'chevy-gvan-1981-1996', mk: 'Chevrolet', md: 'G-Series van (G10 / G20 / G30 / Sportvan)', y0: 1981, y1: 1996, b: 'van',
-      kw: 'B44 / B45', il: 'B44 / B45', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The full-size GM van before the Express. Two-key era, so ask whether the ignition or the door key is the one that is lost. Enormous numbers of these became work vans, camper conversions and shuttle buses and are still on the road doing all three.',
-      port: 'n/a on most', entry: 'Wedge and reach, or decode the door. No shield.' }),
-  V({ id: 'chevy-ssr-captiva-2003-2015', mk: 'Chevrolet', md: 'SSR / Captiva Sport', y0: 2003, y1: 2015, b: 'truck',
-      kw: 'B111 / B106', il: 'B111-PT', chip: 'GM 46 / PK3',
-      sys: 'Passlock / PK3', clone: 'Depends on the year',
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM39 or GM37',
-      obd: 'Yes with a GM-capable tool', on: '30-min x3 relearn on some', akl: 'OBD + relearn',
-      note: 'Two oddities under one line. The SSR is a retractable-hardtop pickup built on the TrailBlazer frame; the Captiva Sport is a fleet-only rebadge of the Saturn Vue sold to rental companies. Neither shares much with anything else wearing a bowtie.',
-      port: 'Driver side under the dash', entry: 'Lishi to suit the cylinder' }),
-  V({ id: 'chevy-volt-2011-2019', mk: 'Chevrolet', md: 'Volt', y0: 2011, y1: 2019, b: 'car',
-      kw: 'B111', il: 'B111-PT', chip: 'GM 46 (Hitag2)', sys: 'GM passive entry',
-      clone: 'No', rem: [['prox', 'OHT01060512', '', '4B']],
-      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM39',
-      obd: 'Yes with a GM-capable tool', on: 'Add-a-fob with a working fob', akl: 'OBD + relearn',
-      note: 'A range-extended hybrid, not a pure EV, so it has a 12V battery in the usual place and behaves like any other GM of its year. The Bolt that replaces it is a different car and has its own record.',
-      port: 'Driver side under the dash', entry: 'Valet blade in the fob' }),
-  V({ id: 'chevy-prizm-1998-2002', mk: 'Chevrolet', md: 'Prizm', y0: 1998, y1: 2002, b: 'car',
-      kw: 'TOY43 / TR47', il: 'TOY43', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi TOY43, or impression',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The NHTSA index still files this as the Geo Prizm even for the Chevrolet-badged years, so search Geo if the year picker comes up empty. A Corolla built at NUMMI in Fremont with a bowtie on it. It takes a Toyota key, not a GM one â€” pull a TOY43, not a B-series. The Geo-badged years are the other record here.',
-      port: 'Driver side under the dash', entry: 'Lishi TOY43' }),
-  V({ id: 'chevy-spectrum-sprint-1985-1993', mk: 'Chevrolet', md: 'Spectrum / Sprint / Geo Storm', y0: 1985, y1: 1993, b: 'car',
-      kw: 'Isuzu and Suzuki patterns, not GM', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'The NHTSA index files these under Geo names even for the Chevrolet-badged years. Captive imports: the Spectrum and Storm are Isuzu, the Sprint is Suzuki. All three wear a bowtie and none of them takes a GM key. This is the same trap as the Prizm and it catches people every time.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'pontiac-firebird-1982-1992', mk: 'Pontiac', md: 'Firebird / Trans Am (third generation)', y0: 1982, y1: 1992, b: 'car',
-      kw: 'B44 / B45, B62 pellet from 1986', il: 'B44 / B45 / B62-P',
-      chip: 'None through 1985; VATS resistor pellet from 1986',
-      sys: 'None, then VATS', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37, or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code; on VATS read the pellet value first',
-      note: 'One of the two cars VATS launched on in 1986, alongside the Corvette â€” which is why a third-generation F-body is the classic "I cut it perfectly and it still will not start" call. Check the blade for a pellet before you quote. The fourth-generation car from 1993 is the other record here.',
-      port: 'n/a (pre-OBD-II)', entry: 'Wedge and reach; the hatch glass is expensive, leave it alone' }),
-  V({ id: 'pontiac-transsport-1990-1996', mk: 'Pontiac', md: 'Trans Sport / Chevrolet Lumina APV / Olds Silhouette', y0: 1990, y1: 1996, b: 'van',
-      kw: 'B44 / B45', il: 'B44 / B45', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The plastic-bodied "dustbuster" minivans. Composite body panels over a steel space frame, so there is nothing to wedge against on the door skin â€” go for the lock, not the gap.',
-      port: 'n/a on most', entry: 'Decode the door; do not wedge a composite panel' }),
-  V({ id: 'buick-reatta-1982-1991', mk: 'Buick', md: 'Reatta / Skyhawk / Somerset / Century (early)', y0: 1982, y1: 1991, b: 'car',
-      kw: 'B44 / B45', il: 'B44 / B45', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Two-key era. The Reatta is a hand-built two-seater with a touchscreen dash in 1988, which is a curiosity rather than a lock problem â€” the locks are ordinary GM.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'olds-firenza-1981-1996', mk: 'Oldsmobile', md: 'Firenza / Omega / Calais / Custom Cruiser', y0: 1981, y1: 1993, b: 'car',
-      kw: 'B44 / B45', il: 'B44 / B45', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The Oldsmobile nameplates the other three records here do not reach. Two-key era throughout.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'cadillac-cimarron-1982-1988', mk: 'Cadillac', md: 'Cimarron', y0: 1982, y1: 1988, b: 'car',
-      kw: 'B44 / B45', il: 'B44 / B45', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'A Chevrolet Cavalier with a wreath on the grille, and it keys like one. Whatever the badge says, price it as a J-body.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'cadillac-xts-2013-2019', mk: 'Cadillac', md: 'XTS', y0: 2013, y1: 2019, b: 'car',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46 (Hitag2)',
-      sys: 'GM passive entry', clone: 'No',
-      rem: [['prox', 'HYQ2AB', '', '5B with remote start']],
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Yes with a GM-capable tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
-      note: 'Heavy livery and funeral-coach work â€” the stretched and hearse versions are built on this platform, so a single call can involve a car twice the length of the one in the catalog with extra doors that all take the same key.',
-      port: 'Driver side under the dash', entry: 'Blade from the fob' }),
-  V({ id: 'cadillac-optiq-vistiq-2025-2026', mk: 'Cadillac', md: 'Optiq / Vistiq', y0: 2025, y1: 2026, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'Ultium passive entry', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'Confirm tool coverage â€” these are new', on: 'Add-a-fob with a working fob',
-      akl: 'Dealer on most tools today',
-      note: 'The smaller Ultium Cadillacs below the Lyriq. Powered door handles, so a flat 12V leaves the blade in the fob as the only way in.',
-      port: 'Under the dash', entry: 'Blade from the fob' }),
-
-  /* ---- Chrysler ----------------------------------------------------------- */
-  V({ id: 'dodge-kcar-1981-1995', mk: 'Dodge', md: 'Aries / Diplomat / Omni / Dynasty / Daytona', y0: 1981, y1: 1993, b: 'car',
-      kw: 'Y151 / Y152 / Y155', il: 'Y151 / Y152', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The K-car family and the M-body Diplomat, which was the police car of its day and survives in fleet and collector hands. The Plymouth Reliant is the same K-car under the other badge and sits in the Plymouth records. Two-key era: the ignition and the door take different blanks.',
-      port: 'n/a (pre-OBD-II)', entry: 'Wedge and reach' }),
-  V({ id: 'chrysler-grand-caravan-2021-2021', mk: 'Chrysler', md: 'Grand Caravan (2021 only)', y0: 2021, y1: 2021, b: 'van',
-      kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: '4A (Hitag AES)',
-      sys: 'RF Hub / security gateway', clone: 'No',
-      rem: [['prox', '', '', '3B / 5B'], ['fob', '', '', 'Blade-and-remote head on base trims']],
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi CY24',
-      obd: 'Through the security gateway with a current tool', on: 'No', akl: 'Gateway access required',
-      pin: 'Yes',
-      note: 'For one model year Stellantis moved the Grand Caravan from Dodge to Chrysler before renaming it Voyager. Same van either way, but the badge on the paperwork decides which record you are looking at, and a 2021 will not be found under Dodge.',
-      port: 'Driver side under the dash', entry: 'Lishi CY24' }),
-  /* ---- Japanese nameplates the catalog had skipped ------------------------ */
-  V({ id: 'acura-nsx-1990-2005', mk: 'Acura', md: 'NSX', y0: 1990, y1: 2005, b: 'car',
-      kw: 'HD91 / HD106', il: 'HD91', chip: 'None early; Honda immobilizer on the later cars',
-      sys: 'None, then Honda immobilizer', clone: 'Yes where a chip is fitted',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi HON66, or impression',
-      obd: 'Honda-capable tool on the immobilized years', on: 'No', akl: 'OBD, or specialist',
-      note: 'Aluminium monocoque, hand-built in Tochigi, and worth serious money now â€” do not wedge one and do not drill one. There is no NSX at all for 2006 through 2015; that gap in the coverage here is real, not missing data.',
-      port: 'Driver side under the dash on the later cars',
-      entry: 'Lishi HON66. Aluminium body panels dent if you look at them.' }),
-  V({ id: 'acura-nsx-2016-2022', mk: 'Acura', md: 'NSX', y0: 2016, y1: 2022, b: 'car',
-      kw: 'HO05 (emergency blade)', il: 'HO05-PT', chip: 'Honda smart key',
-      sys: 'Honda smart entry', clone: 'No',
-      rem: [['prox', '', '', 'Smart fob']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Honda-capable tool', on: 'No', akl: 'Dealer on most tools',
-      note: 'Nothing in common with the first NSX but the name. Built in Ohio, hybrid, and keyless â€” there is an emergency blade in the fob and a hidden cylinder behind a cap on the driver handle.',
-      port: 'Driver side under the dash', entry: 'Cap off the driver handle, then the blade' }),
-  V({ id: 'acura-slx-1996-1999', mk: 'Acura', md: 'SLX', y0: 1996, y1: 1999, b: 'suv',
-      kw: 'Isuzu X-series', il: 'X230 / X257', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'An Isuzu Trooper with an Acura badge. It takes an Isuzu key, not a Honda one â€” the same trap as the Prizm and the Spectrum, on a more expensive car.',
-      port: 'Under the dash', entry: 'Wedge and reach' }),
-  V({ id: 'acura-adx-2025-2026', mk: 'Acura', md: 'ADX', y0: 2025, y1: 2026, b: 'suv',
-      kw: 'HO05 (emergency blade)', il: 'HO05-PT', chip: 'Honda AES',
-      sys: 'Honda smart entry', clone: 'No',
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
-      obd: 'Current Honda-capable tool', on: 'No', akl: 'Confirm coverage before quoting â€” this is new',
-      note: 'Acura on the HR-V platform. Too new for me to give you a fob part number I would stand behind; verify against your supplier.',
-      port: 'Driver side under the dash', entry: 'Cap off the driver handle, then the blade' }),
-  V({ id: 'honda-prologue-2024-2026', mk: 'Honda', md: 'Prologue', y0: 2024, y1: 2026, b: 'suv',
-      kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
-      sys: 'GM Ultium passive entry', clone: 'No',
-      sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
-      obd: 'GM-capable tool, not a Honda one', on: 'Add-a-fob with a working fob', akl: 'Confirm coverage',
-      note: 'A Honda badge on a GM Ultium platform, built alongside the Chevrolet Blazer EV. It keys like a GM and it needs a GM tool. A Honda-only tool will not touch it, and that is worth knowing before you drive out.',
-      port: 'Under the dash', entry: 'Blade from the fob' }),
-  V({ id: 'honda-atc-1970-1987', mk: 'Honda', md: 'ATC three-wheeler', y0: 1970, y1: 1987, b: 'moto',
-      kw: 'HD91 / HON41', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression, or read the switch body',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code â€” the switch is often stamped',
-      note: 'Three-wheelers were pulled from the US market in 1987 under a consent decree, so every one you see is at least that old and is either a restoration or a farm machine that never left the property. Many models have no ignition lock at all â€” a kill switch and a pull start. Ask before you drive out.',
-      port: 'n/a', entry: 'Nothing to open' }),
-  V({ id: 'toyota-tercel-1980-1999', mk: 'Toyota', md: 'Tercel / Starlet / Corolla FX', y0: 1980, y1: 1999, b: 'car',
-      kw: 'TR47 / TOY40', il: 'TR47', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on most', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Two-key era on the earliest: a master that does everything and a valet that does the doors but not the trunk or the glovebox. Ask which one they lost.',
-      port: 'n/a on most', entry: 'Wedge and reach' }),
-  V({ id: 'toyota-cressida-1978-1992', mk: 'Toyota', md: 'Cressida / Corona / Van', y0: 1978, y1: 1992, b: 'car',
-      kw: 'TR47 / TOY40', il: 'TR47', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The Cressida is the rear-drive Toyota above the Camry and shares a lot with the Supra of its day. The Van is the mid-engined cabover that predates the Previa, and its ignition is buried under the dash between the seats â€” allow extra time.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'subaru-svx-1992-1997', mk: 'Subaru', md: 'SVX', y0: 1992, y1: 1997, b: 'car',
-      kw: 'SUB4 / DAT17', il: 'SUB4', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Lishi SUB4, or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The Giugiaro-styled coupe with the window-within-a-window glass. That split side glass is fragile and irreplaceable â€” do not wedge one, decode the lock.',
-      port: 'n/a', entry: 'Decode the door. Do not touch the glass.' }),
-  V({ id: 'subaru-trailseeker-2026-2026', mk: 'Subaru', md: 'Trailseeker / Uncharted', y0: 2026, y1: 2026, b: 'suv',
-      kw: 'SUB4 (emergency blade)', il: '', chip: 'Subaru AES', sys: 'Subaru smart key',
-      clone: 'No', sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Confirm tool coverage â€” these are new', on: 'No', akl: 'Dealer on most tools today',
-      note: 'Subaru electric SUVs built with Toyota, like the Solterra. Too new for a blank number I would stand behind; verify before you order.',
-      port: 'Under the dash', entry: 'Emergency blade behind the handle cap' }),
-  V({ id: 'hyundai-nexo-ioniq6-2019-2026', mk: 'Hyundai', md: 'Nexo / Ioniq 6', y0: 2019, y1: 2026, b: 'suv',
-      kw: 'HY22 (emergency blade)', il: 'HY22-PT', chip: 'Hyundai AES',
-      sys: 'Hyundai smart key', clone: 'No',
-      rem: [['prox', '', '', '4B, plus a digital key on some trims']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: '',
-      obd: 'Current tool with PIN-by-VIN coverage', on: 'No', akl: 'PIN then OBD', pin: 'Yes',
-      note: 'The Nexo is a hydrogen fuel-cell car sold in a handful of California markets, so if you are in San Luis Obispo you will eventually see one. The Ioniq 6 is the sedan alongside the Ioniq 5, which has its own record. The flush door handles are powered and will not present on a dead 12V.',
-      port: 'Driver side under the dash', entry: 'Emergency blade behind the handle cap' }),
-  V({ id: 'isuzu-hombre-1996-2000', mk: 'Isuzu', md: 'Hombre', y0: 1996, y1: 2000, b: 'truck',
-      kw: 'B102 / B106', il: 'B106-PT', chip: 'None early; Passlock on later',
-      sys: 'None, or Passlock', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37', obd: 'Limited',
-      on: '10-min relearn on Passlock', akl: 'Cut by code, or 30-min relearn',
-      note: 'A Chevrolet S-10 with an Isuzu badge â€” the trade running the other way from the Spectrum and the SLX. This one takes a GM key, not an Isuzu one.',
-      port: 'Under the dash', entry: 'Lishi GM37' }),
-  V({ id: 'isuzu-oasis-1996-1999', mk: 'Isuzu', md: 'Oasis', y0: 1996, y1: 1999, b: 'van',
-      kw: 'HD90 / HD91', il: 'HD91', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi HON66, or impression',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'A first-generation Honda Odyssey with an Isuzu badge, from the years the two companies swapped vehicles. Honda keys, Honda locks.',
-      port: 'Under the dash', entry: 'Lishi HON66' }),
-  V({ id: 'isuzu-pickup-1981-1995', mk: 'Isuzu', md: 'Pickup / Impulse / Stylus / I-Mark', y0: 1981, y1: 1995, b: 'truck',
-      kw: 'Isuzu X-series', il: 'X230 / X257', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'The Isuzu-badged versions of what GM also sold as the Chevrolet LUV, Spectrum and Storm. Genuine Isuzu hardware here, unlike the Hombre.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'mitsubishi-expo-1987-1996', mk: 'Mitsubishi', md: 'Expo / Expo LRV / Precis / Tredia', y0: 1987, y1: 1996, b: 'van',
-      kw: 'MIT1 / MIT2', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'The Expo also sold as the Eagle Summit Wagon and the Plymouth Colt Vista. The Precis is a rebadged Hyundai Excel, so that one takes a Hyundai key â€” read the badge and then check the blade.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'datsun-1970-1986', mk: 'Datsun', md: '210 / 510 / 280ZX / B210 / 720 pickup', y0: 1970, y1: 1984, b: 'car',
-      kw: 'DA23 / DA24 / DA25', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Impression â€” assume no code record survives',
-      note: 'The NHTSA index only carries Datsun for 1981 and 1982, so almost none of this will appear in the year picker. Filed as its own make because that is what is on the car and what the owner will tell you on the phone. Nissan dropped the Datsun name in the US over 1982-1984 and the 1985s were all Nissan, so an early-eighties car can wear either badge. Restoration work: impression rather than drill, the switches are not being made.',
-      port: 'n/a', entry: 'Wedge and reach, or decode the door' }),
-  /* ---- European nameplates the catalog had skipped ------------------------ */
-  V({ id: 'audi-80-90-1988-1998', mk: 'Audi', md: '80 / 90 / Coupe / Cabriolet / 100 / 200', y0: 1988, y1: 1998, b: 'car',
-      kw: 'VW1 / HU49', il: '', chip: 'None on most; VAG immobilizer late in the run',
-      sys: 'None, then VAG immobilizer', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on most', on: 'n/a', akl: 'Impression, or cut by code',
-      note: 'Pre-A4 Audi, before the alphabet naming and before the HU66 laser key. These take the old VW-family edge-cut blank, not anything you would pull for a modern Audi.',
-      port: 'n/a on the earliest', entry: 'Wedge and reach' }),
-  V({ id: 'audi-etron-2019-2026', mk: 'Audi', md: 'e-tron / Q6 e-tron / Q8 e-tron / e-tron GT', y0: 2019, y1: 2026, b: 'suv',
-      kw: 'HU162T (emergency blade)', il: 'HU162T', chip: 'ID48 AES (MLB / PPE)',
-      sys: 'VAG immobilizer with component protection', clone: 'No',
-      rem: [['prox', '', '', '3B / 4B']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU162T',
-      obd: 'MQB/MLB-capable tool with the right adapter', on: 'No',
-      akl: 'Component protection work, not a quick OBD add',
-      note: 'The e-tron GT shares its platform with the Porsche Taycan. Flush powered door handles that will not present on a flat 12V, and the emergency cylinder is behind a cap on the driver handle.',
-      port: 'Under the dash', entry: 'Cap off the driver handle, then Lishi HU162T' }),
-  V({ id: 'bmw-i-electric-2022-2026', mk: 'BMW', md: 'i5 / i7 / iX / XM', y0: 2022, y1: 2026, b: 'suv',
-      kw: 'HU100R (emergency blade)', il: 'BMW1', chip: 'BMW AES (BDC2)',
-      sys: 'BDC2', clone: 'No',
-      rem: [['prox', '', '', '3B / 4B, plus Digital Key over UWB']],
-      sp: '', dp: '', cut: 'Laser / two-track', dec: 'Lishi HU100R',
-      obd: 'Bench work on most tools', on: 'No', akl: 'Module read on the bench',
-      note: 'Same BDC2 generation as the G20 and the G05, so the same caveat applies: a lot of "BMW capable" tools stop at FEM. Powered handles, so the blade behind the handle cap is the way in on a dead 12V.',
-      port: 'Under the dash', entry: 'Lishi HU100R behind the handle cap' }),
-  V({ id: 'volvo-ex-2022-2026', mk: 'Volvo', md: 'EX30 / EX90 / C40 Recharge / XC40 Recharge', y0: 2022, y1: 2026, b: 'suv',
-      kw: 'Emergency blade in the fob', il: '', chip: 'Volvo AES',
-      sys: 'Volvo keyless', clone: 'No',
-      rem: [['prox', '', '', 'Fob, the Care Key, and a phone key']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Volvo-capable tool', on: 'No', akl: 'Specialist â€” plan on module work',
-      note: 'The EX30 is built in China on a Geely platform and shares little with the Swedish-built cars. All of them have powered handles and a hidden cylinder behind a cap on the driver handle.',
-      port: 'Under the dash', entry: 'Cap off the driver handle' }),
-  V({ id: 'vw-idbuzz-2025-2026', mk: 'Volkswagen', md: 'ID. Buzz', y0: 2025, y1: 2026, b: 'van',
-      kw: 'HU162T (emergency blade)', il: 'HU162T', chip: 'ID48 AES (MEB)',
-      sys: 'VAG MEB immobilizer', clone: 'No',
-      rem: [['prox', '', '', '4B, plus a digital key']],
-      sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU162T',
-      obd: 'MEB-capable tool', on: 'No', akl: 'Component protection work',
-      note: 'The electric Microbus, and the first VW van sold here since the EuroVan. Component protection applies as on any modern VAG car, so budget the time.',
-      port: 'Under the dash', entry: 'Lishi HU162T' }),
-  V({ id: 'fiat-124-spider-2017-2020', mk: 'Fiat', md: '124 Spider', y0: 2017, y1: 2020, b: 'car',
-      kw: 'MAZ24', il: '', chip: 'Mazda immobilizer', sys: 'Mazda immobilizer',
-      clone: 'Depends on the year',
-      rem: [['prox', '', '', '3B, Mazda-pattern fob']],
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Lishi MAZ24',
-      obd: 'Mazda-capable tool', on: 'No', akl: 'OBD with a Mazda-capable tool',
-      note: 'A Mazda MX-5 built in Hiroshima with a Fiat engine and Fiat sheet metal. Everything about the key and the immobilizer is Mazda â€” a Fiat or Stellantis tool will not touch it. This is the single best gotcha in the Fiat line.',
-      port: 'Driver side under the dash', entry: 'Lishi MAZ24' }),
-  V({ id: 'bentley-turbo-r-1982-2003', mk: 'Bentley', md: 'Turbo R / Eight / Continental R (Crewe)', y0: 1982, y1: 2003, b: 'car',
-      kw: '', il: '', chip: 'None on most', sys: 'None on most', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a on most', on: 'n/a', akl: 'Specialist',
-      note: 'Crewe-built Bentleys that share their body and their locks with the Rolls-Royce Silver Spirit of the same years â€” that record is the sibling to read alongside this one. The Continental R here is the 1991-2003 coupe and has nothing to do with the Continental GT that arrives in 2004 under Volkswagen. Hand-painted coachwork: wedge nothing.',
-      port: 'n/a on most', entry: 'Decode the door. Do not wedge.' }),
-  V({ id: 'ferrari-2plus2-1995-2026', mk: 'Ferrari', md: '456 / 612 Scaglietti / FF / GTC4Lusso / Purosangue', y0: 1995, y1: 2026, b: 'car',
-      kw: 'SIP22 on the earlier cars', il: 'FT48-PT', chip: 'ID48 then Ferrari proprietary',
-      sys: 'Ferrari immobilizer', clone: 'ID48 yes on the earliest',
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: 'Lishi SIP22 on the earlier cars',
-      obd: 'Specialist', on: 'No', akl: 'Dealer or Ferrari specialist',
-      note: 'The front-engined V12 four-seaters, up to and including the Purosangue, which is the first Ferrari with four doors. The 456 of the 1990s still uses the Fiat-derived code system and the red master key; the Purosangue does not. The NHTSA index stops at 2021 for Ferrari, so the newest of these will not appear in the year picker.',
-      port: 'n/a on the earliest', entry: 'Do not wedge' }),
-  V({ id: 'lotus-elan-1974-2026', mk: 'Lotus', md: 'Elan / Elite / Eclat / Europa / Emira / Evija', y0: 1974, y1: 2026, b: 'car',
-      kw: '', il: '', chip: 'None on the older cars; immobilized on the Emira',
-      sys: 'None, then immobilized', clone: '',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'Specialist on the modern cars', on: 'No', akl: 'Specialist',
-      note: 'The NHTSA index stops at 2009 for Lotus, so the Emira and the Evija will not appear in the year picker. The Lotus nameplates the Esprit record does not reach. Fibreglass bodies on a steel backbone chassis throughout, so there is nothing structural behind a door skin to wedge against. Geely owns Lotus now and the Emira and Evija are a different world electrically from the older cars.',
-      port: 'n/a on the older cars', entry: 'Do not wedge fibreglass' }),
-  V({ id: 'peugeot-1981-1991', mk: 'Peugeot', md: '405 / 505 / 604 / 504', y0: 1981, y1: 1991, b: 'car',
-      kw: '', il: '', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: '', dp: '', cut: 'Edge cut', dec: 'Impression, or decode the door',
-      obd: 'n/a', on: 'n/a', akl: 'Impression â€” assume no code record survives',
-      note: 'Peugeot left the US market in 1991 and there has been no parts channel since. Whatever is on the car is what you work with, and I have no keyway for the line I can cite. A 505 wagon is the one you are most likely to meet.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'polestar-1-3-4-2019-2026', mk: 'Polestar', md: 'Polestar 1 / Polestar 3 / Polestar 4', y0: 2019, y1: 2026, b: 'suv',
-      kw: 'Emergency blade in the fob', il: '', chip: 'Volvo-family AES',
-      sys: 'Polestar keyless', clone: 'No',
-      rem: [['prox', '', '', 'Fob, plus a phone key']],
-      sp: '', dp: '', cut: 'Laser / sidewinder', dec: '',
-      obd: 'Volvo-capable tool', on: 'No', akl: 'Specialist',
-      note: 'Volvo hardware underneath, so a Volvo-capable tool gets further than anything Polestar-specific. The Polestar 4 has no rear window at all â€” a camera feeds the mirror â€” which matters if you were planning to look through it.',
-      port: 'Under the dash', entry: 'Cap off the driver handle' }),
-  V({ id: 'lucid-gravity-2025-2026', mk: 'Lucid', md: 'Gravity', y0: 2025, y1: 2026, b: 'suv',
-      kw: 'None', il: '', chip: 'Lucid key fob, key card and phone key',
-      sys: 'Lucid keyless', clone: 'No',
-      sp: '', dp: '', cut: 'n/a', dec: 'n/a',
-      obd: 'No standard OBD-II', on: 'Add a key from the touchscreen with an authenticated key present',
-      akl: 'Lucid service',
-      note: 'Like the Air, there is no cylinder anywhere on the car. A lockout on one of these is a 12V problem or an app problem, not a lock problem.',
-      port: 'n/a', entry: 'No cylinder' }),
-
-  /* ---- Commercial follow-through ------------------------------------------ */
-  V({ id: 'freightliner-sd-2001-2026', mk: 'Freightliner', md: '108SD / 114SD / 122SD (severe duty)', y0: 2001, y1: 2026, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the code off the switch face, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'The vocational conventionals: dumps, mixers, plows and cranes. Same key system as the rest of Freightliner. Job-site trucks, so expect a switch full of grit and no code sticker.',
-      port: 'Under the dash (9-pin round J1939)', entry: 'Door cylinder' }),
-  V({ id: 'freightliner-argosy-1995-2020', mk: 'Freightliner', md: 'Argosy / FLB (cabover)', y0: 1995, y1: 2020, b: 'truck',
-      kw: 'Freightliner / Sterling', il: '1608 / 1610', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 5, dp: 4, cut: 'Edge cut', dec: 'Read the switch, or impression',
-      obd: 'n/a for keys', on: 'n/a', akl: 'Cut by code',
-      note: 'Class 8 cabover, sold in North America until the mid-2000s and exported long after. The whole cab tilts forward for engine access, which is worth knowing before you set a ladder against it.',
-      port: 'Under the dash', entry: 'Door cylinder' }),
-
-  V({ id: 'amc-alliance-1983-1987', mk: 'AMC', md: 'Alliance / Encore', y0: 1983, y1: 1987,
-      kw: 'RA4', il: '1970AM', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 5, dp: 5, cut: 'Edge cut',
-      dec: 'Impression or decode â€” 5 wafers, shallow cuts',
-      ser: [
-        { codeSeries: 'B-E-G-H-J', spaces: 5, depths: 5, ignition: 'Active retainer', macs: 3 },
-        { codeSeries: 'K1-1000',   spaces: 5, depths: 5, ignition: 'Active retainer', macs: 2 }
-      ],
-      tum: { ignition: '1-5', door: '1-5', trunk: '1-5' },
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Renault 9 and 11 built in Kenosha and badged AMC. Two code series â€” the B-E-G-H-J series and the K1-1000 series â€” so read the code before you cut, they are not the same MACS.',
-      port: 'n/a', entry: 'Wedge and reach, or the door lock â€” 5 wafers and no shield' }),
-  V({ id: 'amc-eagle-1980-1988', mk: 'AMC', md: 'Eagle', y0: 1980, y1: 1988, b: 'suv',
-      kw: 'AMC (pre-Chrysler) / Y151 on the last cars', il: 'Y151 on the last cars', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: '4WD wagon and sedan, the ancestor of the crossover. Chrysler bought AMC in 1987, so the last cars move onto Chrysler keyways (Y151); the earlier ones are on AMC own profile, which is NOT recorded here â€” match it by hand.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'amc-concord-spirit-1979-1983', mk: 'AMC', md: 'Concord / Spirit', y0: 1979, y1: 1983,
-      kw: 'AMC (pre-Chrysler)', il: 'â€”', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The Hornet and Gremlin platform under new names. The blank profile is NOT recorded here â€” AMC used its own keyway before the Chrysler buyout and we have no catalog number worth trusting. Decode the lock or match the blank by hand.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'amc-pacer-matador-1971-1980', mk: 'AMC', md: 'Pacer / Matador / Hornet / Gremlin / Ambassador', y0: 1971, y1: 1980,
-      kw: 'AMC (pre-Chrysler)', il: 'â€”', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 5, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The 1970s AMC line. The blank profile is NOT recorded â€” match it by hand. Anything this old has usually had the locks changed at least once, so decode rather than trust the year.',
-      port: 'n/a', entry: 'Wedge and reach â€” no shielding, and the vent windows on the early cars open by hand' }),
-  V({ id: 'amc-jeep-vintage-1981-1990', mk: 'Jeep', md: 'AMC-era Jeep / Eagle / Wagoneer', y0: 1981, y1: 1990, b: 'suv',
-      kw: 'AMC / Y151 after the Chrysler buyout', il: 'Y151', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Chrysler bought AMC in 1987, so later cars move onto Chrysler keyways. Check the year before picking a blank.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'toyota-vintage-1981-1994', mk: 'Toyota', md: 'Most Toyota (vintage)', y0: 1981, y1: 1994,
-      kw: 'TR47 / TOY40 / TOY43', il: 'TR47 / TOY43', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Pickups and Land Cruisers of this era are still working vehicles and still turn up as lost-key calls.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'honda-vintage-1981-1995', mk: 'Honda', md: 'Most Honda / Acura (vintage)', y0: 1981, y1: 1995,
-      kw: 'HD90 / HD91 / HD106', il: 'HD90 / HD106', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 6, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'High-theft era cars. Verify ownership even on a simple cut.', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'nissan-datsun-vintage-1981-1994', mk: 'Nissan', md: 'Most Nissan / Datsun (vintage)', y0: 1981, y1: 1994,
-      kw: 'DA23 / DA24 / DA25 / DA31', il: 'DA25 / DA31', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Datsun-badged cars run to 1984 in the US and take the same blanks.', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'mazda-vintage-1981-1994', mk: 'Mazda', md: 'Most Mazda (vintage)', y0: 1981, y1: 1994,
-      kw: 'MZ13 / MZ15 / MAZ12', il: 'MZ13', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'subaru-vintage-1981-1994', mk: 'Subaru', md: 'Most Subaru (vintage)', y0: 1981, y1: 1994,
-      kw: 'DAT17 / SUB', il: 'DAT17', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'mitsubishi-vintage-1981-1994', mk: 'Mitsubishi', md: 'Most Mitsubishi (vintage)', y0: 1981, y1: 1994,
-      kw: 'MIT1 / MIT2', il: 'MIT1', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Dodge and Plymouth captive imports of this era (Colt, Conquest, Stealth) are Mitsubishis and take these blanks.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'isuzu-suzuki-vintage-1981-1994', mk: 'Isuzu', md: 'Most Isuzu / Suzuki (vintage)', y0: 1981, y1: 1994, b: 'suv',
-      kw: 'Isuzu X-series / SZ', il: 'X230 / X257', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Catalog numbers hedged â€” check your book. Geo Metro and Tracker of this era are the same Suzukis.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'vw-audi-vintage-1981-1994', mk: 'Volkswagen', md: 'Most VW / Audi (vintage)', y0: 1981, y1: 1994,
-      kw: 'HU49 / VW1', il: 'VW1', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Air-cooled and early water-cooled VWs. Nothing electronic â€” the HU66 laser era starts later.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'bmw-vintage-1981-1994', mk: 'BMW', md: 'Most BMW (vintage)', y0: 1981, y1: 1994,
-      kw: 'BM1 / HU58', il: 'BM1', chip: 'None (EWS arrives mid-90s)',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'E30 and E28 era. Refreshingly simple compared with anything BMW built after EWS.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'mercedes-vintage-1981-1994', mk: 'Mercedes-Benz', md: 'Most Mercedes-Benz (vintage)', y0: 1981, y1: 1994,
-      kw: 'YM15 / HU39', il: 'YM15', chip: 'None on most; early infrared on late cars',
-      sys: 'None on most', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'W123 and W126 era. Nothing like the FBS work a modern Mercedes needs.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'volvo-saab-vintage-1981-1994', mk: 'Volvo', md: 'Most Volvo / Saab (vintage)', y0: 1981, y1: 1994,
-      kw: 'VO35 / YS-series', il: 'VO35', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'porsche-vintage-1981-1994', mk: 'Porsche', md: '911 / 944 / 928 (vintage)', y0: 1981, y1: 1994,
-      kw: 'Porsche / VW-family on the 924 and 944', il: 'VW1 on the VW-derived cars', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'The 924 and 944 share VW-family blanks; the 911 does not. Catalog numbers hedged â€” check your book.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'jaguar-vintage-1981-1996', mk: 'Jaguar', md: 'XJ / XJS (vintage, pre-Tibbe)', y0: 1981, y1: 1996,
-      kw: 'Jaguar (pre-Tibbe)', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Before Jaguar moved to Tibbe. If the key is a round Tibbe blade, you are on a later car â€” see the 1997-2006 record.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'landrover-vintage-1981-1998', mk: 'Land Rover', md: 'Defender / Discovery / Range Rover Classic', y0: 1981, y1: 1998, b: 'suv',
-      kw: 'Land Rover (vintage)', chip: 'None on most', sys: 'None on most', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Classic Defenders are valuable and heavily stolen. Verify ownership carefully. Land Rover sold no US Defender from 1998 until the 2020 model, so the year gap after this record is real.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'fiat-alfa-vintage-1981-1995', mk: 'Fiat', md: 'Fiat / Alfa Romeo / Lancia (vintage)', y0: 1981, y1: 1995,
-      kw: 'FT-series', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'renault-vintage-1981-1987', mk: 'Renault', md: 'Alliance / Encore / Fuego / 18i', y0: 1981, y1: 1987,
-      kw: 'RN-series', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'Built with AMC in Kenosha â€” some share AMC hardware.', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'yugo-1985-1992', mk: 'Yugo', md: 'GV / 45 / 55 / 65', y0: 1985, y1: 1992,
-      kw: 'Fiat-family (FT)', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression', obd: 'n/a', on: 'n/a', akl: 'Impression',
-      note: 'A licensed Fiat 127 â€” Fiat-family blanks.', port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'merkur-1985-1989', mk: 'Merkur', md: 'XR4Ti / Scorpio', y0: 1985, y1: 1989,
-      kw: 'Ford-family', il: 'H50 / H54', chip: 'None',
-      sys: 'None', clone: 'n/a', sp: 8, dp: 5, cut: 'Edge cut', dec: 'Impression or decode',
-      obd: 'n/a', on: 'n/a', akl: 'Cut by code or impression',
-      note: 'A Ford of Europe Sierra sold through Lincoln-Mercury â€” Ford-family keys.',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'delorean-1981-1983', mk: 'DeLorean', md: 'DMC-12', y0: 1981, y1: 1983,
-      kw: 'DeLorean (Lotus/Renault-derived)', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression',
-      obd: 'n/a', on: 'n/a', akl: 'Impression, or through the specialist parts network',
-      note: 'Rare enough that the owner club is often a faster route to a key than any catalog. Catalog numbers deliberately blank.',
-      port: 'n/a', entry: 'Gullwing doors â€” do not force; the torsion bars and glass are unobtainable' }),
-  V({ id: 'daihatsu-1988-1992', mk: 'Daihatsu', md: 'Charade / Rocky', y0: 1988, y1: 1992,
-      kw: 'TR47 / Toyota-family', chip: 'None', sys: 'None', clone: 'n/a',
-      sp: 8, dp: 4, cut: 'Edge cut', dec: 'Impression', obd: 'n/a', on: 'n/a', akl: 'Impression or cut by code',
-      port: 'n/a', entry: 'Wedge and reach' }),
-  V({ id: 'exotic-vintage-1981-1995', mk: 'Ferrari', md: 'Ferrari / Lamborghini / Lotus / Aston / Rolls (vintage)', y0: 1981, y1: 1995,
-      kw: 'Varies â€” usually a European blank, often Fiat or British Leyland family',
-      chip: 'None on most', sys: 'None on most', clone: 'n/a', sp: 8, dp: 4, cut: 'Edge cut',
-      dec: 'Impression, or the marque specialist',
-      obd: 'n/a', on: 'n/a', akl: 'Impression or the marque specialist',
-      note: 'Very high value, very low volume. Take the lockout if you are confident of a non-marking entry; refer the keys. Do not experiment on a customer Ferrari.',
-      port: 'n/a', entry: 'Non-marking entry only, or decline' })
-];
-
-/* --- Key blank cross-reference directory ---------------------------------
-   One record per keyway. `ilco` is the mechanical blank, `ilcoChip` the
-   transponder version of the same blank where one exists. Same caveat as the
-   vehicle data: verify against your catalog before you order a box of them. */
-const SEED_BLANKS = [
-  /* ---- FORD / LINCOLN / MERCURY ---- */
-  { id:'hu101', cat:'Automotive', keyway:'HU101', ilco:'HU101', ilcoChip:'HU101-PT', silca:'FO21T', jma:'FO-24.P', strattec:'5913441',
-    cut:'Laser', spaces:10, depths:4, makes:['Ford','Lincoln','Jaguar','Land Rover'],
-    notes:'The 2-track Ford laser key. Also the emergency blade inside most Ford prox fobs.' },
-  { id:'h92', cat:'Automotive', keyway:'H92', ilco:'H92', ilcoChip:'H92-PT', silca:'FO21T', jma:'FO-21.P2', strattec:'599114',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
-    notes:'Ford 8-cut. 40-bit chip through ~2010, 80-bit after â€” same blank, different chip.' },
-  { id:'h75', cat:'Automotive', keyway:'H75', ilco:'H75', ilcoChip:'H72-PT', silca:'FO38', jma:'FO-15.P', strattec:'596753',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
-    notes:'Older Ford 8-cut, pre-PATS and early PATS.' },
-  { id:'h84', cat:'Automotive', keyway:'H84', ilco:'H84', ilcoChip:'H84-PT', silca:'FO38', jma:'FO-15.P', strattec:'598333',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Mercury','Mazda'],
-    notes:'Ford 8-cut, PATS era. Sits close to H72 and H92 â€” check the head shape and the chip before you cut.' },
-  { id:'fo38', cat:'Automotive', keyway:'FO38 (Tibbe)', ilco:'FO21', ilcoChip:'FO21T', silca:'FO12', jma:'FO-13.P', strattec:'â€”',
-    cut:'Tibbe', spaces:6, depths:4, makes:['Ford','Jaguar'],
-    notes:'Tibbe. Needs a dedicated Tibbe decoder and cutter â€” not an edge or laser machine.' },
-
-  /* ---- GM ---- */
-  { id:'b111', cat:'Automotive', keyway:'B111', ilco:'B111', ilcoChip:'B111-PT', silca:'GM39RT', jma:'GM-37.P', strattec:'5912543',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','GMC','Buick','Cadillac','Pontiac','Saturn'],
-    notes:'GM 10-cut, PK3+/Circle-Plus era. The workhorse GM blank of 2006-2013.' },
-  { id:'b119', cat:'Automotive', keyway:'B119', ilco:'B119', ilcoChip:'B119-PT', silca:'GM45', jma:'GM-40.P', strattec:'5928114',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','GMC','Buick','Cadillac'],
-    notes:'GM 2014+ 10-cut with the 46E chip.' },
-  { id:'b116', cat:'Automotive', keyway:'HU100', ilco:'B116', ilcoChip:'B116-PT', silca:'GM45', jma:'GM-40.P', strattec:'5912542',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','Buick','GMC','Opel','Saturn'],
-    notes:'HU100 profile. Cruze, Malibu, Equinox era.' },
-  { id:'b106', cat:'Automotive', keyway:'B106', ilco:'B106', ilcoChip:'B106-PT', silca:'GM37', jma:'GM-14.P', strattec:'596415',
-    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Buick','Pontiac','Oldsmobile'],
-    notes:'GM 6-cut, VATS/PASS-Key era. Pellet keys are B62-P1 through P15.' },
-  { id:'b102', cat:'Automotive', keyway:'B102', ilco:'B102', ilcoChip:'â€”', silca:'GM32', jma:'GM-10.P', strattec:'322773',
-    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Buick','Pontiac'],
-    notes:'Older GM 10-cut door/trunk secondary.' },
-
-  /* ---- TOYOTA / LEXUS / SCION ---- */
-  { id:'toy48', cat:'Automotive', keyway:'TOY48', ilco:'TOY44D', ilcoChip:'TOY44D-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus','Scion'],
-    notes:'Dot / G chip era. The G chip is stamped "G" on the head.' },
-  { id:'toy44g', cat:'Automotive', keyway:'TOY44G', ilco:'TOY44G', ilcoChip:'TOY44G-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus','Scion'],
-    notes:'G chip era, roughly 2010-2012. Same TOY48 keyway as the dot and H blanks â€” only the chip differs, so the blade cuts the same and the wrong box still will not start the car.' },
-  { id:'toy44h', cat:'Automotive', keyway:'TOY44H', ilco:'TOY44H', ilcoChip:'TOY44H-PT', silca:'TOY48', jma:'TP00TOYO-15.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Toyota','Lexus'],
-    notes:'H chip, 2013+. Same TOY48 keyway, different chip â€” do not mix the boxes up.' },
-  { id:'toy43', cat:'Automotive', keyway:'TOY43', ilco:'TOY43', ilcoChip:'TOY43-PT', silca:'TOY43', jma:'TOYO-21.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Scion'],
-    notes:'Toyota 8-cut, older Corolla / Camry / Tacoma.' },
-  { id:'toy40', cat:'Automotive', keyway:'TOY40', ilco:'TOY40', ilcoChip:'â€”', silca:'TOY40', jma:'TOYO-15.P', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Toyota','Lexus'], notes:'Older 4-track Toyota.' },
-
-  /* ---- HONDA / ACURA ---- */
-  { id:'hon66', cat:'Automotive', keyway:'HON66', ilco:'HO03', ilcoChip:'HO03-PT', silca:'HON66', jma:'HOND-22.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Honda','Acura'],
-    notes:'High security Honda. Emergency blade in the smart fobs is this profile.' },
-  { id:'ho01', cat:'Automotive', keyway:'HO01', ilco:'HO01', ilcoChip:'HO01-PT', silca:'HON58R', jma:'HOND-20.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Honda','Acura'],
-    notes:'Honda 8-cut, ID46 era.' },
-  { id:'ho05', cat:'Automotive', keyway:'HD106/HO05', ilco:'HO05', ilcoChip:'â€”', silca:'HON43', jma:'HOND-14.P', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Honda','Acura'], notes:'Older Honda 6-cut, non-transponder.' },
-
-  /* ---- NISSAN / INFINITI ---- */
-  { id:'nsn14', cat:'Automotive', keyway:'NSN14', ilco:'DA34', ilcoChip:'DA34-PT', silca:'NSN14', jma:'NE-38.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Nissan','Infiniti'],
-    notes:'Nissan high security. Also the emergency blade in the Intelligent Key.' },
-  { id:'da31', cat:'Automotive', keyway:'DA31', ilco:'DA31', ilcoChip:'DA31-PT', silca:'NSN11', jma:'DAT-17.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Nissan','Infiniti'], notes:'Nissan 8-cut, older Altima / Sentra / Frontier.' },
-
-  /* ---- HYUNDAI / KIA ---- */
-  { id:'hy20', cat:'Automotive', keyway:'HY20', ilco:'HY20', ilcoChip:'HY20-PT', silca:'HYN14R', jma:'HY-20.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Hyundai','Kia'], notes:'The common Hyundai 8-cut.' },
-  { id:'hy22', cat:'Automotive', keyway:'HY22', ilco:'HY22', ilcoChip:'HY22-PT', silca:'HYN17R', jma:'HY-22.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Hyundai','Kia'], notes:'Hyundai/Kia high security laser.' },
-  { id:'kk10', cat:'Automotive', keyway:'KK10', ilco:'KK10', ilcoChip:'KK10-PT', silca:'HYN14R', jma:'HY-18.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Kia'], notes:'Kia 8-cut.' },
-
-  /* ---- STELLANTIS ---- */
-  { id:'cy24', cat:'Automotive', keyway:'CY24', ilco:'Y164', ilcoChip:'Y164-PT', silca:'CY24', jma:'CHR-15.P', strattec:'692352',
-    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Jeep','Ram'],
-    notes:'The Stellantis 8-cut. Y170 is the same keyway in the later fob-head style.' },
-  { id:'y160', cat:'Automotive', keyway:'Y160', ilco:'Y160', ilcoChip:'Y160-PT', silca:'CY22', jma:'CHR-9.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Jeep'], notes:'Older Chrysler 8-cut, SKIM era.' },
-  { id:'sip22', cat:'Automotive', keyway:'SIP22', ilco:'FT48', ilcoChip:'FT48-PT', silca:'SIP22', jma:'FI-21.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Fiat','Chrysler','Dodge','Ram','Alfa Romeo'],
-    notes:'Fiat platform laser â€” ProMaster City, 500, Renegade.' },
-
-  /* ---- VW / AUDI ---- */
-  { id:'hu66', cat:'Automotive', keyway:'HU66', ilco:'HU66AT4', ilcoChip:'HU66AT4-PT', silca:'HU66', jma:'TP00VA-6D.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Volkswagen','Audi','Seat','Skoda','Porsche'],
-    notes:'The VAG laser. Check MQB vs non-MQB before quoting the programming.' },
-  { id:'hu162t', cat:'Automotive', keyway:'HU162T', ilco:'HU162T', ilcoChip:'HU162T-PT', silca:'HU162T', jma:'TP00VAG-7.P', strattec:'â€”',
-    cut:'Laser', spaces:9, depths:4, makes:['Volkswagen','Audi','Seat','Skoda'],
-    notes:'MQB platform blade, 2015+.' },
-  { id:'hu49', cat:'Automotive', keyway:'HU49', ilco:'VW1', ilcoChip:'â€”', silca:'HU49', jma:'VO-1.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Volkswagen','Audi'], notes:'Old air-cooled and early water-cooled VW.' },
-
-  /* ---- BMW / MERCEDES ---- */
-  { id:'hu92', cat:'Automotive', keyway:'HU92', ilco:'HU92', ilcoChip:'HU92-PT', silca:'HU92', jma:'TP00BM-15.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['BMW','Mini','Rolls-Royce'], notes:'BMW 2-track, CAS era.' },
-  { id:'hu100r', cat:'Automotive', keyway:'HU100R', ilco:'BMW1', ilcoChip:'â€”', silca:'HU100R', jma:'TP00BM-20.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['BMW','Mini'], notes:'BMW F-series / FEM-BDC emergency blade.' },
-  { id:'hu64', cat:'Automotive', keyway:'HU64', ilco:'HU64', ilcoChip:'â€”', silca:'HU64', jma:'TP00ME-10.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Mercedes-Benz'], notes:'Mercedes 4-track. FBS3/FBS4 is the hard part, not the cut.' },
-  { id:'ymb', cat:'Automotive', keyway:'YM15/YM23', ilco:'YM23', ilcoChip:'â€”', silca:'YM15', jma:'ME-3.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mercedes-Benz'], notes:'Older Mercedes edge cut.' },
-
-  /* ---- MAZDA / SUBARU / MITSUBISHI ---- */
-  { id:'maz24', cat:'Automotive', keyway:'MAZ24', ilco:'MAZ24R', ilcoChip:'MAZ24R-PT', silca:'MAZ24R', jma:'MAZ-16.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Mazda'], notes:'Mazda high security.' },
-  { id:'mz34', cat:'Automotive', keyway:'MZ34', ilco:'MZ34', ilcoChip:'MZ34-PT', silca:'MAZ20', jma:'MAZ-11.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mazda'], notes:'Mazda 8-cut, older.' },
-  { id:'sub4', cat:'Automotive', keyway:'SUB4', ilco:'SUB4', ilcoChip:'SUB4-PT', silca:'SUB4', jma:'SUBA-6.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Subaru'], notes:'Subaru 8-cut and the smart-key emergency blade.' },
-  { id:'dat17', cat:'Automotive', keyway:'DAT17', ilco:'DAT17', ilcoChip:'â€”', silca:'NSN11', jma:'DAT-17.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Subaru','Nissan'], notes:'Older Subaru / Datsun profile.' },
-  { id:'mit11', cat:'Automotive', keyway:'MIT11', ilco:'MIT11', ilcoChip:'MIT11-PT', silca:'MIT11', jma:'MIT-6.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mitsubishi','Chrysler','Dodge'], notes:'Mitsubishi 8-cut, also on captive Chrysler models.' },
-
-  /* ---- VOLVO / SAAB / OTHER EURO ---- */
-  { id:'hu56r', cat:'Automotive', keyway:'HU56R', ilco:'HU56R', ilcoChip:'â€”', silca:'HU56R', jma:'TP00VOL-1.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Volvo'], notes:'Volvo laser.' },
-  { id:'yh35r', cat:'Automotive', keyway:'YM30/NE66', ilco:'YM30', ilcoChip:'â€”', silca:'NE66', jma:'VAL-3.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Volvo','Renault','Saab'], notes:'Renault/Volvo shared laser profile.' },
-
-  /* ---- automotive keyways the directory was missing ---- */
-  { id:'holden', cat:'Automotive', keyway:'Holden (GM Australia)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Holden','Pontiac','Chevrolet'],
-    notes:'The GM Australia profiles that reached the US on the Pontiac GTO and G8 and the Chevrolet SS. Both the catalogs and US GM tool coverage thin out here, so no cross-reference is given: measure the blade rather than trust a chart, and expect to source the blank rather than have it on the truck.' },
-  { id:'b91', cat:'Automotive', keyway:'B91 / B97', ilco:'B91', ilcoChip:'B91-PT', silca:'GM39', jma:'GM-30', strattec:'â€”',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','Pontiac','Buick','Oldsmobile','Cadillac','GMC','Saturn'],
-    notes:'The GM 10-cut through the VATS and Passlock years â€” Grand Am, Cavalier, Sunfire, Century, LeSabre, DeVille and the rest. On VATS cars the blade is only half the key: the resistor pellet has to match too.' },
-  { id:'b99', cat:'Automotive', keyway:'B99', ilco:'B99', ilcoChip:'B99-PT', silca:'GM39RT', jma:'GM-37.P', strattec:'â€”',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','Pontiac','Cadillac'],
-    notes:'GM 10-cut variant of the PK3+ era. Sits very close to B111 â€” compare the head and the shoulder before you cut.' },
-  { id:'b110', cat:'Automotive', keyway:'B110 / B112', ilco:'B110', ilcoChip:'B110-PT', silca:'GM45', jma:'GM-40.P', strattec:'â€”',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','Buick','GMC','Cadillac'],
-    notes:'Later GM 10-cut variants around the 46E changeover.' },
-  { id:'toy41', cat:'Automotive', keyway:'TOY41 / TOY44', ilco:'TOY41', ilcoChip:'TOY44-PT', silca:'TOY41', jma:'TOYO-19', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Scion'],
-    notes:'Toyota 8-cut variants either side of the TOY43. Check the shoulder position.' },
-  { id:'toy38r', cat:'Automotive', keyway:'TOY38R', ilco:'TOY38R', ilcoChip:'â€”', silca:'TOY38', jma:'TOYO-18', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Toyota','Lexus'],
-    notes:'Toyota high-security variant, mostly on secondary and valet locks.' },
-  { id:'ho02', cat:'Automotive', keyway:'HO02 / HO04', ilco:'HO02', ilcoChip:'HO02-PT', silca:'HON31', jma:'HOND-10', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Honda','Acura'],
-    notes:'Honda secondary and trunk keyways, and some older Acuras.' },
-  { id:'nsn11', cat:'Automotive', keyway:'NSN11 / NI01', ilco:'DA30', ilcoChip:'â€”', silca:'NSN11', jma:'NE-30', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Nissan','Infiniti','Subaru'],
-    notes:'The Nissan 8-cut that also turns up on older Subarus.' },
-  { id:'hy14', cat:'Automotive', keyway:'HY14 / HY16 / HY18', ilco:'HY14', ilcoChip:'HY14-PT', silca:'HYN7 / HYN11', jma:'HY-11 / HY-14', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Hyundai','Kia'],
-    notes:'The older Hyundai and Kia 8-cuts before HY20 and HY22.' },
-  { id:'kk12', cat:'Automotive', keyway:'KK12', ilco:'â€”', ilcoChip:'â€”', silca:'HYN17', jma:'HY-22.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Kia'],
-    notes:'The Kia laser profile on K5, Seltos, Niro, Stinger and the EV cars â€” the Kia side of the Hyundai HY22.' },
-  { id:'kia6', cat:'Automotive', keyway:'KIA6 / KK7', ilco:'KK7', ilcoChip:'â€”', silca:'HYN6', jma:'HY-6', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Kia'], notes:'Early Kia, pre-KK10.' },
-  { id:'maz13', cat:'Automotive', keyway:'MAZ13 / MZ31', ilco:'MZ31', ilcoChip:'â€”', silca:'MAZ13', jma:'MAZ-13', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mazda'], notes:'Mazda variant sitting between MZ13 and MZ34.' },
-  { id:'sub1', cat:'Automotive', keyway:'SUB1 / SUB2 / SUB3', ilco:'SUB1', ilcoChip:'â€”', silca:'SUB1', jma:'SUBA-1', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Subaru'],
-    notes:'Older Subaru keyways ahead of the SUB4 the modern cars use.' },
-  { id:'mit3', cat:'Automotive', keyway:'MIT3 / MIT8 / MIT9', ilco:'MIT3', ilcoChip:'MIT3-PT', silca:'MIT3', jma:'MIT-3', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mitsubishi','Dodge','Chrysler','Eagle','Plymouth'],
-    notes:'Mitsubishi variants, including the Diamond-Star captive imports.' },
-  { id:'mit16', cat:'Automotive', keyway:'MIT16 / MIT17', ilco:'MIT16', ilcoChip:'MIT16-PT', silca:'MIT16', jma:'MIT-16', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Mitsubishi'],
-    notes:'Later Mitsubishi high-security profile.' },
-  { id:'va2', cat:'Automotive', keyway:'VA2 / NE72 / SX9', ilco:'â€”', ilcoChip:'â€”', silca:'VA2 / NE72', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Renault','Peugeot','Citroen'],
-    notes:'The common modern French profiles. Rare in the US outside grey imports, but worth knowing on sight.' },
-  { id:'hu83', cat:'Automotive', keyway:'HU83 / NE78', ilco:'â€”', ilcoChip:'â€”', silca:'HU83', jma:'â€”', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Peugeot','Citroen'],
-    notes:'PSA laser profile.' },
-  { id:'fo40', cat:'Automotive', keyway:'FO40 / H86', ilco:'H86', ilcoChip:'â€”', silca:'FO40', jma:'FO-40', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
-    notes:'Ford secondary and glovebox profiles of the PATS era.' },
-  { id:'y165', cat:'Automotive', keyway:'Y165 / Y170', ilco:'Y170', ilcoChip:'Y170-PT', silca:'CY24', jma:'CHR-15.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Jeep','Ram'],
-    notes:'Same CY24 keyway as Y164, in the later fob-head style. The blade is interchangeable; the head is not.' },
-
-  /* ---- MOTORCYCLE / POWERSPORTS ---- */
-  { id:'canam', cat:'Automotive', keyway:'Can-Am / BRP', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Can-Am','Powersports'],
-    notes:'Side-by-side and Ryker ignition. Some models use a D.E.S.S. tether instead of a mechanical key â€” confirm which before the trip.' },
-  { id:'pol1', cat:'Automotive', keyway:'Polaris', ilco:'X255', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Polaris','Powersports'],
-    notes:'Polaris RZR / Ranger / General ignition. No immobilizer on most â€” cut and go.' },
-  { id:'jlr-blade', cat:'Automotive', keyway:'JLR emergency blade', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Land Rover','Jaguar'],
-    notes:'The blade hidden in a modern Jaguar / Land Rover proximity fob. It opens the door and nothing else â€” the car still will not start without the fob paired. Catalog number left blank rather than guessed; decode the door and match it.' },
-  { id:'saab', cat:'Automotive', keyway:'Saab / NE66-family', ilco:'â€”', ilcoChip:'â€”', silca:'NE66', jma:'VAL-3.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Saab'],
-    notes:'Saab 9-3 and 9-5. On the 2003+ 9-3 the ignition sits in the centre console and the CIM module holds the key data.' },
-  { id:'isuzu', cat:'Automotive', keyway:'Isuzu (X-series)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Isuzu'],
-    notes:'Rodeo, Trooper, Axiom and the cabover trucks. Catalog numbers left blank rather than guessed â€” check your book.' },
-  { id:'dwo', cat:'Automotive', keyway:'Daewoo DWO / DWO4R', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Daewoo','Suzuki'],
-    notes:'Daewoo Lanos, Nubira and Leganza, and the Suzuki Forenza and Reno built on the same platform.' },
-  { id:'ducati', cat:'Automotive', keyway:'Ducati', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Ducati'],
-    notes:'Ask for the code card before the trip â€” key pairing needs it.' },
-  { id:'triumph', cat:'Automotive', keyway:'Triumph', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Triumph'], notes:'Later models add an immobilizer.' },
-  { id:'ktm', cat:'Automotive', keyway:'KTM', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['KTM'], notes:'Off-road models generally have no immobilizer; street models do.' },
-  { id:'indian', cat:'Automotive', keyway:'Indian', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Indian Motorcycle'],
-    notes:'Polaris-built. Modern bikes are keyless â€” the proximity fob is the job.' },
-  { id:'maserati', cat:'Automotive', keyway:'Maserati / Fiat-family', ilco:'â€”', ilcoChip:'â€”', silca:'SIP22', jma:'FI-21.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Maserati'],
-    notes:'Fiat-era cars overlap heavily with SIP22; the GranTurismo is its own thing.' },
-  /* ---- vintage keyways, 1981 to the immobilizer era ---- */
-  { id:'b44', cat:'Automotive', keyway:'B44 / B45 / B48 / B50', ilco:'B44 / B45', ilcoChip:'â€”', silca:'GM31 / GM32', jma:'GM-9 / GM-10', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Buick','Cadillac','Pontiac','Oldsmobile'],
-    notes:'Vintage GM, two-key era: the B44 family turns the ignition, the B45 family the doors and trunk. Ask which one is lost before you cut.' },
-  { id:'b62', cat:'Automotive', keyway:'B62 pellet (VATS)', ilco:'B62-P1 .. B62-P15', ilcoChip:'â€”', silca:'GM37', jma:'GM-14.P', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','Pontiac','Cadillac','Buick','Oldsmobile'],
-    notes:'Fifteen resistor values. Read the pellet with a VATS interrogator rather than guessing â€” each wrong try starts a four-minute lockout.' },
-  { id:'h50', cat:'Automotive', keyway:'H50 / H51 / H54 / H60', ilco:'H50 / H54', ilcoChip:'â€”', silca:'FO14 / FO15', jma:'FO-7 / FO-8', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury','Merkur'],
-    notes:'Vintage Ford, also a two-key era. PATS and the chipped H72 arrive in 1996.' },
-  { id:'y151', cat:'Automotive', keyway:'Y151 / Y152 / Y155 / Y157 / Y159', ilco:'Y151 / Y152', ilcoChip:'â€”', silca:'CY10 / CY13', jma:'CHR-1 / CHR-4', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Plymouth','Jeep','Eagle'],
-    notes:'Vintage Chrysler. SKIM and the chipped Y160 arrive around 1998.' },
-  { id:'hd90', cat:'Automotive', keyway:'HD90 / HD91 / HD106', ilco:'HD90 / HD106', ilcoChip:'â€”', silca:'HON30 / HON43', jma:'HOND-8 / HOND-14', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Honda','Acura'],
-    notes:'Vintage Honda, no immobilizer. Covers the 1996-2000 Civic, which is still one of the most common lost-key calls there is.' },
-  { id:'da25', cat:'Automotive', keyway:'DA23 / DA24 / DA25', ilco:'DA25', ilcoChip:'â€”', silca:'NSN7', jma:'DAT-10', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Nissan','Datsun','Infiniti'],
-    notes:'Vintage Nissan and Datsun. No chip, no BCM PIN â€” nothing like a modern Nissan.' },
-  { id:'mz13', cat:'Automotive', keyway:'MZ13 / MZ15 / MAZ12', ilco:'MZ13', ilcoChip:'â€”', silca:'MAZ8 / MAZ12', jma:'MAZ-3 / MAZ-6', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mazda'], notes:'Vintage Mazda.' },
-  { id:'mit1', cat:'Automotive', keyway:'MIT1 / MIT2', ilco:'MIT1', ilcoChip:'â€”', silca:'MIT1', jma:'MIT-1', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mitsubishi','Dodge','Plymouth'],
-    notes:'Vintage Mitsubishi, including the Dodge and Plymouth captive imports of the era.' },
-  { id:'porsche-vintage', cat:'Automotive', keyway:'Porsche (vintage)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Porsche'],
-    notes:'The air-cooled 911 blade. The 924 and 944 use the VW-family blank instead â€” check which car you are on.' },
-  { id:'vw1', cat:'Automotive', keyway:'VW1 / HU49', ilco:'VW1', ilcoChip:'â€”', silca:'HU49', jma:'VO-1', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Volkswagen','Audi','Porsche'],
-    notes:'Vintage VW and Audi, plus the VW-derived Porsche 924 and 944.' },
-  { id:'bm1', cat:'Automotive', keyway:'BM1 / HU58', ilco:'BM1', ilcoChip:'â€”', silca:'HU58', jma:'BM-4', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['BMW'],
-    notes:'Vintage BMW, before EWS. Far simpler than anything BMW built after it.' },
-  { id:'ym15v', cat:'Automotive', keyway:'YM15 / HU39', ilco:'YM15', ilcoChip:'â€”', silca:'HU39', jma:'ME-3', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mercedes-Benz'],
-    notes:'Vintage Mercedes, W123 and W126 era. No FBS, no EIS work.' },
-  { id:'vo35', cat:'Automotive', keyway:'VO35 / YS-series', ilco:'VO35', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Volvo','Saab'], notes:'Vintage Volvo and Saab.' },
-  { id:'tr47', cat:'Automotive', keyway:'TR47 / TOY40', ilco:'TR47', ilcoChip:'â€”', silca:'TOY40', jma:'TOYO-15', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Daihatsu'],
-    notes:'Vintage Toyota. Pickups and Land Cruisers of this era are still working trucks.' },
-  { id:'ft-series', cat:'Automotive', keyway:'FT-series', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Fiat','Alfa Romeo','Yugo'],
-    notes:'Vintage Fiat family, including the Fiat-licensed Yugo.' },
-  { id:'rn-series', cat:'Automotive', keyway:'RN-series', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Renault'], notes:'Renault Alliance, Encore, Fuego and 18i.' },
-  { id:'jag-pretibbe', cat:'Automotive', keyway:'Jaguar (pre-Tibbe)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Jaguar'],
-    notes:'Before Jaguar moved to Tibbe. A round Tibbe blade means you are on a 1997-2006 car instead.' },
-  { id:'lr-vintage', cat:'Automotive', keyway:'Land Rover (vintage)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Land Rover'],
-    notes:'Defender, Discovery and Range Rover Classic. Heavily stolen â€” verify ownership.' },
-  { id:'isuzu-x', cat:'Automotive', keyway:'Isuzu X-series / SZ (vintage)', ilco:'X230 / X257', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Isuzu','Suzuki','Geo'],
-    notes:'Vintage Isuzu and Suzuki, including the Suzuki-built Geo Metro and Tracker.' },
-  { id:'hd103', cat:'Powersports', keyway:'HD103', ilco:'HD103', ilcoChip:'â€”', silca:'HD64', jma:'HD-3', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Harley-Davidson'], notes:'The common Harley ignition blank.' },
-  { id:'hd106', cat:'Powersports', keyway:'HD106', ilco:'HD106', ilcoChip:'â€”', silca:'HD66', jma:'HD-6', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Harley-Davidson'], notes:'Harley saddlebag / accessory.' },
-  { id:'ya23', cat:'Powersports', keyway:'YH35 / YA23', ilco:'YH35', ilcoChip:'â€”', silca:'YH35', jma:'YAMA-14', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Yamaha'], notes:'Yamaha ignition.' },
-  { id:'ka13', cat:'Powersports', keyway:'KA13', ilco:'KA13', ilcoChip:'â€”', silca:'KW14', jma:'KAWA-10', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Kawasaki'], notes:'Kawasaki ignition.' },
-  { id:'sz14', cat:'Powersports', keyway:'SUZ14 / SZ14 / SZ18', ilco:'X257', ilcoChip:'â€”', silca:'SZ14', jma:'SUZU-14', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Suzuki','Geo','Chevrolet'],
-    notes:'Suzuki bikes and cars, and the Suzuki-built Geo Metro and Tracker.' },
-  { id:'hon41', cat:'Powersports', keyway:'HD91 / HON41', ilco:'HD91', ilcoChip:'â€”', silca:'HON41', jma:'HOND-11', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Honda'], notes:'Honda motorcycle and powersports.' },
-  { id:'bmw-moto', cat:'Powersports', keyway:'BM6 (motorcycle)', ilco:'â€”', ilcoChip:'â€”', silca:'BW6 / HU58', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['BMW'],
-    notes:'BMW motorcycle ignition, an HU58-family profile. Later bikes with the ring-antenna barrel need the EWS transponder, not just the blade.' },
-  { id:'duc-moto', cat:'Powersports', keyway:'ZD24 / Ducati', ilco:'â€”', ilcoChip:'â€”', silca:'ZD24', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Ducati'],
-    notes:'Ducati ignition. Immobilizer bikes want the coded key; the red master key is what programs a new one.' },
-  { id:'tri-moto', cat:'Powersports', keyway:'Triumph', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Triumph'],
-    notes:'Triumph ignition. Modern bikes carry a transponder in the head.' },
-  { id:'ktm-moto', cat:'Powersports', keyway:'KTM / Husqvarna', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['KTM','Husqvarna'],
-    notes:'KTM and the Husqvarna bikes built alongside them.' },
-  { id:'pol-moto', cat:'Powersports', keyway:'Polaris', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Polaris','Victory','Indian'],
-    notes:'Polaris ATV, side-by-side and snowmobile, plus the Victory and Indian bikes from the same parent.' },
-  { id:'brp-moto', cat:'Powersports', keyway:'Can-Am / Ski-Doo / Sea-Doo', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Can-Am','Ski-Doo','Sea-Doo','BRP'],
-    notes:'BRP powersports. Sea-Doo runs a D.E.S.S. tether post rather than a cut key on the water.' },
-  { id:'arctic-moto', cat:'Powersports', keyway:'Arctic Cat', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Arctic Cat','Textron'],
-    notes:'Arctic Cat sleds and side-by-sides.' },
-  { id:'vespa-moto', cat:'Powersports', keyway:'Piaggio / Vespa', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Vespa','Piaggio','Aprilia','Moto Guzzi'],
-    notes:'The Piaggio group scooters and bikes. Immobilizer models need the coded key.' },
-
-  /* ---- FLEET / EQUIPMENT ---- */
-  { id:'b1', cat:'Fleet & equipment', keyway:'B1 / 1098', ilco:'1098', ilcoChip:'â€”', silca:'GM1', jma:'GM-1', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Fleet'], notes:'Classic GM ignition / equipment.' },
-  { id:'cat', cat:'Fleet & equipment', keyway:'CAT / 5P8500', ilco:'1690', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:3, makes:['Caterpillar','Equipment'], notes:'Heavy equipment master. Common on job-site calls.' },
-  { id:'jd', cat:'Fleet & equipment', keyway:'John Deere AR51481', ilco:'1660', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:3, makes:['John Deere','Equipment'], notes:'Deere tractor / mower ignition.' },
-
-  /* ---- RV / TRAILER / TOWABLE ---- */
-  { id:'ch751', cat:'Fleet & equipment', keyway:'CH751', ilco:'CH751', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['RV','Trailer','Fleet','Equipment'],
-    notes:'The near-universal cam lock: RV baggage doors, service-body boxes, toolboxes, cabinets, some elevators. Not security hardware. Carry two.' },
-  { id:'rv-bauer', cat:'Fleet & equipment', keyway:'Bauer / TriMark RV entry', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['RV','Trailer'],
-    notes:'The two common RV entry-door brands. Codes are usually stamped on the lock face or the latch; a rekey kit is often faster than originating a key.' },
-  { id:'rv-globallink', cat:'Fleet & equipment', keyway:'Global Link / FIC RV', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['RV','Trailer'],
-    notes:'Global Link and Fastec (FIC) entry and compartment locks, common on late-model towables.' },
-  { id:'trailer-hitch', cat:'Fleet & equipment', keyway:'Trailer coupler / hitch locks', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Trailer','Fleet'],
-    notes:'Master, Reese, CURT and Blaylock coupler and receiver locks. Mostly wafer; most are drilled faster than picked, so confirm ownership first.' },
-
-  /* ---- HEAVY TRUCK ---- */
-  { id:'truck-fr', cat:'Fleet & equipment', keyway:'Freightliner / Sterling', ilco:'1608 / 1610', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Freightliner','Sterling','Western Star'],
-    notes:'Class 8 ignition and door. Fleets are commonly keyed alike across the yard â€” ask before you rekey one truck.' },
-  { id:'truck-pb', cat:'Fleet & equipment', keyway:'Peterbilt / Kenworth', ilco:'1642 / RA4', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Peterbilt','Kenworth','PACCAR'],
-    notes:'PACCAR ignition and door. Many run a single-code ignition with a separate door key.' },
-  { id:'truck-intl', cat:'Fleet & equipment', keyway:'International / Navistar', ilco:'1554 / 1559', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['International','Navistar','IC Bus'],
-    notes:'Navistar trucks and the IC school buses built on them.' },
-  { id:'truck-mack', cat:'Fleet & equipment', keyway:'Mack / Volvo Truck', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Mack','Volvo Truck'],
-    notes:'Mack and the Volvo trucks sharing the platform.' },
-  { id:'truck-hino', cat:'Fleet & equipment', keyway:'Hino / NPR / UD cabover', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Hino','Isuzu','UD','Fuso'],
-    notes:'Medium-duty cabovers: Hino, the Isuzu NPR range, UD and Fuso. NPR keyways often follow the Isuzu car profiles, so check both.' },
-
-  /* ---- FORKLIFT / GOLF CART / MARINE ---- */
-  { id:'forklift', cat:'Fleet & equipment', keyway:'Forklift ignition (common set)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:3, makes:['Toyota Forklift','Hyster','Yale','Clark','Crown','Equipment'],
-    notes:'Most forklift brands ship one or two standard keys across the whole line, so a small set covers a warehouse. Toyota 57591-23330-71 is the one you reach for most.' },
-  { id:'golfcart', cat:'Fleet & equipment', keyway:'Golf cart ignition', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:3, makes:['Club Car','E-Z-GO','Yamaha','Equipment'],
-    notes:'Club Car, E-Z-GO and Yamaha each use one key across the fleet. Three blanks cover almost every cart call.' },
-  { id:'marine', cat:'Fleet & equipment', keyway:'Marine helm / outboard ignition', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Mercury Marine','Yamaha Marine','Johnson','Evinrude','Marine'],
-    notes:'Outboard and helm switches. Mercury and Yamaha run short standard code series; look for the code stamped on the switch bezel.' },
-  { id:'equip-misc', cat:'Fleet & equipment', keyway:'Bobcat / Kubota / Komatsu / JCB', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:3, makes:['Case','Komatsu','Kubota','Bobcat','JCB','Equipment'],
-    notes:'The rest of the yard: Case, Komatsu, Kubota, Bobcat, JCB. Like Cat and Deere, each brand is largely keyed alike, so a master set beats originating.' },
-
-  /* ---- RESIDENTIAL ----
-     Different work from a car, so it is kept in its own category. Spaces and
-     depths are the manufacturer's published specs; catalog cross-references are
-     filled only where they are certain, and left blank rather than guessed. */
-  { id:'kw1', cat:'Residential', keyway:'KW1', ilco:'1176', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Kwikset'],
-    notes:'The most common residential keyway in the country. Depths 1-6. SmartKey cylinders take the same blank but rekey with the learn tool, not by pinning â€” and a SmartKey that has been forced usually will not accept the tool afterward.' },
-  { id:'kw10', cat:'Residential', keyway:'KW10 / KW11', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:6, makes:['Kwikset'],
-    notes:'The 6-pin version of the KW1 profile. A KW1 blank will enter a 6-pin cylinder and turn nothing â€” count the pins before you cut.' },
-  { id:'sc1', cat:'Residential', keyway:'SC1', ilco:'1145', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:10, makes:['Schlage'],
-    notes:'The other half of nearly every house call. Depths 0-9, .015 in increments. SC4 is the 6-pin of the same profile.' },
-  { id:'sc4', cat:'Residential', keyway:'SC4', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Schlage'],
-    notes:'Schlage 6-pin. Common on deadbolts and on anything keyed alike with a commercial lever.' },
-  { id:'wr5', cat:'Residential', keyway:'WR3 / WR5', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Weiser'],
-    notes:'Weiser. Same corporate parent as Kwikset today, but the keyway is not interchangeable with KW1 â€” check the warding.' },
-  { id:'y1-res', cat:'Residential', keyway:'Y1 / Y2', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:8, makes:['Yale'],
-    notes:'Yale residential. Turns up on older housing stock and on a lot of apartment cylinders.' },
-  { id:'we1', cat:'Residential', keyway:'WK2 / Weslock', ilco:'1054WB', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Weslock','Dexter'],
-    notes:'Weslock and the Dexter locksets that share the profile. Common on 1960s-80s tract housing.' },
-  { id:'ar1', cat:'Residential', keyway:'AR1 / AR4', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:10, makes:['Arrow'],
-    notes:'Arrow. Shows up residential and light commercial both.' },
-  { id:'m1', cat:'Residential', keyway:'M1', ilco:'1092', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:5, makes:['Master Lock'],
-    notes:'The Master padlock keyway. Master stamps a code on the back of most padlocks; with the code you originate instead of picking.' },
-  { id:'am3', cat:'Residential', keyway:'AM3 / AM7', ilco:'1045',  ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['American Lock'],
-    notes:'American padlocks, including the shrouded-shackle series people put on storage units and trailers.' },
-  { id:'na-cabinet', cat:'Residential', keyway:'National / cabinet & mailbox', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['National','Hudson','HON','Steelcase'],
-    notes:'Desk, file cabinet, mailbox and locker wafer locks. Most carry a stamped code (a 3-4 character number) that a code book turns straight into cuts. Faster than picking almost every time.' },
-
-
-  { id:'ra4', cat:'Automotive', keyway:'RA4 / RN-series', ilco:'1970AM', ilcoChip:'â€”', silca:'RN18', jma:'RN-4', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:5, makes:['AMC','Renault'],
-    notes:'The Renault-built AMC cars â€” Alliance and Encore â€” and the Renaults sold alongside them. Five shallow wafers; impressions well.' },
-
-
-  /* ---- automotive, third pass: the profiles the directory still missed ---- */
-  { id:'h72', cat:'Automotive', keyway:'H72', ilco:'H72', ilcoChip:'H72-PT', silca:'FO38', jma:'FO-15', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury','Mazda'],
-    notes:'The Ford 8-cut of the 1990s and 2000s â€” Windstar, Ranger, Explorer, Escape, Excursion. Sits right next to H75; the difference is the shoulder, so compare before you cut.' },
-  { id:'h62', cat:'Automotive', keyway:'H62 / H67', ilco:'H62', ilcoChip:'â€”', silca:'FO21', jma:'FO-6', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
-    notes:'Ford secondary, trunk and glovebox of the same era. Often a different cut from the ignition on the same car.' },
-  { id:'h74', cat:'Automotive', keyway:'H74 / H85', ilco:'H74', ilcoChip:'H85-PT', silca:'FO21', jma:'FO-24.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:5, makes:['Ford','Lincoln','Mercury'],
-    notes:'Later Ford 8-cut PATS variants around the H84 changeover.' },
-  { id:'hu198', cat:'Automotive', keyway:'HU198', ilco:'â€”', ilcoChip:'â€”', silca:'HU198', jma:'FO-42.P', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Ford','Lincoln'],
-    notes:'The other modern Ford laser profile alongside HU101 â€” European-built Fords and some Transit. Check the blade, not the badge.' },
-  { id:'b107', cat:'Automotive', keyway:'B107 / B108 / B109', ilco:'B107', ilcoChip:'B107-PT', silca:'GM40', jma:'GM-37.P', strattec:'â€”',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','GMC','Buick','Pontiac','Saturn'],
-    notes:'GM 10-cut variants either side of B106 and B111. The PT versions carry the PK3 chip.' },
-  { id:'b114', cat:'Automotive', keyway:'B114 / B116', ilco:'B114', ilcoChip:'â€”', silca:'GM45', jma:'GM-39.P', strattec:'â€”',
-    cut:'Edge', spaces:10, depths:4, makes:['Chevrolet','GMC','Buick','Cadillac'],
-    notes:'Late GM edge-cut variants before the range moved to the HU100 laser.' },
-  { id:'b84', cat:'Automotive', keyway:'B84 / B86 / B88', ilco:'B84', ilcoChip:'â€”', silca:'GM32', jma:'GM-26', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Chevrolet','GMC','Pontiac','Saturn','Geo'],
-    notes:'The 6-cut GM profiles from the 1980s and 90s, including the Saturn S-series.' },
-  { id:'toy47', cat:'Automotive', keyway:'TOY47 / TOY49 / TOY50', ilco:'TOY47', ilcoChip:'â€”', silca:'TOY47', jma:'TOYO-24', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Scion'],
-    notes:'Toyota edge-cut variants around TOY43 â€” secondary locks, valet keys and some export-market cars.' },
-  { id:'toy43r', cat:'Automotive', keyway:'TOY43R / TOY43AT', ilco:'TOY43R', ilcoChip:'TOY43AT4-PT', silca:'TOY43', jma:'TOYO-21', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Scion'],
-    notes:'The reversed TOY43. It looks like a TOY43 in the hand and will not turn â€” check the warding orientation before you cut.' },
-  { id:'hon58r', cat:'Automotive', keyway:'HON58R', ilco:'â€”', ilcoChip:'â€”', silca:'HON58R', jma:'HOND-18', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Honda','Acura'],
-    notes:'The reversed Honda profile. Same trap as TOY43R â€” it seats and does nothing.' },
-  { id:'y164', cat:'Automotive', keyway:'Y164', ilco:'Y164', ilcoChip:'Y164-PT', silca:'CY24', jma:'CHR-15.P', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Jeep','Ram'],
-    notes:'The Sentry Key head on the CY24 keyway. Same blade as Y160 and Y165 â€” the head is what differs, and what decides whether the chip talks.' },
-  { id:'y154', cat:'Automotive', keyway:'Y154 / Y156 / Y158', ilco:'Y154', ilcoChip:'â€”', silca:'CY22', jma:'CHR-6', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Chrysler','Dodge','Plymouth','Eagle'],
-    notes:'Chrysler variants filling in around Y155 and Y157, mostly secondary and trunk locks.' },
-  { id:'hu87', cat:'Automotive', keyway:'HU87 / SZ17 / SZ22', ilco:'â€”', ilcoChip:'â€”', silca:'HU87', jma:'SUZU-16.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Suzuki','Chevrolet','Geo'],
-    notes:'The Suzuki laser profile, which also turns up on the Suzuki-built Chevrolets. Not the same as the SZ14 bike blank.' },
-  { id:'hu133r', cat:'Automotive', keyway:'HU133R', ilco:'â€”', ilcoChip:'â€”', silca:'HU133R', jma:'HY-14.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Hyundai','Kia'],
-    notes:'The older Hyundai and Kia laser, before HY22 and KK12.' },
-  { id:'hu43', cat:'Automotive', keyway:'HU43 / HU46', ilco:'â€”', ilcoChip:'â€”', silca:'HU43 / HU46', jma:'OP-14.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Opel','Vauxhall','Saturn','Cadillac'],
-    notes:'Opel profiles that reached the US on the Saturn Astra and the Cadillac Catera. GM tool coverage often does not reach them.' },
-  { id:'ne73', cat:'Automotive', keyway:'NE73 / VAC102', ilco:'â€”', ilcoChip:'â€”', silca:'NE73 / VAC102', jma:'RN-23.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Renault','Fiat','Dacia'],
-    notes:'The modern Renault laser and the Fiat profile alongside it. Grey imports and rental fleets near the border.' },
-  { id:'gt15', cat:'Automotive', keyway:'GT15 / GT10', ilco:'â€”', ilcoChip:'â€”', silca:'GT15', jma:'FI-12', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Fiat','Iveco','Lancia'],
-    notes:'Fiat edge-cut before SIP22 took over. Shows up on older Ducato-based motorhomes.' },
-  { id:'te1', cat:'Automotive', keyway:'TE1 / TE2', ilco:'â€”', ilcoChip:'â€”', silca:'TE1', jma:'SEAT-1', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Seat','Volkswagen'],
-    notes:'Seat profiles in the VW family. Rare in the US, worth knowing on sight.' },
-  { id:'ym32', cat:'Automotive', keyway:'YM32 / YM28', ilco:'â€”', ilcoChip:'â€”', silca:'YM32', jma:'ME-14', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mercedes-Benz','Smart'],
-    notes:'The Smart Fortwo and the Mercedes vans that share its lock family, before the HU64 laser.' },
-  { id:'dwo5', cat:'Automotive', keyway:'DWO4 / DWO5 / DWO6', ilco:'DWO5', ilcoChip:'â€”', silca:'DW04', jma:'DAE-5', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Daewoo','Chevrolet','Suzuki'],
-    notes:'The wider Daewoo family behind the Aveo and the Suzuki-badged versions of the same cars.' },
-  { id:'saturn-s', cat:'Automotive', keyway:'Saturn S-series', ilco:'B88 / S-series', ilcoChip:'â€”', silca:'GM32', jma:'GM-26', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:4, makes:['Saturn'],
-    notes:'The 1991-2002 Saturn S-series ran its own profile before GM folded the brand onto B111 and B119. Plastic body panels, steel doors â€” the lock is normal even when the car is not.' },
-  { id:'toy2', cat:'Automotive', keyway:'TOY2 / TR47 secondary', ilco:'TR47', ilcoChip:'â€”', silca:'TOY40', jma:'TOYO-15', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Toyota','Lexus','Daihatsu','Geo'],
-    notes:'The older Toyota secondary and trunk profiles, including the Geo Prizm built alongside the Corolla.' },
-  { id:'nsn19', cat:'Automotive', keyway:'NSN19 / DA35', ilco:'â€”', ilcoChip:'â€”', silca:'NSN19', jma:'NE-38', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Nissan','Infiniti'],
-    notes:'Nissan variants around NSN14, mostly secondary locks and export-market cars.' },
-  { id:'mz39', cat:'Automotive', keyway:'MAZ20 / MZ39', ilco:'â€”', ilcoChip:'â€”', silca:'MAZ20', jma:'MAZ-20', strattec:'â€”',
-    cut:'Edge', spaces:8, depths:4, makes:['Mazda','Ford'],
-    notes:'Mazda profiles from the Ford partnership years, when a Mazda might carry a Ford blade and the other way round.' },
-  { id:'hu100t', cat:'Automotive', keyway:'HU100T / HU101R', ilco:'â€”', ilcoChip:'â€”', silca:'HU100T', jma:'â€”', strattec:'â€”',
-    cut:'Laser', spaces:10, depths:4, makes:['Ford','Volvo','Land Rover'],
-    notes:'Variants of the HU100 and HU101 laser families from the Ford-Volvo-Land Rover years. Measure the track spacing rather than trusting the badge.' },
-  { id:'sip22r', cat:'Automotive', keyway:'SIP22R / GT15R', ilco:'â€”', ilcoChip:'â€”', silca:'SIP22R', jma:'FI-16R.P', strattec:'â€”',
-    cut:'Laser', spaces:8, depths:4, makes:['Fiat','Alfa Romeo','Lancia','Iveco'],
-    notes:'The reversed SIP22. Third of the reversed-profile traps in this directory, and the same rule applies: check the orientation before the machine touches it.' },
-  { id:'ev-blade', cat:'Automotive', keyway:'EV emergency blades (assorted)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Laser', spaces:'', depths:'', makes:['Tesla','Rivian','Lucid','Polestar'],
-    notes:'Most EVs have no cylinder at all â€” Tesla is card and phone, Rivian and Lucid are fob and phone. Where a blade exists it is a valet or emergency blade for a door, never for starting. Plan the entry around that, not around a keyway.' },
-
-  /* ---- RESIDENTIAL, second pass ---- */
-  { id:'baldwin', cat:'Residential', keyway:'Baldwin (C / 5-pin)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Baldwin'],
-    notes:'Baldwin ships two ways: many are keyed to the Schlage C keyway and take an SC1, others run Baldwin own profile. Look at the warding before you assume â€” the escutcheon does not tell you.' },
-  { id:'emtek', cat:'Residential', keyway:'Emtek (KW1 or SC1)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Emtek','Schaub'],
-    notes:'Emtek does not have a keyway of its own. Each lock is built on a Kwikset or Schlage cylinder and the customer usually does not know which. Carry both.' },
-  { id:'builder-grade', cat:'Residential', keyway:'Builder grade (KW1 clones)', ilco:'1176', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Defiant','EZSET','Hampton Bay','Brinks','Gatehouse'],
-    notes:'Big-box house brands on the KW1 profile. Cheap cylinders, loose tolerances â€” they read badly on a decoder and often pick faster than they decode.' },
-  { id:'storm-door', cat:'Residential', keyway:'Storm & screen door', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Larson','Wright','EMCO','Andersen'],
-    notes:'Small wafer cylinders in the handle set, usually not keyed to the house. Most are sold as a keyed-alike pair with the mortise handle, so replacing the handle is often cheaper than originating.' },
-  { id:'patio-slider', cat:'Residential', keyway:'Sliding patio door', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Andersen','Pella','Milgard','Marvin'],
-    notes:'Patio slider mortise locks. The keyway varies by manufacturer and year; measure the mortise and the spindle before ordering, because the hardware is what gates the job, not the blank.' },
-  { id:'cluster-mailbox', cat:'Residential', keyway:'Cluster mailbox (tenant)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['CompX','Auth-Florence','Salsbury','Florence'],
-    notes:'The TENANT compartment lock, which is the property owner and yours to service. Not the USPS arrow lock on the same panel â€” see that record. Most are cam locks replaced rather than rekeyed.' },
-  { id:'garage-tbar', cat:'Residential', keyway:'Garage T-handle & overhead', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Chamberlain','Wayne Dalton','Clopay','Genie'],
-    notes:'T-handle and side-lock cylinders on overhead doors, plus the release lock. Wafer, usually coded on the plug face.' },
-  { id:'gunsafe', cat:'Safe & vault', keyway:'Gun safe & cabinet', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Stack-On','Sargent & Greenleaf','Liberty','Hornady'],
-    notes:'Key override on a gun safe or cabinet. VERIFY OWNERSHIP IN WRITING before you open one â€” this is the call most likely to come back on you, and the one where a photo of the ID next to the safe is worth the two minutes.' },
-  { id:'firesafe', cat:'Safe & vault', keyway:'Fire safe & lockbox', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['SentrySafe','Honeywell','First Alert'],
-    notes:'The little tubular or wafer key on a document safe. Most carry a code on the key or the latch; the manufacturer will cut one from the code with proof of purchase, which is often the honest answer.' },
-  { id:'abus-pad', cat:'Residential', keyway:'Abus padlock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:5, makes:['Abus'],
-    notes:'Abus padlocks, from the brass 55/65 series up to the Granit. The high-security ones are a different job entirely from the brass ones â€” check the body before quoting.' },
-  { id:'fox-segal', cat:'Residential', keyway:'Fox / Segal police lock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:5, makes:['Fox','Segal'],
-    notes:'The brace-bar and jimmy-proof locks on older urban apartments. Segal 667 rim cylinders are still made; Fox police locks often need the whole assembly. Vintage but very much still in service.' },
-  { id:'y11-res', cat:'Residential', keyway:'Y11 / Y13 / Yale 8-pin', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:8, makes:['Yale'],
-    notes:'Later Yale residential profiles past Y1 and Y2, including the 6-pin cylinders on deadbolts.' },
-
-
-  /* ---- RESIDENTIAL, third pass ---- */
-  { id:'sc2', cat:'Residential', keyway:'SC2 / SC6 / SC8 / SC9', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Schlage'],
-    notes:'The Schlage keyway family either side of SC1 and SC4. A house keyed alike on SC1 will still have an SC2 or SC9 somewhere in it â€” the garage entry and the side gate are where they turn up.' },
-  { id:'kw2', cat:'Residential', keyway:'KW2 / KW5 / KW14 / KW16 / KW17', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Kwikset'],
-    notes:'Kwikset sections other than KW1. Same depths and spacing; the warding is what stops the wrong one entering. Worth carrying a couple when a house will not key alike on KW1 alone.' },
-  { id:'wr2', cat:'Residential', keyway:'WR2 / WR4 / WR6', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Weiser'],
-    notes:'The rest of the Weiser sections beyond WR3 and WR5.' },
-  { id:'y4-res', cat:'Residential', keyway:'Y4 / Y54 / Y78', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:8, makes:['Yale'],
-    notes:'Yale sections beyond Y1 and Y2, mostly on apartment cylinders and older rim locks.' },
-  { id:'smartkey', cat:'Residential', keyway:'Kwikset SmartKey', ilco:'1176 (KW1 blade)', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Kwikset','Weiser','Baldwin'],
-    notes:'Takes a KW1 blade but does NOT pin like one. Rekeying is the learn tool plus the current working key, sixty seconds, no disassembly. Two things to know: a SmartKey that has been forced or bumped often will not accept the tool afterward, and there is no way to rekey it without a key that already works â€” no working key means a new cylinder.' },
-  { id:'securekey', cat:'Residential', keyway:'Schlage SecureKey', ilco:'1145 (SC1 blade)', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:10, makes:['Schlage'],
-    notes:'Schlage answer to SmartKey, on the SC1 blade. Rekeys with the reset key and the new key, no tool. Same limitation: you need a working key to do it.' },
-  { id:'smart-lock', cat:'Residential', keyway:'Smart lock key override', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['August','Yale','Schlage','Kwikset','Level','Ultraloq'],
-    notes:'The override cylinder is almost always a plain KW1 or SC1 and is the easy part. The job is usually the electronic side: a dead battery, a failed motor, or an owner locked out of an account. Some models have no cylinder at all â€” check before you drive. And a smart lock is tied to an account, so ownership matters more here than on a mechanical lock: get it in writing.' },
-  { id:'warded-bit', cat:'Residential', keyway:'Warded / bit / skeleton', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Antique','Mortise','Furniture'],
-    notes:'Interior doors and furniture in pre-war houses. No pins â€” a ward plate the key has to clear, which is why a skeleton set opens most of them. Sold as blanks you file to fit rather than cut on a machine. Low security by design; say so before the customer pays for a rekey that buys nothing.' },
-  { id:'privacy-bed-bath', cat:'Residential', keyway:'Privacy / bed-bath (no key)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Kwikset','Schlage','Weiser','Defiant'],
-    notes:'There is no key. The emergency release is a pin, a flat blade or a slot in the outside knob, and the whole call is usually a child or a confused lock, not a lockout. Two minutes and no parts. Charge the trip, not a rekey.' },
-  { id:'master-pad-family', cat:'Residential', keyway:'Master padlock family (M6-M17)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:5, makes:['Master Lock'],
-    notes:'The Master keyways beyond M1 â€” laminated padlocks, No. 3 and No. 5 bodies, and the keyed-alike series. Most carry a code stamped on the back of the body; with it you originate instead of picking, which on a rusted padlock is the difference between a job and an afternoon.' },
-  { id:'res-highsec', cat:'Residential', keyway:'Residential high security', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:6, makes:['Medeco','Mul-T-Lock','Abloy','Schlage'],
-    notes:'RESTRICTED, on a house. Medeco Maxum, Mul-T-Lock Cronus, Abloy and Schlage Primus deadbolts all exist in residential trim, and they are the same dealer-only situation as their commercial versions. If a customer wants keys copied, the answer is the dealer who holds the card, not the counter.' },
-  { id:'falcon-dexter', cat:'Residential', keyway:'Falcon / Dexter / Titan', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Falcon','Dexter','Titan'],
-    notes:'Second-tier residential brands. Titan is a Kwikset line and takes a KW1; Falcon residential follows the Schlage C; Dexter has its own. Confirm the blade rather than the brand plate.' },
-  { id:'window-sash', cat:'Residential', keyway:'Window, sash & sliding closet', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['Andersen','Pella','Milgard','Truth'],
-    notes:'Keyed window sash locks, vent latches and closet door locks. Tiny wafer cylinders, usually replaced rather than serviced, and usually cheaper to replace. Note keyed window locks are a code problem on a bedroom egress window â€” flag it rather than fitting one.' },
-  { id:'pool-gate', cat:'Residential', keyway:'Pool gate & self-closing latch', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:6, makes:['Magna-Latch','D&D','Nationwide','Master Lock'],
-    notes:'Pool barrier hardware is governed by code, not preference: self-closing, self-latching, latch height, and it must not be defeatable from outside the barrier. Whatever the customer asks for, the install has to still pass. In California the barrier rules sit in the Building Standards Code â€” check the current local requirement before you change a gate.' },
-
-  /* ---- COMMERCIAL ----
-     Much of this is restricted or patented: legal to service, but the blanks are
-     sold only to authorized dealers and duplication needs authorization. Where a
-     record says restricted, that is the job, not a footnote. */
-  { id:'best-sfic', cat:'Commercial', keyway:'Best A2 (A / A2 / A3 / A4)', ilco:'1A1A1', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:7, depths:10, makes:['Best','Falcon','Arrow','Stanley'],
-    notes:'Small format interchangeable core. Depths 0-9 in .0125 in increments, 6 or 7 pin. Two shear lines: the operating key turns the lock, the control key pulls the core and is cut differently. Falcon and Arrow SFIC follow the same figure-8 format.' },
-  { id:'schlage-everest', cat:'Commercial', keyway:'Schlage Everest / Primus', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Schlage'],
-    notes:'RESTRICTED. Everest adds an undercut check pin; Primus adds a finger-pin sidebar cut on the flat of the blade. Neither duplicates on a standard machine, and blanks come from an authorized dealer against the end user on file. Identify it and quote the dealer route rather than promising a key.' },
-  { id:'medeco', cat:'Commercial', keyway:'Medeco Original / Biaxial / M3', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:6, makes:['Medeco'],
-    notes:'RESTRICTED and patented. Cuts are angled left, right or centre, and Biaxial adds fore/aft elevation, so a key is a depth plus a rotation plus a position. Needs a Medeco-capable machine and dealer authorization. M3 adds a slider.' },
-  { id:'sargent', cat:'Commercial', keyway:'Sargent LA / LB / RA / RL', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Sargent'],
-    notes:'Sargent 6-pin. The two-letter keyway is stamped on the bow of the original â€” read it before ordering.' },
-  { id:'corbin', cat:'Commercial', keyway:'Corbin Russwin 59A1 / D1 / L4', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Corbin Russwin'],
-    notes:'Corbin Russwin 6-pin, and the Pyramid restricted system above it. 59A1 is the common open keyway.' },
-  { id:'yale-comm', cat:'Commercial', keyway:'Yale 8-series / para-centric', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Yale'],
-    notes:'Yale commercial. The para-centric warding is what makes these unpleasant to pick; a decoded key beats a tension wrench here.' },
-  { id:'multlock', cat:'Commercial', keyway:'Mul-T-Lock (Classic / Interactive / MT5+)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Mul-T-Lock'],
-    notes:'RESTRICTED dimple system with telescoping pin-in-pin. Cut on a dimple machine, not a standard duplicator. MT5+ adds an alpha spring and is dealer-only against a card.' },
-  { id:'abloy', cat:'Commercial', keyway:'Abloy / Protec2 (disc detainer)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Abloy','Assa Abloy'],
-    notes:'RESTRICTED. Rotating discs, no pins and no springs, so standard picks and the usual decoding do nothing. Needs an Abloy-specific machine and authorization. Common on utility, telecom and marine cabinets.' },
-  { id:'assa', cat:'Commercial', keyway:'ASSA Twin / Kaba Peaks', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['ASSA','Kaba','Ilco'],
-    notes:'RESTRICTED high-security with a second sidebar track alongside the normal cuts. Dealer-only blanks.' },
-  { id:'usps-arrow', cat:'Commercial', keyway:'USPS arrow lock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['USPS'],
-    notes:'DO NOT SERVICE. The arrow lock on a cluster box or apartment mailbox panel belongs to the Postal Service, not the property. Tenant compartment locks are yours; the master panel is a Postal Inspector matter. Send the customer to their post office.' },
-  { id:'elevator', cat:'Commercial', keyway:'Elevator / fire service (FEO-K1, 2642)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Elevator','Fire service'],
-    notes:'FEO-K1 is the standardized fire-service key required by code in most jurisdictions; 2642 and the CH751 family cover a lot of control cabinets. Sale is restricted in some states â€” check yours before stocking them.' },
-  { id:'display-case', cat:'Commercial', keyway:'Display case / showcase & vending', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['Illinois','CompX','Chicago','Vending'],
-    notes:'Retail showcase, vending and pop-machine tubular and wafer locks. Almost always coded on the plug face; a code book and a code machine finish these in minutes.' },
-
-  /* ---- COMMERCIAL, second pass ---- */
-  { id:'adams-rite', cat:'Commercial', keyway:'Adams Rite storefront', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:10, makes:['Adams Rite','Storefront'],
-    notes:'Aluminum storefront: MS1850 deadbolt, 4510/4710 deadlatch. The cylinder is usually a standard mortise or rim in whatever keyway the building runs, so the keyway is not the problem â€” the cam, the backset and the 31/32 vs 1-1/8 cylinder length are. Measure before you drive.' },
-  { id:'rim-cyl', cat:'Commercial', keyway:'Rim cylinder / exit device', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Von Duprin','Detex','Precision','Jackson'],
-    notes:'The cylinder in a panic bar or a rim latch, on whatever keyway the building uses. Bring the right tailpiece: Von Duprin, Adams Rite and Detex are not interchangeable, and the wrong one turns a five-minute job into a return trip.' },
-  { id:'simplex', cat:'Commercial', keyway:'Kaba Simplex (key override)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Kaba','Simplex','Unican'],
-    notes:'Mechanical pushbutton locks. There is no code to recover â€” the combination lives in the mechanism. The key override cylinder is the way in, and on many models it is a standard mortise cylinder in the building keyway.' },
-  { id:'marks', cat:'Commercial', keyway:'Marks USA', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Marks USA'],
-    notes:'Marks mortise locks, common on apartment entry and light commercial in the northeast.' },
-  { id:'yale-keymark', cat:'Commercial', keyway:'Yale Keymark', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Yale'],
-    notes:'RESTRICTED. Yale patented system with a sidebar. Dealer-only blanks against the end user on file.' },
-  { id:'sargent-sig', cat:'Commercial', keyway:'Sargent Signature / Degree / XC', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Sargent'],
-    notes:'RESTRICTED Sargent above the open LA/LB keyways. Signature and XC add a sidebar and are dealer-only.' },
-  { id:'knoxbox', cat:'Commercial', keyway:'Knox Box / fire department', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Knox','Fire department'],
-    notes:'DO NOT SERVICE. The Knox Box on a commercial building is keyed to the local fire department master, and that key is issued to the department, not to the trade. If a customer wants one opened or rekeyed, it goes through the fire department that authorized it. You may be asked to mount the box; you are not the one who keys it.' },
-  { id:'locker', cat:'Commercial', keyway:'Locker locks', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['Master Lock','Hudson','Penco','American Locker'],
-    notes:'Built-in locker locks, gym and school. Master 1652 and 1653 are the common ones and carry a stamped code; a code book and a code machine beat picking a whole bank of them.' },
-  { id:'vending-t', cat:'Commercial', keyway:'Vending T-handle', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Eagle','Kaba','Vending','Amusement'],
-    notes:'The plunger T-handle on vending, amusement and car-wash equipment. Usually tubular, often keyed alike across an operator route â€” which is why the operator, not the location, is the one who authorizes work on it.' },
-  { id:'safe-deposit', cat:'Safe & vault', keyway:'Safe deposit (dual key)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','Bank'],
-    notes:'RESTRICTED, and a legal matter before it is a locksmith one. Two locks, guard and renter, and drilling one is done for the institution under its own procedure with documentation. Never on a walk-in request.' },
-  { id:'cliq', cat:'Commercial', keyway:'Electromechanical (CLIQ / XT / eCylinder)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['ASSA','Medeco','Abloy','Mul-T-Lock'],
-    notes:'RESTRICTED. A mechanical key with a chip and an audit trail. Access is granted and revoked in software, so a lost key is a database change, not a rekey â€” which is the answer the customer usually wants to hear. Needs the dealer and the system owner.' },
-  { id:'compx-office', cat:'Commercial', keyway:'CompX / Olympus office cam', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['CompX','Olympus','Timberline','Chicago'],
-    notes:'Office furniture, casework, and the removable-core cam locks in built-in cabinetry. Almost always code-stamped on the plug or the housing; the code series tells you the whole system at once.' },
-
-  /* ---- COMMERCIAL, third pass ---- */
-  { id:'schlage-l', cat:'Commercial', keyway:'Schlage L-series mortise / Classic C', ilco:'1145', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Schlage'],
-    notes:'The Schlage commercial mortise line. The cylinder is usually a plain Classic C on an SC1 blade, so the keying is easy; the work is the mortise body, the cam and the function. Get the function right before you order â€” an office lock and a storeroom lock look identical from the corridor.' },
-  { id:'lfic', cat:'Commercial', keyway:'Large format IC (Schlage / Corbin / Sargent)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Schlage','Corbin Russwin','Sargent','Yale'],
-    notes:'Full-size interchangeable core, the other IC format alongside Best small-format. Same idea â€” a control key pulls the core â€” but the cores are not interchangeable between formats or usually between makers. Identify the format before ordering cores, because a figure-8 will not go in a full-size housing.' },
-  { id:'alarm-lock', cat:'Commercial', keyway:'Alarm Lock Trilogy / DL-series', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:6, depths:10, makes:['Alarm Lock','Napco'],
-    notes:'Pushbutton access locks with a key override. Like Simplex, the codes live in the lock, but unlike Simplex these are electronic and hold a user database â€” a lost programming code is a factory-reset conversation, and the reset wipes every user. The override cylinder is usually a standard mortise in the building keyway.' },
-  { id:'hotel-lock', cat:'Commercial', keyway:'Hotel locks (Onity / Saflok / VingCard / Salto)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Onity','Saflok','VingCard','Salto','dormakaba'],
-    notes:'Card and mobile systems with a mechanical override. The override is the property emergency key and is controlled by the property, not the guest â€” work on these goes through hotel management and their system vendor. Encoders and master cards are the property system, not something you carry.' },
-  { id:'self-storage', cat:'Commercial', keyway:'Self-storage (disc padlock / overlock)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Master Lock','Abus','Trimax','Storage'],
-    notes:'Disc padlocks and cylinder locks on roll-up doors, plus the facility overlock. VERIFY WITH THE FACILITY, not the person at the door: units get overlocked for non-payment and the tenant is not always the one entitled to entry. Disc padlocks are usually drilled or cut rather than picked.' },
-  { id:'cash-drawer', cat:'Commercial', keyway:'Cash drawer / POS / register', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['APG','MMF','Star','Sharp','Casio'],
-    notes:'Till and register locks, usually a small wafer cylinder with a code stamped on the plug or the drawer face. Most are keyed alike across a model line, which is a fact worth telling a customer who thinks the till is secure.' },
-  { id:'coin-laundry', cat:'Commercial', keyway:'Coin-op laundry & vending route', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Greenwald','ESD','Speed Queen','Maytag'],
-    notes:'Coin boxes, meter cases and slide locks in laundromats and apartment laundry rooms. Route-keyed across an operator, so the route operator authorizes the work â€” not the building, and not the tenant standing there.' },
-  { id:'utility-muni', cat:'Commercial', keyway:'Utility & municipal cabinets', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Traffic','Water','Streetlight','Municipal'],
-    notes:'Traffic signal cabinets, water meter pits, streetlight bases and irrigation controllers. Many are the standard #2 key or a CH751 family lock and are barely locked at all â€” but they are public infrastructure, so the authority that owns them is the one who asks for the work.' },
-  { id:'telecom-ped', cat:'Commercial', keyway:'Telecom pedestal & utility enclosure', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Telecom','Cable','Fiber'],
-    notes:'The green pedestals and cabinets in easements. Carrier property on a standard key across a whole network â€” the carrier is the customer, always. If a homeowner asks you to open the one on their lawn, the answer is the carrier.' },
-  { id:'fuel-dispenser', cat:'Commercial', keyway:'Fuel dispenser & forecourt', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Gilbarco','Wayne','Bennett','Tokheim'],
-    notes:'Dispenser doors, nozzle cabinets and the tank monitor. Historically keyed alike by manufacturer, which is exactly why skimmers were a problem and why many sites have since been rekeyed to unique cylinders. Site owner or the fuel operator authorizes, and expect to be asked for credentials.' },
-  { id:'safe-lock', cat:'Safe & vault', keyway:'Safe locks (S&G / LaGard / Kaba Mas)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Sargent & Greenleaf','LaGard','Kaba Mas','Safe'],
-    notes:'RESTRICTED and mostly not a key at all â€” dial, electronic keypad, or a key-locking dial as a secondary. Kaba Mas X-09 and X-10 are government-spec containers and are their own credentialed world. Safe work is a separate trade inside the trade: know which side of that line you are on before quoting.' },
-  { id:'atm-lock', cat:'Safe & vault', keyway:'ATM & cash handling', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Diebold','NCR','Triton','Hyosung'],
-    notes:'RESTRICTED. Two compartments with two very different answers: the top box is service access, the safe below is safe work under the owner procedure with documentation and usually a witness. Never on a walk-in request, and never without the owning institution or ISO in the loop.' },
-  { id:'detention', cat:'Commercial', keyway:'Detention hardware', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Folger Adam','Southern Steel','Willo','Detention'],
-    notes:'RESTRICTED and a specialty. Jails, courthouses, secure hospital wards. Enormous paracentric keys, mogul cylinders, and hardware rated for deliberate abuse. Work is contracted through the facility and its security integrator, with background checks. Not a walk-in job and not a job to learn on.' },
-  { id:'key-cabinet', cat:'Commercial', keyway:'Key control cabinets', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['Telkee','Morse Watchmans','HPC','Lund'],
-    notes:'The cabinet the building keys live in, which is the single highest-value target in most facilities. Worth pointing out on a survey: a good master system behind a cheap cabinet lock is not a good master system.' },
-  { id:'construction-keying', cat:'Commercial', keyway:'Construction keying (lost-ball / breakaway)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['Best','Schlage','Sargent','Corbin Russwin'],
-    notes:'Not a keyway â€” the technique that lets a building be keyed for trades during construction and handed over without a rekey. Lost-ball drops a ball bearing into a chamber that the owner key displaces permanently; breakaway keys snap off at a groove. Either way the construction key stops working the first time the owner key is used, which is the whole point. Confirm which system was specified before the handover, because doing it wrong means rekeying the building.' },
-  { id:'bilock-evva', cat:'Commercial', keyway:'BiLock / EVVA / DOM / Ikon', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Other', spaces:'', depths:'', makes:['BiLock','EVVA','DOM','Ikon'],
-    notes:'RESTRICTED high security beyond the usual US names. BiLock runs two rows of sidebar pins on a U-shaped key; EVVA and DOM are European magnetic and dimple systems. Rare in the US, dealer-only everywhere, and not something to attempt to duplicate on standard equipment.' },
-  { id:'server-cabinet', cat:'Commercial', keyway:'Server rack & equipment cabinet', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:4, depths:4, makes:['Southco','CompX','APC','Chatsworth'],
-    notes:'Rack doors, wall enclosures and equipment panels. Almost universally keyed alike from the factory â€” 333, 222 and similar are famous for it â€” so a data room may be no more locked than its cabinet catalogue. Worth raising on a survey.' },
-  { id:'rollup-door', cat:'Commercial', keyway:'Roll-up & overhead commercial door', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:5, depths:4, makes:['Overhead Door','Cookson','Janus','Wayne Dalton'],
-    notes:'Slide bolts, chain keepers and cylinder locks on warehouse and storage roll-ups. The cylinder is often a standard mortise or rim in the building keyway; the hardware around it is what varies. Check the door is not under spring tension before you start taking things off it.' },
-
-  /* ---- UTILITY, ENCLOSURE AND ODDS-AND-ENDS ----
-     The rows that are not a car, not a house door and not commercial door
-     hardware: padlocks, enclosures, furniture, toolboxes and the coin-op world.
-     Catalog numbers are left blank wherever there is nothing to cite; on most of
-     these the useful fact is where the code is stamped, not what the blank is
-     called. */
-  { id:'barrel-utility', cat:'Utility', keyway:'Barrel / bayonet (utility)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Barrel', spaces:'', depths:'', makes:['Highfield','McGard','Utility','Municipal'],
-    notes:'A hollow barrel key on a spring latch, not a pinned cylinder. Gas meters, parking meters, curb boxes and coin boxes. There is nothing to pick in the usual sense and nothing to impression â€” you match the barrel diameter and the tip, so carry the set rather than planning to originate one.' },
-  { id:'gasmeter-lock', cat:'Utility', keyway:'Gas & water meter barrel lock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Barrel', spaces:'', depths:'', makes:['Utility','Municipal'],
-    notes:'DO NOT SERVICE without the utility. A locked gas meter is locked because the utility locked it, usually for non-payment or a safety condition, and cutting it off is their call and sometimes a criminal matter. The honest answer on site is the utility phone number.' },
-  { id:'hydrant', cat:'Utility', keyway:'Fire hydrant & standpipe', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Pentagon / special', spaces:'', depths:'', makes:['Municipal','Fire'],
-    notes:'DO NOT SERVICE. Hydrant caps, locking hydrants and standpipe valves belong to the water district and the fire department. Opening one is a code violation and in a drought jurisdiction a citable offense. Refer it to the district.' },
-  { id:'penta-socket', cat:'Utility', keyway:'Pentahead / penta socket', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Not a key â€” a socket', spaces:'', depths:'', makes:['Utility','Municipal','Electrical'],
-    notes:'Padmount transformers, meter pedestals, irrigation vaults and traffic cabinets often use a five-sided head rather than a lock. It is a wrench, not a key, and no amount of picking helps. On a live electrical enclosure it also stays shut: that is the utility, not you.' },
-  { id:'ev-charger', cat:'Utility', keyway:'EV charging station & pedestal', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies â€” often a cam or tubular', spaces:'', depths:'', makes:['ChargePoint','Tesla','EVgo','Blink'],
-    notes:'The service door on a public charger, and the cable retention lock on some. Network property, so a call about one is nearly always the site owner needing the enclosure opened for a contractor. Most use an ordinary cam or tubular lock rather than anything exotic.' },
-  { id:'irrigation-box', cat:'Utility', keyway:'Irrigation & backflow enclosure', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies', spaces:'', depths:'', makes:['Municipal','Landscape'],
-    notes:'Backflow cages, valve boxes and controller cabinets on commercial landscape and school grounds. Usually a cheap padlock or a cam lock, often a whole district keyed alike â€” ask the grounds supervisor before you rekey one out of the set.' },
-
-  /* ---- padlocks the directory did not reach ---- */
-  { id:'wilson-bohannan', cat:'Utility', keyway:'Wilson Bohannan brass padlock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Wilson Bohannan','Utility','Municipal'],
-    notes:'The brass padlock utilities, ports and municipalities buy by the pallet, made in Ohio since 1860. Almost always ordered keyed alike or in a master system across an entire agency, so the question is never "what does this key" but "whose system is this".' },
-  { id:'sg-padlock', cat:'Utility', keyway:'Sargent & Greenleaf padlock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Sargent & Greenleaf','Government'],
-    notes:'RESTRICTED in practice. The 951 and 833 series are government and defense hardware with controlled keyways. Not something you originate; the agency has its own channel.' },
-  { id:'consumer-pad', cat:'Utility', keyway:'Consumer padlock (Brinks / Stanley / Squire / Hillman)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Brinks','Stanley','Squire','Hillman'],
-    notes:'Big-box padlocks below the Master and American tiers. Shallow keying, loose tolerances and often a code stamped on the back of the body. Price the trip honestly: the lock cost eight dollars and the customer knows it, so a cut key is frequently a worse deal for them than a new lock.' },
-  { id:'bike-lock', cat:'Utility', keyway:'Bike & cable lock (Kryptonite / OnGuard / Abus)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Flat / tubular / dimple', spaces:'', depths:'', makes:['Kryptonite','OnGuard','Abus','Kensington'],
-    notes:'U-locks, folding locks and cable locks. Most carry a key code on the key and a registration program that will mail a replacement, which is cheaper and faster than anything you can do on site â€” say so. VERIFY OWNERSHIP: a bike locked to a public rack is the classic theft scenario, so paperwork or nothing.' },
-  { id:'medeco-pad', cat:'Utility', keyway:'Medeco & Best padlock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Angled / SFIC', spaces:6, depths:'', makes:['Medeco','Best','Abloy'],
-    notes:'RESTRICTED. High-security padlocks carrying the same cylinder as the door hardware â€” a Medeco padlock is a Medeco cylinder in a shackle, and a Best padlock takes the building SFIC core. If the building is on a system, the padlock is on the system too.' },
-
-  /* ---- furniture, casework and office ---- */
-  { id:'ace-tubular', cat:'Utility', keyway:'Ace / Chicago tubular', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Tubular', spaces:7, depths:'', makes:['Chicago Lock','Ace','Vending','Amusement'],
-    notes:'Seven pins in a circle around a hollow post. Vending, amusement, bar coolers, gun cabinets and older coin equipment. A tubular pick opens most of them in seconds, which is the whole reason nothing valuable should be behind one â€” worth telling a customer who is about to store cash behind one.' },
-  { id:'file-cabinet', cat:'Utility', keyway:'Office file cabinet (HON / Steelcase / Herman Miller)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer', spaces:'', depths:'', makes:['HON','Steelcase','Herman Miller','Anderson Hickey','Global'],
-    notes:'The single most common office call, and the easiest: the code is nearly always stamped on the plug face or the lock body, and the manufacturer will sell a key by code. Pull the drawer above and read the back of the cylinder before you set up to pick anything.' },
-  { id:'fort-esp', cat:'Utility', keyway:'Fort / ESP / Illinois cabinet', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer', spaces:'', depths:'', makes:['Fort','ESP','Illinois','Timberline'],
-    notes:'The other casework cylinder families beyond National and CompX. Same story: read the code off the lock. ESP and Timberline both use removable cores, so a rekey is a core swap rather than a repin.' },
-  { id:'desk-piano', cat:'Utility', keyway:'Desk, piano & antique furniture', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Bit / warded / flat', spaces:'', depths:'', makes:['Furniture','Antique'],
-    notes:'Roll-top desks, piano fallboards, secretary drawers and steamer trunks. Mostly warded, so a bit key or a blank filed to fit does it. On a valuable piece do not force anything â€” the lock is worth less than the veneer around it, and a split escutcheon is the expensive part.' },
-
-  /* ---- truck, toolbox and cargo ---- */
-  { id:'toolbox-truck', cat:'Utility', keyway:'Truck toolbox (Delta / Weather Guard / Knaack)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer / tubular', spaces:'', depths:'', makes:['Delta','Weather Guard','Knaack','UWS','Dee Zee'],
-    notes:'Crossover boxes, side boxes and jobsite chests. A steady trade call, because the key lives on the ring that just went missing with the truck keys. Codes are usually stamped on the latch or the lock face, and most brands sell by code. Knaack jobsite boxes commonly run a whole crew keyed alike.' },
-  { id:'roof-rack', cat:'Utility', keyway:'Roof rack & cargo box (Thule / Yakima)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer', spaces:'', depths:'', makes:['Thule','Yakima','Rhino-Rack'],
-    notes:'Thule One-Key and Yakima SKS cores are numbered and sold by code, so a lost key is a parts order rather than a decode. The number is on the key and stamped on the core face. A whole rack, box and bike carrier set is usually one code.' },
-  { id:'wheel-lock', cat:'Utility', keyway:'Wheel lock & lug key (McGard)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Not a key â€” a socket pattern', spaces:'', depths:'', makes:['McGard','Gorilla','Vehicle'],
-    notes:'The keyed lug nut and the spare-tire lock. Not a lock in the pinned sense: a splined socket in a numbered pattern. The number is on the key. Without it this is a wheel-shop extraction job, not a locksmith one, and saying so on the phone saves everyone a trip.' },
-  { id:'gas-cap', cat:'Utility', keyway:'Locking fuel cap & fuel door', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer', spaces:'', depths:'', makes:['Stant','Vehicle','Fleet'],
-    notes:'Aftermarket locking gas caps on fleet trucks, and factory locking fuel doors. Cheap wafer cylinders that seize from weather more often than they get locked out. On a fleet, expect the whole yard keyed alike.' },
-
-  /* ---- coin-op and amusement ---- */
-  { id:'arcade-jukebox', cat:'Utility', keyway:'Arcade, jukebox & pinball', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer / tubular', spaces:'', depths:'', makes:['Amusement','Route'],
-    notes:'Coin doors, backglass locks and cash boxes on route equipment. Operators run whole routes keyed alike so one technician can service a county. Restoration owners are the other half of this trade and usually want a set made from one surviving key.' },
-  { id:'gaming-lock', cat:'Utility', keyway:'Gaming & slot machine', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies', spaces:'', depths:'', makes:['Gaming'],
-    notes:'RESTRICTED and regulated. Slot and gaming cabinet locks sit under state gaming commission rules, and the drop box is a separate compartment with separate custody. Licensed operators only â€” refer it.' },
-
-  /* ---- gates, access and misc ---- */
-  { id:'gate-operator', cat:'Utility', keyway:'Gate operator & entry controller', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies â€” often a cam lock', spaces:'', depths:'', makes:['LiftMaster','DoorKing','FAAC','Nice'],
-    notes:'The operator housing, the control cabinet and the manual release. On a community gate the release key is often a common one across a whole HOA, and the fire department needs its own access â€” usually a Knox Box or a click-to-enter radio, which is not your call to duplicate.' },
-  { id:'luggage-tsa', cat:'Utility', keyway:'Luggage & TSA-approved', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Flat / wafer', spaces:'', depths:'', makes:['Travel Sentry','Samsonite','Luggage'],
-    notes:'Two locks in one case. The consumer key is a shallow wafer or flat key with a code on it. The TSA override is a controlled master set issued to screeners, not to locksmiths, and no legitimate supplier sells you one. On a locked bag the honest answers are the manufacturer code, a shim, or the zipper.' },
-  { id:'ski-cable', cat:'Utility', keyway:'Cargo strap & accessory cable', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Flat / wafer', spaces:'', depths:'', makes:['Accessory'],
-    notes:'The small numbered cylinders on ski and bike racks, cargo straps, trailer cable locks and generator tethers. Nearly all are sold by code with the number on the key, so the fix is a parts order and a five-minute swap.' },
-  { id:'church-chain', cat:'Utility', keyway:'Institutional padlock & chain set', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['School','Church','Camp','Municipal'],
-    notes:'The dozens of padlocks a school, church or camp runs on gates, sheds, dumpsters and fence lines. Almost never one key, and almost always meant to be. This is a keying job disguised as a lockout: the useful sell is a small master system, not another cut key.' },
-  { id:'handcuff', cat:'Utility', keyway:'Handcuff & restraint', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Barrel / flat', spaces:'', depths:'', makes:['Law enforcement'],
-    notes:'The standard civilian pattern is deliberately universal so any officer can release any cuff, and high-security restraints use their own. VERIFY THE SITUATION before you touch it: a person in restraints who is not in custody is a welfare call and possibly a police one, and a set of cuffs with nobody in them is a five-dollar key from any duty-gear supplier.' },
-  { id:'utility-trailer', cat:'Utility', keyway:'Utility trailer & equipment tether', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer / disc', spaces:'', depths:'', makes:['Trailer','Rental','Fleet'],
-    notes:'Ramp-door locks, toolbox tongues, generator cages and the anti-theft pins on rental equipment. Rental yards run everything keyed alike and will have the code; the paperwork is usually easier to find than the lock is to pick.' },
-
-  /* ---- SAFE AND VAULT ----
-     The key-operated side of safe work. Almost none of these have a blank you
-     order from a catalog: the legitimate route to a key is the serial number and
-     the manufacturer, which is why the rows carry where the serial lives instead
-     of a part number. Several are refusals. */
-  { id:'sg-key-changeable', cat:'Safe & vault', keyway:'Sargent and Greenleaf key-changeable safe lock', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Flat / double-bitted', spaces:'', depths:'', makes:['Sargent & Greenleaf','Safe'],
-    notes:'A key-operated safe lock rather than a dial, and a key-changeable one at that: the key both operates it and sets the combination of cuts. Two keys ship with it and losing both is the whole problem. The lock body carries a serial; S&G will supply by serial to a registered locksmith with proof of ownership. Not a blank you originate at the van.' },
-  { id:'safe-keylock-dial', cat:'Safe & vault', keyway:'Key-locking dial ring', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Flat / wafer', spaces:'', depths:'', makes:['Sargent & Greenleaf','LaGard','Safe'],
-    notes:'A small cylinder in the dial ring that stops the dial turning even with the right combination. It is a secondary lock, not the safe lock: defeating it gets you a dial you still cannot open without the combination. The code is usually stamped on the ring or the cylinder plug.' },
-  { id:'depository-safe', cat:'Safe & vault', keyway:'Depository & drop safe', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Wafer / tubular', spaces:'', depths:'', makes:['Perma-Vault','American Security','Hollon','Safe'],
-    notes:'Two compartments and often two different answers. The drop slot and the upper door are commonly a plain wafer or tubular key with a code on the plug; the money compartment below may be dial or dual-key. Restaurants and car washes use these heavily and lose the upper key constantly. Establish which compartment the caller means before you quote.' },
-  { id:'wall-floor-safe', cat:'Safe & vault', keyway:'Wall & floor safe', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies â€” often flat or tubular', spaces:'', depths:'', makes:['Star','Meilink','Perma-Vault','Gardall'],
-    notes:'In-wall and in-floor units, many of them decades old and installed by a builder who is long gone. Older Star and Meilink bodies carry a serial cast or stamped into the door edge. A floor safe under carpet is frequently full of water â€” worth warning the owner before you open it.' },
-  { id:'consumer-keysafe', cat:'Safe & vault', keyway:'Consumer safe key override (Sentry / First Alert / Stack-On)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Flat / tubular / wafer', spaces:'', depths:'', makes:['SentrySafe','First Alert','Honeywell','Stack-On','Barska'],
-    notes:'The box-store safe with a keypad and a key override behind a badge or a rubber plug. Codes are stamped on the key and the manufacturers sell replacements by that code direct to the owner for a few dollars â€” often the honest answer, and faster than a call-out. VERIFY OWNERSHIP: a portable safe in the back of a car is the classic stolen-property presentation.' },
-  { id:'gun-safe-override', cat:'Safe & vault', keyway:'Gun safe key override (Liberty / Cannon / Winchester)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Tubular / flat', spaces:'', depths:'', makes:['Liberty','Cannon','Winchester','Fort Knox','Browning'],
-    notes:'VERIFY OWNERSHIP IN WRITING. A gun safe is the one call where getting this wrong arms someone. Most residential gun safes use an electronic lock with a key override behind the dial or logo plate, and the override is usually a tubular or double-bitted key with a code the manufacturer will match to the safe serial for the registered owner. Serial is on the door edge, the back, or under the carpet inside.' },
-  { id:'hotel-room-safe', cat:'Safe & vault', keyway:'Hotel room safe override', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Tubular / flat', spaces:'', depths:'', makes:['Elsafe','SafeMark','Onity','Assa Abloy'],
-    notes:'In-room safes carry a property override â€” a master key or a manager code held at the front desk. The property, not the guest, controls it. A guest-side lockout is a front-desk problem; a call from the property is legitimate and is usually about a lost override across a whole floor.' },
-  { id:'antique-safe', cat:'Safe & vault', keyway:'Antique safe & money chest', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Bit / warded', spaces:'', depths:'', makes:['Mosler','Diebold','Herring-Hall-Marvin','York','Safe'],
-    notes:'Pre-war safes and money chests, many on warded bit locks rather than pins, and many with painted decoration worth more than the safe. Restoration and estate work. Do not force one: the door casting and the pinstriping are the value, and a collector will pay more for a locked original than a forced open one. Antique safe specialists exist and a referral is often the right answer.' },
-  { id:'pharmacy-narcotics', cat:'Safe & vault', keyway:'Pharmacy & narcotics safe', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies', spaces:'', depths:'', makes:['Pharmacy','Medical'],
-    notes:'RESTRICTED. Controlled-substance storage is governed by DEA rules and the pharmacy has a documented procedure with dual custody and a witness. Work happens with the pharmacist in charge present and on their paperwork, or it does not happen. Never open one on a verbal request, including from staff.' },
-  { id:'realestate-lockbox', cat:'Safe & vault', keyway:'Real estate lockbox (Supra / SentriLock)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'n/a â€” electronic', spaces:'', depths:'', makes:['Supra','SentriLock','Realtor'],
-    notes:'DO NOT SERVICE. Supra iBox and SentriLock are board-controlled electronic systems tied to a Realtor membership and an audit trail of who opened which listing when. Opening one outside that system defeats the record the whole industry relies on. The listing agent or the local board is the answer. The plain mechanical combination lockboxes people also use are a different thing entirely.' },
-  { id:'vault-door', cat:'Safe & vault', keyway:'Vault door & day-gate', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','Vault'],
-    notes:'A vault door is not a big safe: it has a day-gate, a time lock or relocker in many cases, and an interior release so nobody gets shut in. Bank and jeweler work, on the institutions own procedure and usually their own contracted service company. Confirm nobody is inside before anything else.' },
-  { id:'safe-relocker', cat:'Safe & vault', keyway:'Relocker & glass plate (no key)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'n/a', spaces:'', depths:'', makes:['Safe'],
-    notes:'Not a lock and not a key â€” a booby trap for attack. A tempered glass plate or a spring relocker fires and permanently jams the boltwork if the safe is drilled or shocked. Worth knowing it exists before anyone starts on a safe: a fired relocker turns an opening into a cutting job and a repair bill, and it is the reason safe work is a specialty and not a lockout.' },
-  { id:'safe-serial-plate', cat:'Safe & vault', keyway:'Serial number & manufacturer code', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'n/a', spaces:'', depths:'', makes:['Safe','Vault'],
-    notes:'The single most useful thing on a safe, and the reason this category carries no part numbers. Nearly every manufacturer will supply a key or combination by serial to a verified owner or a registered locksmith, and that route is cheaper, faster and leaves the safe intact. Look on the door edge, behind the dial ring, on the hinge side, inside the door panel, on the back, and under the carpet on the floor. Photograph it and the data plate before you quote anything.' },
-
-  /* ---- IMPORT AND UNCOMMON ----
-     Profiles and mechanisms that are not on a US van by default. Some of these
-     genuinely turn up on the Central Coast â€” Euro profile cylinders on modern
-     architecture, JDM imports past the 25-year rule, imported multipoint patio
-     doors. Others you will most likely never meet, and the row says so: the
-     point of a reference is that when the one call in five years arrives you
-     know what you are looking at instead of guessing. */
-  { id:'cruciform', cat:'Import & uncommon', keyway:'Cruciform / cross (Zeiss / Elzett / CISA)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Cross â€” three or four wings', spaces:'', depths:'', makes:['Zeiss','Elzett','CISA','Fiat','Lada'],
-    notes:'A key with three or four blades at right angles, each reading its own row of pins. Eastern European and Italian door hardware, older Fiat and Lada, and a lot of bike locks. Distinctive enough that you will know it on sight. Standard picks do not fit; the tooling is cruciform-specific and cheap.' },
-  { id:'brit-lever', cat:'Import & uncommon', keyway:'British lever lock (Chubb / Union / ERA / Legge)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Lever â€” a bit key, not a pin key', spaces:'', depths:'', makes:['Chubb','Union','ERA','Legge','Yale UK'],
-    notes:'Levers rather than pins: a bit key lifts a stack of levers to align a gate. The five-lever BS3621 mortise deadlock is the British standard front-door lock and the thing an insurer requires there. Turns up on imported hardware in high-end homes and on anything shipped from the UK. Nothing in a US pin kit applies â€” different mechanism, different curtain, different tooling.' },
-  { id:'euro-profile', cat:'Import & uncommon', keyway:'Euro profile / DIN cylinder', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge â€” but the body is the point', spaces:'', depths:'', makes:['ABUS','DOM','Wilka','GU','Roto','Winkhaus'],
-    notes:'The keyed part of nearly every European door: a flat pear-shaped cylinder held by one screw through the faceplate. Rekeying means swapping the cylinder, not repinning in place, and cylinders are sized in 5mm steps per side â€” measure before you order. Increasingly common here on modern architecture and on every imported multipoint patio door.' },
-  { id:'multipoint', cat:'Import & uncommon', keyway:'Multipoint gearbox & patio door', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Varies â€” usually a euro cylinder', spaces:'', depths:'', makes:['GU','Roto','Hoppe','Fuhr','Siegenia'],
-    notes:'Not a keyway so much as the mechanism behind one. A lift-and-turn handle drives hooks and rollers up and down the whole door edge, and the cylinder only releases the gearbox. A door that will not lock is a gearbox or an alignment problem nine times out of ten, and no amount of key work fixes it. Identify the gearbox by the faceplate stamping before you order anything.' },
-  { id:'scandi-oval', cat:'Import & uncommon', keyway:'Scandinavian oval (ASSA / Ruko / Trioving)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['ASSA','Ruko','Trioving','Abloy'],
-    notes:'The oval-bodied cylinder standard across Scandinavia, alongside Abloy disc detainer. Same idea as the Euro profile: the cylinder is a module you swap. Shows up on Scandinavian-designed buildings and on imported doors.' },
-  { id:'dimple-euro', cat:'Import & uncommon', keyway:'Dimple (Kaba / Keso / DOM / Wilka)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Dimple â€” drilled, not milled', spaces:'', depths:'', makes:['Kaba','Keso','DOM','Wilka','Kaba Gemini'],
-    notes:'RESTRICTED on most. Pins read dimples drilled into the flats of the blade rather than cuts on the edge, often from two or three directions at once â€” Keso reads four rows. Cutting needs a dimple machine, not a standard duplicator. Mul-T-Lock is the dimple system most US shops already know; these are the German and Swiss equivalents.' },
-  { id:'magnetic-key', cat:'Import & uncommon', keyway:'Magnetic (EVVA MCS)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'No cuts at all', spaces:'', depths:'', makes:['EVVA'],
-    notes:'RESTRICTED. There are no cuts and no pins: rotating magnetic rotors in the key align rotors in the cylinder by polarity. A blank key and a cut key look identical. Nothing mechanical to read, nothing to impression, and factory-only production. If you meet one, the answer is the system dealer.' },
-  { id:'radial-fichet', cat:'Import & uncommon', keyway:'Radial & Fichet', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Radial / bar', spaces:'', depths:'', makes:['Fichet','Pollux','Mottura'],
-    notes:'RESTRICTED. French and Italian high-security door systems, often on an armored door with multiple bolts. The key is a bar with radial cuts or a stepped tube. Specialist and dealer-controlled; the door is usually worth more than the lock.' },
-  { id:'miwa-goal', cat:'Import & uncommon', keyway:'Japanese residential (MIWA / GOAL / Alpha / Showa)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge / dimple', spaces:'', depths:'', makes:['MIWA','GOAL','Alpha','Showa','Kawajun'],
-    notes:'What is on a Japanese front door. MIWA and GOAL dominate, both with dimple systems above their pin lines, and Japanese doors commonly carry two locks in the same leaf. Turns up on imported hardware, Japanese-owned property, and JDM camper and van conversions. Registration cards are the norm there, so the owner may actually have the paperwork.' },
-  { id:'lockwood-anz', cat:'Import & uncommon', keyway:'Australian & NZ (Lockwood / Whitco)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Lockwood','Whitco','Gainsborough'],
-    notes:'Lockwood is the Australian residential standard and the 001 deadlatch is the front door of the country. Turns up on imported hardware and on anything shipped from Australia or New Zealand. The Holden vehicle keyway already in the automotive rows is the same market, different trade.' },
-  { id:'ravbariach', cat:'Import & uncommon', keyway:'Israeli multipoint (Rav Bariach / Mul-T-Lock)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Dimple', spaces:'', depths:'', makes:['Rav Bariach','Mul-T-Lock'],
-    notes:'RESTRICTED. Steel security doors with a radial bolt array driven from a central dimple cylinder, standard on Israeli apartments and common on imported security doors. The cylinder is usually Mul-T-Lock and dealer-controlled; the door hardware around it is its own parts problem.' },
-  { id:'godrej-india', cat:'Import & uncommon', keyway:'Indian lever padlock & mortise (Godrej / Harrison)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Lever / bit', spaces:'', depths:'', makes:['Godrej','Harrison','Link'],
-    notes:'Lever padlocks and mortise locks from the Indian market, sold worldwide and common on imported furniture and shipping. Levers rather than pins, like the British locks, and generally low security regardless of how heavy the brass feels.' },
-  { id:'import-bigbox', cat:'Import & uncommon', keyway:'Imported big-box cylinder (Chinese / Taiwanese)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Import','Generic'],
-    notes:'Unbranded and house-brand locksets built to loosely copy KW1 or SC1. The blade fits, the keying often does not: shallow depths, sloppy tolerances and pins that do not match either standard. A copy that works on the customer key may not work in the lock. Recommend replacing rather than rekeying â€” the cylinder costs less than the labour.' },
-  { id:'latam-lock', cat:'Import & uncommon', keyway:'Latin American (Phillips / Yale Mexico)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Phillips','Yale Mexico','Import'],
-    notes:'Mexican and Central American residential hardware, which crosses the border constantly on doors, gates and furniture. Phillips is the major Mexican brand. Some profiles are close to US Yale sections and some are not â€” check the blade against the lock rather than the catalog.' },
-  { id:'tubular-variants', cat:'Import & uncommon', keyway:'Tubular variants (7-pin / 8-pin / Ace II)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Tubular', spaces:'', depths:'', makes:['Chicago Lock','Ace','Import'],
-    notes:'Not all tubular keys are the seven-pin Ace pattern. Eight-pin, offset-post and Ace II variants exist, and an Ace pick that walks a seven will not read an eight. Count the pins and check whether the post is centred before you reach for the tool.' },
-  { id:'euro-furniture', cat:'Import & uncommon', keyway:'European furniture & bit key', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Bit / warded', spaces:'', depths:'', makes:['Import','Antique','Furniture'],
-    notes:'Wardrobes, armoires, clock cases and cabinet doors from European furniture, almost all warded bit locks. A bit blank filed to fit does it. On an antique the lock is worth nothing and the case is worth everything, so cut a key rather than forcing a door.' },
-
-  /* ---- import and grey-market vehicles ----
-     Filed under Automotive because that is where you will look for them. Most
-     of these are not sold new in the US; the row says which ones you may
-     actually meet and why. */
-  { id:'jdm-import', cat:'Automotive', keyway:'JDM grey import (25-year rule)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge on most', spaces:'', depths:'', makes:['Nissan','Toyota','Mitsubishi','Honda','Subaru','Import'],
-    notes:'Genuinely growing work. A vehicle 25 years old is federally importable, so Skylines, Delicas, kei trucks and JDM vans are arriving steadily. The keyway is usually the same family as the US car of that year â€” a 1998 Skyline is Nissan NSN-family â€” but the immobilizer and the remote are JDM parts with no US supply, and a scan tool may not speak to a JDM ECU. Decode the lock, then check tool coverage separately.' },
-  { id:'kei-vehicle', cat:'Automotive', keyway:'Kei class (Daihatsu / Suzuki / Honda kei)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge', spaces:'', depths:'', makes:['Daihatsu','Suzuki','Honda','Subaru','Mitsubishi'],
-    notes:'Kei trucks and vans, imported by the container load for farms, wineries and campuses â€” which makes them a real Central Coast call. Mostly plain wafer ignitions with no chip, so the mechanical side is easy. Daihatsu never sold these here, so parts come from an importer rather than a dealer.' },
-  { id:'ssangyong', cat:'Automotive', keyway:'SsangYong / KGM', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge / laser', spaces:'', depths:'', makes:['SsangYong','KGM','Daewoo'],
-    notes:'Korean, never sold in the US, and built on Mercedes and Daewoo running gear across its history â€” which means the key system depends entirely on the era. You will meet one on a military or consular vehicle or not at all.' },
-  { id:'lada-dacia', cat:'Automotive', keyway:'Lada / Dacia', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge / cruciform on the oldest', spaces:'', depths:'', makes:['Lada','Dacia','Renault'],
-    notes:'Not a US market. Dacia is Renault underneath, so its keys follow the Renault rows here. The oldest Ladas use a cruciform key, which is the one genuinely useful fact if a collector rolls one in.' },
-  { id:'chinese-marque', cat:'Automotive', keyway:'Chinese marques (BYD / MG / Chery / Geely / GWM)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Laser on most', spaces:'', depths:'', makes:['BYD','MG','Chery','Geely','Great Wall','NIO'],
-    notes:'No passenger sales in the US as things stand, so a car is unlikely. Equipment is not: BYD builds transit buses and forklifts that are already here, and those are the calls you will get. MG is Chinese-owned now and shares nothing with the British MG in the vintage rows. Modern Chinese cars mostly use a proximity fob with a laser emergency blade, and aftermarket coverage is thin to nonexistent.' },
-  { id:'india-marque', cat:'Automotive', keyway:'Indian marques (Tata / Mahindra / Maruti)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge / laser', spaces:'', depths:'', makes:['Tata','Mahindra','Maruti Suzuki'],
-    notes:'Mahindra is the one you may actually see: the Roxor side-by-side is sold in the US as off-road equipment, and Mahindra tractors are common on ranches. Maruti is Suzuki underneath so it follows the Suzuki rows. Tata and Jaguar Land Rover share an owner and nothing else.' },
-  { id:'asean-marque', cat:'Automotive', keyway:'Proton / Perodua / VinFast', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge / laser', spaces:'', depths:'', makes:['Proton','Perodua','VinFast'],
-    notes:'VinFast is the live one: Vietnamese, selling in California, with a proximity fob and a laser emergency blade. Confirm tool coverage before quoting anything on one â€” the aftermarket is barely there. Proton is Geely-owned and Perodua is Daihatsu-derived, and neither is a US market.' },
-  { id:'euro-truck-import', cat:'Automotive', keyway:'European heavy truck (Scania / MAN / DAF / Iveco)', ilco:'â€”', ilcoChip:'â€”', silca:'â€”', jma:'â€”', strattec:'â€”',
-    cut:'Edge / laser', spaces:'', depths:'', makes:['Scania','MAN','DAF','Iveco'],
-    notes:'Not the North American Class 8 market, which is the Freightliner, PACCAR, Navistar, Mack and Volvo rows in Fleet. You will meet these on show trucks, imported cabovers and heavy haul brought in from Europe. Iveco had a US presence historically and shares parts with the Fiat rows here.' },
-];
-
-/* --- VIN: World Manufacturer Identifier prefixes -------------------------- */
-const WMI = {
-  '1FA':'Ford (US)','1FB':'Ford (US)','1FC':'Ford (US)','1FD':'Ford (US)','1FM':'Ford SUV (US)','1FT':'Ford Truck (US)',
-  '2FA':'Ford (Canada)','2FM':'Ford SUV (Canada)','2FT':'Ford Truck (Canada)','3FA':'Ford (Mexico)',
-  '1G1':'Chevrolet (US)','1GC':'Chevrolet Truck (US)','1GN':'Chevrolet SUV (US)','1GT':'GMC Truck (US)','1GK':'GMC SUV (US)',
-  '1G4':'Buick (US)','1G6':'Cadillac (US)','2G1':'Chevrolet (Canada)','3GC':'Chevrolet Truck (Mexico)','KL7':'Chevrolet (Korea)',
-  '1C3':'Chrysler (US)','1C4':'Jeep/Chrysler SUV (US)','1C6':'Ram (US)','2C3':'Chrysler (Canada)','3C4':'Chrysler (Mexico)',
-  '3C6':'Ram (Mexico)','1J4':'Jeep (US)',
-  '4T1':'Toyota (US)','4T3':'Toyota (US)','5TD':'Toyota (US)','5TF':'Toyota Truck (US)','JTD':'Toyota (Japan)','JTE':'Toyota SUV (Japan)',
-  'JTH':'Lexus (Japan)','2T1':'Toyota (Canada)','2T3':'Toyota (Canada)',
-  '1HG':'Honda (US)','2HG':'Honda (Canada)','JHM':'Honda (Japan)','5FN':'Honda SUV (US)','5J6':'Honda SUV (US)',
-  '19U':'Acura (US)','JH4':'Acura (Japan)',
-  '1N4':'Nissan (US)','1N6':'Nissan Truck (US)','JN1':'Nissan (Japan)','JN8':'Nissan SUV (Japan)','5N1':'Nissan (US)','3N1':'Nissan (Mexico)',
-  'KMH':'Hyundai (Korea)','5NP':'Hyundai (US)','KNA':'Kia (Korea)','KND':'Kia SUV (Korea)','5XY':'Kia (US)','3KP':'Kia (Mexico)',
-  '3VW':'Volkswagen (Mexico)','1VW':'Volkswagen (US)','WVW':'Volkswagen (Germany)','WV1':'VW Commercial','WAU':'Audi (Germany)','TRU':'Audi (Hungary)',
-  'WBA':'BMW (Germany)','WBS':'BMW M (Germany)','5UX':'BMW SUV (US)','4US':'BMW (US)','WMW':'Mini (UK)',
-  'WDD':'Mercedes-Benz (Germany)','WDC':'Mercedes-Benz SUV (Germany)','4JG':'Mercedes-Benz (US)','W1K':'Mercedes-Benz (Germany)',
-  'JF1':'Subaru (Japan)','JF2':'Subaru SUV (Japan)','4S3':'Subaru (US)','4S4':'Subaru SUV (US)',
-  'JM1':'Mazda (Japan)','JM3':'Mazda SUV (Japan)','4F2':'Mazda (US)',
-  '5YJ':'Tesla (US)','7SA':'Tesla (US)','LRW':'Tesla (China)',
-  'JA4':'Mitsubishi SUV','4A3':'Mitsubishi (US)','JN6':'Nissan Commercial',
-  '1HD':'Harley-Davidson','5HD':'Harley-Davidson','JYA':'Yamaha','JH2':'Honda Motorcycle','JKA':'Kawasaki','JS1':'Suzuki'
-};
-
-/* VIN position-10 model year codes. */
-const VIN_YEAR = {
-  'A':[1980,2010],'B':[1981,2011],'C':[1982,2012],'D':[1983,2013],'E':[1984,2014],'F':[1985,2015],
-  'G':[1986,2016],'H':[1987,2017],'J':[1988,2018],'K':[1989,2019],'L':[1990,2020],'M':[1991,2021],
-  'N':[1992,2022],'P':[1993,2023],'R':[1994,2024],'S':[1995,2025],'T':[1996,2026],'V':[1997,2027],
-  'W':[1998,2028],'X':[1999,2029],'Y':[2000,2030],
-  '1':[2001,2031],'2':[2002,2032],'3':[2003,2033],'4':[2004,2034],'5':[2005,2035],
-  '6':[2006,2036],'7':[2007,2037],'8':[2008,2038],'9':[2009,2039]
-};
-
-/* --- Lishi decoder reference ---------------------------------------------- */
-/* One row per 2-in-1 tool. Deliberately thin: the keyway's cut type, spaces,
-   depths and catalog numbers already live on the blank row, and which cars a
-   tool opens already lives on the vehicle records, so both are joined at render
-   time rather than copied here. When those two files disagreed about the same
-   fact earlier in this project there was no way to tell from inside which side
-   was right â€” so this table carries only what is true of the TOOL.
-
-     id    row id            tool  tool name as Lishi sells it
-     fam   make family       kw    keyway(s) this tool reads
-     use   which lock it works on  note  what to know before you pick it up
-
-   Every tool named in a vehicle record has a row here and vice versa; a test
-   enforces it, because a guide that has drifted from the records is worse than
-   no guide. */
-const SEED_LISHI = [
-  { id: 'toy48', tool: 'TOY48', fam: 'Toyota / Lexus', kw: 'TOY48', use: 'Ignition and door',
-    note: 'The single most-used tool in the roll. Toyota wafers are shallow and close together, so read twice before you cut â€” a one-depth error on a TOY48 still turns the door and will not turn the ignition.' },
-  { id: 'toy43', tool: 'TOY43', fam: 'Toyota / Lexus', kw: 'TOY43', use: 'Ignition and door',
-    note: 'The other mainstream Toyota profile. Check which one the car takes before you commit â€” TOY43 and TOY48 will each enter the wrong lock far enough to feel promising.' },
-  { id: 'gm37', tool: 'GM37', fam: 'GM', kw: 'B102 / B106 / B44 / B45 / B62', use: 'Ignition and door',
-    note: 'Covers the whole GM 6-cut era including the VATS cars. On a VATS car the tool reads the cuts perfectly and the car still will not start â€” the resistor pellet is a separate problem, so read the pellet value before you quote.' },
-  { id: 'gm39', tool: 'GM39', fam: 'GM', kw: 'B111 / B106', use: 'Door, and the valet cylinder on prox cars',
-    note: 'For the 10-cut GM edge-cut locks. On prox trims there is no ignition cylinder at all â€” the valet blade cylinder in the door is the only thing to decode.' },
-  { id: 'hu100', tool: 'HU100', fam: 'GM', kw: 'HU100 / B116 / B119', use: 'Door',
-    note: 'The modern GM two-track tool, and the one you will reach for on anything with a blade tucked in the fob. The ignition on these is a knob or is shielded, so the driver door is the lock.' },
-  { id: 'b111', tool: 'B111', fam: 'GM', kw: 'B111', use: 'Ignition and door',
-    note: 'Sold under the keyway name rather than a GM-series number. Overlaps GM39 â€” if you already carry one, check before buying the other.' },
-  { id: 'nsn14', tool: 'NSN14', fam: 'Nissan / Infiniti', kw: 'NSN14', use: 'Ignition and door',
-    note: 'Enormous coverage across Nissan and Infiniti. Worth remembering that decoding the lock is the easy half on these â€” the BCM PIN is the job, and that is the BCM tool, not this one.' },
-  { id: 'da31', tool: 'DA31', fam: 'Nissan / Infiniti', kw: 'DA31', use: 'Ignition and door',
-    note: 'The other mainstream Nissan profile. Same BCM caveat as NSN14.' },
-  { id: 'dat17', tool: 'DAT17', fam: 'Nissan / Infiniti', kw: 'DAT17', use: 'Ignition and door',
-    note: 'Older Nissan and some Subaru. Shares ground with SUB4 â€” the two are easy to mix up in the roll.' },
-  { id: 'sub4', tool: 'SUB4', fam: 'Subaru', kw: 'SUB4', use: 'Ignition and door',
-    note: 'Covers most of the Subaru range. On the immobilized cars you still need the PIN, so decoding gets you a blade and not a running car.' },
-  { id: 'fo38', tool: 'FO38', fam: 'Ford', kw: 'H92 / H84 / H75', use: 'Ignition and door',
-    note: 'The Ford edge-cut workhorse for the PATS era before the laser key. Ford door locks are often the cleanest lock on the vehicle to read.' },
-  { id: 'hu101', tool: 'HU101', fam: 'Ford', kw: 'HU101', use: 'Ignition and door',
-    note: 'Ford two-track, and the tool that covers most of what Ford has built since 2011. On push-to-start trims the blade hides in the fob and opens the driver door only.' },
-  { id: 'fo21', tool: 'FO21', fam: 'Ford', kw: 'FO21', use: 'Ignition and door',
-    note: 'Tibbe is not an edge or a laser key â€” it is a round key with six discs, and nothing else in the roll will read one. You also cannot cut a Tibbe on a standard machine, so a Tibbe job needs the decoder and the cutter or it does not happen roadside.' },
-  { id: 'cy24', tool: 'CY24', fam: 'Chrysler / Stellantis', kw: 'CY24 / Y164 / Y170', use: 'Ignition and door',
-    note: 'Covers the whole modern Stellantis range. As with Nissan, the lock is the easy half â€” the security gateway on the newer trucks and vans is what decides whether the job is doable.' },
-  { id: 'hon66', tool: 'HON66', fam: 'Honda / Acura', kw: 'HON66 / HO05', use: 'Door',
-    note: 'Honda two-track. On the smart-key cars the cylinder is behind a cap on the driver handle â€” pop the cap, do not pry the handle.' },
-  { id: 'hon58r', tool: 'HON58R', fam: 'Honda / Acura', kw: 'HO01 / HD106 / HD91', use: 'Ignition and door',
-    note: 'The Honda edge-cut profile that runs from the 1990s to the mid-2010s. Six wafers and no shield on most â€” one of the friendlier decodes on the list.' },
-  { id: 'maz24', tool: 'MAZ24', fam: 'Mazda', kw: 'MAZ24', use: 'Ignition and door',
-    note: 'Also the tool for the Fiat 124 Spider, which is an MX-5 underneath whatever the badge says.' },
-  { id: 'mz34', tool: 'MZ34', fam: 'Mazda', kw: 'MZ34', use: 'Ignition and door',
-    note: 'The older Mazda profile. Check the year before you pick between this and MAZ24.' },
-  { id: 'mit11', tool: 'MIT11', fam: 'Mitsubishi', kw: 'MIT11 / MIT17', use: 'Ignition and door',
-    note: 'Mitsubishi cars. Not the Fuso trucks, which are Daimler and share nothing with these.' },
-  { id: 'hy20', tool: 'HY20', fam: 'Hyundai / Kia / Genesis', kw: 'HY20', use: 'Ignition and door',
-    note: 'Wide Hyundai and Kia coverage through the 2010s. Decoding is quick; the PIN-by-VIN step afterwards is the part to quote for.' },
-  { id: 'hy15', tool: 'HY15', fam: 'Hyundai / Kia / Genesis', kw: 'HY15 / HY18', use: 'Ignition and door',
-    note: 'Older Hyundai, including the years the immobilizer arrives partway through a model run. Look for a ring antenna at the cylinder before you promise a plain cut key will start it.' },
-  { id: 'hy22', tool: 'HY22', fam: 'Hyundai / Kia / Genesis', kw: 'HY22', use: 'Door',
-    note: 'The modern Hyundai group two-track tool. Covers Genesis as well, where the cylinder hides behind a cap on the handle.' },
-  { id: 'kia7', tool: 'KIA7', fam: 'Hyundai / Kia / Genesis', kw: 'KK10 / KK7 / HY18', use: 'Ignition and door',
-    note: 'Sold under a Kia name but reads the same family HY20 covers on the Hyundai side. If you already carry HY20, check the overlap before buying.' },
-  { id: 'kk10', tool: 'KK10', fam: 'Hyundai / Kia / Genesis', kw: 'KK10', use: 'Ignition and door',
-    note: 'The Kia edge-cut profile. Overlaps KIA7.' },
-  { id: 'kk12', tool: 'KK12', fam: 'Hyundai / Kia / Genesis', kw: 'KK12', use: 'Door',
-    note: 'Kia two-track. The newest Kias put the cylinder behind a handle cap like the rest of the Hyundai group.' },
-  { id: 'hu66', tool: 'HU66', fam: 'VW / Audi group', kw: 'HU66', use: 'Door',
-    note: 'The VAG two-track tool and one of the most useful in the roll given how much of the group shares it. The Porsche ignition is on the left and on the newest cars is a knob with nothing to pick, so the door is the lock.' },
-  { id: 'hu162t', tool: 'HU162T', fam: 'VW / Audi group', kw: 'HU162T', use: 'Door',
-    note: 'The MQB-era replacement for HU66. Decoding is the easy part â€” component protection is what makes an MQB car a long job.' },
-  { id: 'hu92', tool: 'HU92', fam: 'BMW / Mini', kw: 'HU92', use: 'Door',
-    note: 'BMW two-track for the EWS and CAS era, and the first BMW-built Mini. The electronics on these are bench work; the blade is the straightforward half.' },
-  { id: 'hu100r', tool: 'HU100R', fam: 'BMW / Mini', kw: 'HU100R / BMW1', use: 'Door',
-    note: 'The later BMW profile, FEM and BDC cars. Do not confuse it with HU100, which is GM â€” the names are one letter apart and the tools are not interchangeable.' },
-  { id: 'hu64', tool: 'HU64', fam: 'Mercedes-Benz', kw: 'HU64', use: 'Door',
-    note: 'Mercedes four-track. Reading the door is doable; the car will not start on a cut blade because the key is the electronics, so treat a decode here as entry only.' },
-  { id: 'hu56r', tool: 'HU56R', fam: 'Volvo', kw: 'HU56R', use: 'Door',
-    note: 'Volvo laser profile on the cars that still have a cylinder. The newer Volvos put it behind a cap on the handle.' },
-  { id: 'sip22', tool: 'SIP22', fam: 'Fiat group', kw: 'SIP22', use: 'Ignition and door',
-    note: 'The Fiat-group two-track tool, which is also the Maserati and older Ferrari tool because those locks came out of the Fiat parts bin. On the cars that use a code card, decoding gets you in and no further.' }
-];
-
-/* --- Safe work: identify, then find the legitimate route ------------------ */
-/* Safe work is procedure before hardware. The question is almost never "what
-   blank" â€” it is "what am I looking at, does a key even exist for it, and am I
-   allowed to touch it". So these rows carry identification, where the serial
-   hides, and the authorization standard. The keyways themselves are blank rows
-   in the Safe & vault category and are linked by id.
-
-   Deliberately absent: anything about defeating a safe. Drill points,
-   manipulation and bypass are not in this file and are not the reference a
-   phone call needs. The route here is the serial number and the manufacturer,
-   which is cheaper for the customer and leaves the safe worth what it was.
-
-     id   row id      group  which screen section it sits under
-     name what to call it    is   what the thing actually is
-     find where the serial or code hides
-     path the legitimate route to a key
-     auth what you need before you touch it
-     bl   blank-directory rows that go with it
-     stop true when the answer is no */
-const SAFE_GROUPS = [
-  ['id',    'Start here'],
-  ['home',  'Residential and small commercial'],
-  ['comm',  'Commercial and institutional'],
-  ['no',    'Not yours to open']
-];
-
-const SEED_SAFE = [
-  { id: 'serial', group: 'id', name: 'Find the serial before anything else',
-    is: 'The data plate or stamped serial is the single most useful thing on a safe, and the reason this section carries almost no part numbers.',
-    find: 'Door edge, behind or under the dial ring, the hinge side, inside the door panel, the back, the bottom, and under the carpet on a floor safe. Photograph the plate and the whole door before you quote.',
-    path: 'Nearly every manufacturer will supply a key or a combination by serial to the verified owner or to a registered locksmith. That route is cheaper than opening it, faster than most people expect, and leaves the safe worth what it was worth this morning.',
-    auth: 'Photo ID matching the address, and a bill of sale, receipt or insurance schedule for the safe itself.',
-    bl: ['safe-serial-plate'] },
-  { id: 'iskey', group: 'id', name: 'Establish whether a key even exists',
-    is: 'Most safes are not key-operated. A dial or a keypad is the lock; a key, where there is one, is usually a secondary override or a dial-ring lock that does not open anything on its own.',
-    find: 'Ask the caller to photograph the door. A dial with a small keyhole in the ring is a key-locking dial, not a key-opened safe. A keypad with a badge or rubber plug beside it usually hides an override.',
-    path: 'If the lock is a dial or a keypad and the combination is lost, that is a combination-recovery job through the manufacturer or a safe technician, not a key job. Say so on the phone.',
-    auth: 'Same standard either way.',
-    bl: ['safe-keylock-dial', 'safe-lock'] },
-  { id: 'relock', group: 'id', name: 'Assume there is a relocker',
-    is: 'A tempered glass plate or a spring relocker that fires and permanently jams the boltwork if the safe is drilled or shocked. It is not a lock, it is a trap for attack.',
-    find: 'You will not see it from outside. Assume any commercial-rated safe has one.',
-    path: 'It is the reason safe opening is a specialty rather than a lockout, and the reason the serial-number route is worth the wait. A fired relocker turns an opening into a cutting job plus a repair bill.',
-    auth: 'n/a',
-    bl: ['safe-relocker'] },
-
-  { id: 'consumer', group: 'home', name: 'Box-store safe with a key override',
-    is: 'Sentry, First Alert, Honeywell, Stack-On, Barska. Keypad or dial with a small override key behind a badge.',
-    find: 'A code is usually stamped on the key itself, and again on the lock plug.',
-    path: 'The manufacturer sells a replacement by that code, direct to the owner, for a few dollars. That is frequently the honest answer and it beats a call-out on price. Quote the trip only if they need it today.',
-    auth: 'Photo ID at the address. A portable safe in the back of a car is the classic stolen-property presentation â€” decline it.',
-    bl: ['consumer-keysafe'] },
-  { id: 'gunsafe', group: 'home', name: 'Gun safe',
-    is: 'Electronic or dial lock with a key override behind the dial or the logo plate. Usually tubular or double-bitted.',
-    find: 'Serial on the door edge, the back, or under the interior carpet. Override code often on the key.',
-    path: 'Liberty, Cannon, Fort Knox, Browning and the rest will match an override to the safe serial for the registered owner.',
-    auth: 'VERIFY OWNERSHIP IN WRITING, every time, no exceptions. This is the one call where getting it wrong arms someone. ID matching the address plus proof of purchase, and write down what you saw.',
-    bl: ['gun-safe-override', 'gunsafe'] },
-  { id: 'firebox', group: 'home', name: 'Document and fire box',
-    is: 'A small fire-rated chest with a tubular or flat key, often alongside a combination dial.',
-    find: 'Code on the key or the latch plate.',
-    path: 'Manufacturer by code. These are cheap enough that a replacement box is sometimes the better recommendation.',
-    auth: 'Photo ID at the address.',
-    bl: ['firesafe'] },
-  { id: 'wallfloor', group: 'home', name: 'Wall and floor safe',
-    is: 'In-wall and in-floor units, often installed decades ago by a builder nobody can name. Star, Meilink, Perma-Vault, Gardall.',
-    find: 'Serial cast or stamped into the door edge on the older bodies.',
-    path: 'Manufacturer by serial where the company still exists. Many of these makers are long gone, which is when a safe technician rather than a key becomes the answer.',
-    auth: 'ID matching the address, and the property owner rather than a tenant â€” a floor safe belongs to the building.',
-    bl: ['wall-floor-safe'] },
-  { id: 'antique', group: 'home', name: 'Antique safe or money chest',
-    is: 'Pre-war Mosler, Diebold, Herring-Hall-Marvin, York. Frequently a warded bit lock rather than pins, and frequently with painted decoration worth more than the safe.',
-    find: 'Maker name on the door, sometimes a serial inside the door casting.',
-    path: 'Estate and restoration work. A collector pays more for a locked original than a forced one, so do not force it. Antique safe specialists exist and the referral is often correct.',
-    auth: 'Estate paperwork or the executor, if the owner has died â€” which is how most of these calls arrive.',
-    bl: ['antique-safe'] },
-
-  { id: 'depository', group: 'comm', name: 'Depository and drop safe',
-    is: 'Two compartments with two different answers. Restaurants, car washes and retail. The upper door or drop slot is often a plain wafer or tubular key; the money compartment below may be dial or dual-key.',
-    find: 'Code on the plug of the upper cylinder. Serial on the door edge.',
-    path: 'Manufacturer by code for the upper. The lower compartment is safe work.',
-    auth: 'The business owner or a manager on the business letterhead, not the closing shift.',
-    bl: ['depository-safe'] },
-  { id: 'sgkey', group: 'comm', name: 'Key-operated safe lock',
-    is: 'A genuine key-operated safe lock rather than a dial. Sargent and Greenleaf key-changeable is the common one: the key both operates it and sets the combination of cuts.',
-    find: 'Serial on the lock body, visible with the door open â€” which is the catch.',
-    path: 'S&G supplies by serial to a registered locksmith with proof of ownership. Not something you originate at the van.',
-    auth: 'Business ownership documentation.',
-    bl: ['sg-key-changeable'] },
-  { id: 'hotel', group: 'comm', name: 'Hotel in-room safe',
-    is: 'Elsafe, SafeMark, Onity. A property override â€” master key or manager code â€” held at the front desk.',
-    find: 'Property records, not the safe.',
-    path: 'The property controls it. A guest locked out is a front-desk problem. A legitimate call comes from the property and is usually a lost override across a whole floor.',
-    auth: 'The property, in writing, on their letterhead.',
-    bl: ['hotel-room-safe'] },
-  { id: 'vault', group: 'comm', name: 'Vault door and day-gate',
-    is: 'Not a big safe. A vault door has a day-gate, often a time lock or relocker, and an interior release so nobody gets shut in.',
-    find: 'Maker plate on the door.',
-    path: 'Bank and jeweler work, on the institution procedure and usually through their contracted service company.',
-    auth: 'CONFIRM NOBODY IS INSIDE before anything else. Then the institution, through its own process.',
-    bl: ['vault-door'] },
-
-  { id: 'deposit', group: 'no', name: 'Safe deposit box', stop: true,
-    is: 'Two locks, guard and renter. The bank holds one, the customer the other.',
-    find: 'n/a',
-    path: 'A legal matter before it is a locksmith one. Access after a death, a default or a dispute runs through the bank and often a court order, with the bank contracting the drilling itself.',
-    auth: 'Refer to the bank. Never on a customer request, however sympathetic the story.',
-    bl: ['safe-deposit'] },
-  { id: 'atm', group: 'no', name: 'ATM and cash handling', stop: true,
-    is: 'Two compartments. The upper service box and the cash safe below are different problems with different owners.',
-    find: 'n/a',
-    path: 'The deploying operator and their armored carrier. Cash-in-transit rules and dual custody apply.',
-    auth: 'Refer to the operator.',
-    bl: ['atm-lock'] },
-  { id: 'pharm', group: 'no', name: 'Pharmacy and narcotics safe', stop: true,
-    is: 'Controlled-substance storage under DEA rules.',
-    find: 'n/a',
-    path: 'The pharmacy has a documented procedure with dual custody and a witness. Work happens with the pharmacist in charge present, on their paperwork.',
-    auth: 'Never on a verbal request, including from staff.',
-    bl: ['pharmacy-narcotics'] },
-  { id: 'lockbox', group: 'no', name: 'Real estate lockbox', stop: true,
-    is: 'Supra iBox and SentriLock are board-controlled electronic systems tied to a Realtor membership and an audit trail of who opened which listing when.',
-    find: 'n/a',
-    path: 'The listing agent or the local board. The plain mechanical combination boxes people also hang on doors are a different thing and are fair game.',
-    auth: 'Refer to the agent or the board.',
-    bl: ['realestate-lockbox'] }
-];
-
-if (typeof module !== 'undefined') module.exports = { SEED_VEHICLES, SEED_BLANKS, SEED_LISHI, SEED_SAFE, SAFE_GROUPS, WMI, VIN_YEAR, SEED_VERSION };
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×ÍüÓÔèµ©hºÚn¶X§zÍKÊˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆÙ^T›ÈšY[8 %ÙYY™Y™\™[˜ÙH]BˆKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKBˆTÈTÈÕT•TˆUK“ÕÓÔÔSˆ]™\žH™XÛÜ™\ÈX\šÙY™\šYšYY™˜[ÙXˆ[[H[X[ˆÛÛ™š\›\È]YØZ[œÝH™ZXÛKHÑSHÙ^HØ][ÙÈÜˆBˆXXÚ[™IÜÈÝÛˆ]X˜\ÙKˆH\™X]È\Èš[H\ÈHÙYYˆ[ž][™ÈBˆ\Ù\ˆYÈÜˆY]È[ˆØ\˜YÙHˆY]]™\È[ˆØØ[ÝÜ˜YÙH[™Ý™\œšY\ÈBˆX]Ú[™ÈÙYY™XÛÜ™žHY‚‚ˆšY[›Ý\ÈÛˆHÚ\HÙˆH™XÛÜ™\™H[ˆ]]Ü›ËÔ‘PQQK›Y‚ˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH
+‹Â‚˜ÛÛœÝÑQQÕ‘T”ÒSÓˆH	ÌŒ‹ŒKŒL	ÎÂ‚‹ÊˆKKH™ZXÛH™Y™\™[˜ÙHKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹Â‹Êˆ™XÛÜ™È\™HÜš][ˆ[ˆHÛÛ\XÝ›Ü›H[™^[™YžHŠ
+KˆÚÜÙ^\ÈÙY\Bˆ™]È[™™Y›ÝÜÈ™XYX›H[™Y™˜X›NÈHØš™XÝˆ™]\›œÈ\ÈHØ[YHÚ\BˆH\\È[Ø^\ÈÛÛœÝ[YY‚‚ˆY™XÛÜ™YZËÛYXZÙHÈ[Ù[ZØHÙX\˜Ú[X\Ù\ÂˆLÞLHš\œÝÈ\ÝYX\‚ˆˆ›ÙHÝ[HÝÈÙ^]Ø^H[ÜÚKÚ›H[ÛÈÈÚ[ØHÈ“PBˆÙ[HÑSH\›ËˆÚ\˜[œÜÛ™\ˆÞ\È[[[Øš[^™\ˆÞ\Ý[BˆÛÛ™HÛÛ™XX›OÈ™[HÖÝ\K˜ØË‹]Ûœ×K‹‹—BˆÜÈÛÙHÙ\šY\ÈÜÙÜXÙ\ÈÈ\ÈÝ]Ý]Y]ÙˆXÈXÛÙHY]ÙØ™ÛÛ‹ØZÛ›ÙÜ˜[[Z[™È]È[ˆSˆ™YYYÂˆ›ÝH›ÙÜ˜[[Z[™È›ÝHÜÐ‘Ü[žH[žH›ÝBˆ››ÝHœ™YH›ÝB‚ˆ]™\ž][™ÈÚ\È™\šYšYY™˜[ÙKˆH\˜YÜÈ[[H[X[ˆÛÛ™š\›\ÈH™XÛÜ™ˆ
+‹Â˜ÛÛœÝQUSÓÐ‘ÔÔ•H	Ñš]™\ˆÚYK[™\ˆ\Ú	ÎÂ‚˜ÛÛœÝˆH
+ÊHOˆ
+ÂˆYˆËšYXZÙNˆË›ZË[Ù[ˆË›YYX\”Ý\ˆËžLYX\‘[™ˆËžLK›ÙNˆË˜ˆ	ØØ\‰Ëˆ[X\Ù\Îˆ\œ˜^Kš\Ð\œ˜^JË˜ZØJHÈË˜ZØHˆ×Kˆ›[šÜÎˆÈÙ^]Ø^NˆËšÝÈ	ÉË[ÛÎˆËš[	ÉËÚ[ØNˆËœÚH	ÉË›XNˆËš›H	ÉËÙ[NˆË›Ù[H	ÉÈKˆ˜[œÜÛ™\ŽˆÈÚ\ˆË˜Ú\	ÉËÞ\Ý[NˆËœÞ\È	ÉËÛÛ™XX›NˆË˜ÛÛ™H	ÉÈKˆ™[[Ý\Îˆ
+Ëœ™[H×JK›X\
+ˆOˆ
+È\Nˆ–ÌK˜ØÎˆ–ÌWKŽˆ–Ì—K]ÛœÎˆ–Ì×HJJKˆØÚÎˆÂˆÛÙTÙ\šY\ÎˆË˜ÜÈËšÝÈ	ÉËÜXÙ\ÎˆËœÜ	ÉË\ÎˆË™	ÉËˆÝ]Y]ÙˆË˜Ý]	ÉËXÛÙNˆË™XÈ	ÉËˆÊˆYÛš][Ûˆ™]Z[™\ˆÝ[KPPÔÈ[™\‹[ØÚÈ[X›\ˆÜÚ][ÛœÈ\™BˆXXÚ[™KX›ÛÚÈ˜XÝÈÚ]›ÈÛÝ\˜ÙHÙHØ[ˆÚ]H]ÙYY[YKÛÈ^HÝ^Bˆ[\H˜]\ˆ[ˆÝY\ÜÙY8 %š[[Hœ›ÛH[Ý\ˆÝÛˆ\]Z\Y[ˆ
+‹ÂˆYÛš][ÛŽˆËšYÛˆ	ÉËXXÜÎˆË›XXÈ	ÉË[X›\œÎˆË[H[ˆÊˆÛÛYHØ\œÈØ\œžH[Ü™H[ˆÛ™HÛÙHÙ\šY\È8 %[ˆYÛš][ÛˆÙ\šY\È[™BˆÙ\\˜]HÛÜ‹Ý[šÈÙ\šY\ËXXÚÚ]]ÈÝÛˆPPÔËˆÚ[ˆ]\ÈBˆØ\ÙH^HÛÈ\™H[™H˜\ÚXÜÈØ\™ÚÝÜÈH›ØÚÈ\ˆÙ\šY\Ëˆ
+‹ÂˆÙ\šY\ÎˆËœÙ\ˆ[ˆKˆ›ÙÜ˜[[Z[™ÎˆÂˆØ™ˆË›Ø™	ÉËÛ˜›Ø\™ˆË›Ûˆ	ÉË[Ù^\ÓÜÝˆË˜ZÛ	ÉËˆ[”™\]Z\™YˆËœ[ˆ	Ó›ÉË›Ý\ÎˆË››ÝH	ÉÂˆKˆØ™ÜˆËœÜQUSÓÐ‘ÔÔ•ˆÛÜ•[›ØÚÎˆË™[žH	ÉËˆ›Ý\ÎˆË››ÝH	ÉËˆ™\šYšYYˆ˜[ÙBŸJNÂ‚˜ÛÛœÝÑQQÕ‘RPÓTÈHÂˆŠÈYˆ	Ù›Ü™YŒMLLŒMKLŒŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LML	ËLˆŒMKLNˆŒŒŽˆ	ÝXÚÉËÝÎˆ	ÒLLIËˆ[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽLÍÈNLŒÌŽLÉËÚ\ˆ	ÒQH
+]YÈ›ÊIËˆÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›È8 %ÑSHÜˆ]YËT›ÈØ\X›HÛÛ™\ˆÛ›IËˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÌMTŽLIË	ÍˆÈPˆËÈ™[[ÝHÝ\	×KÉÙ›\	Ë	ÓQ‹PLPIË	ÌMTŽLÌ	Ë	Íˆ
+˜\ÙHš[JI×WKˆÜÎˆ	Ñ›Ü™LXÝ]
+LLJIËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\ˆ8 %‹]˜XÚÉËˆXÎˆ	ÑXÛÙHÛÜˆØÚÈÜˆ™XYÛÙHœ›ÛHX[\ˆËÈ›ÛÙˆÙˆÝÛ™\œÚ\	ËˆØ™ˆ	ÖY\È8 %ˆÛÜšÚ[™ÈÙ^\È[ÝÈÛ˜›Ø\™YˆHÙ^HÜˆRÓ™YYÈÐ‘ÛÛ
+ÈÙXÝ\š]HØZ]‰ËˆÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\Îˆ[œÙ\Ý\›ˆÞXÛKˆ›Þˆˆ›ØœÈ[ˆÝ\Û\ˆÙ\]Y[˜ÙK‰ËˆZÛˆ	ÓÐ‘L[Z[ˆÙXÝ\š]HXØÙ\ÜÈÛˆ[ÜÝÛÛÉË[Žˆ	Ó›ÈSˆ8 %[YYÙXÝ\š]HXØÙ\ÜÉËˆ›ÝNˆ	Ô\Ú]Ë\Ý\š[\È]™H[ˆ[Y\™Ù[˜ÞH›YH
+LLJHY[ˆ[ˆH›Ø‹‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	ÕÙYÙHÜXÛÜ›™\ˆÙˆš]™\ˆÛÜˆ
+ÈÛ™È™XXÚÈH[\š[ÜˆØÚÈÝÚ]ÚˆØ]ÚHÚYKXÝ\Z[ˆZ\˜˜YÈÛˆÝ\\ˆÜ™]Ë‰ÈJKˆŠÈYˆ	Ù›Ü™YŒMLLŒLŒM	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LML	ËLˆŒLNˆŒMŽˆ	ÝXÚÉËˆÝÎˆ	ÒLˆÈ	Ë[ˆ	ÒL‹T	ËÙ[Nˆ	ÍNLLÍHÈL‹T	ËˆÚ\ˆ	ÍMŒÈ
+Xš]œ›ÛHŒLNÈXš]ŒLŒL
+IËÞ\Îˆ	ÔUÉËˆÛÛ™Nˆ	ÖY\È8 %Xš]ÛÛ™\ÈX\Ú[NÈXš]™YYÈHØ\X›HÛÛ™\‰Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULÌÌHÈÕÕÐŒULÍIË	ÎÖ‹LMRÍŒKP‰Ë	Í‰×WKÜÎˆ	Ñ›Ü™XÝ]
+ÍHÙ\šY\ÊIËˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	ÑÛÜˆØÚÈXÛÙ\ÈÚ]HXÝ]›Ü™ž[Ý]Ù]Üˆ\ÚH“ÌÎ	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\Îˆ[œÙ\Ù^HKÛ‹ÛÙ™‹Ù^HˆÚ][ˆ\ËÛ‹ÛÙ™‹™]ÈÙ^HÚ][ˆLÈ8 %Ú[YHÛÛ™š\›\Ë‰ËˆZÛˆ	ÓÐ‘
+ÈL[Z[ˆ[YYXØÙ\ÜÉËˆ›ÝNˆ	ÎXš]œÈXš]Ü]\È›ÝYÚHHŒLH[Ù[YX\ˆ8 %™\šYžHÚ]HÚ\™XY\ˆ™Y›Ü™H[ÝHÝ]‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	ÕÙYÙH[™Û™È™XXÚÜˆHÍHž[Ý]Ù]ÛˆHÛÜ‹‰ÈJKˆŠÈYˆ	Ù›Ü™Y›ØÝ\ËLŒL‹LŒN	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ›ØÝ\ÉËLˆŒL‹LNˆŒNÝÎˆ	ÒLLIËˆ[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽ‰ËÚ\ˆ	ÍMŒÈXš]	ËÞ\Îˆ	ÔUÉËˆÛÛ™Nˆ	ÖY\ÈÚ][ˆXš]Ø\X›HÛÛ™\‰Ëˆ™[NˆÖÉÙ›\	Ë	ÒÔMUÒÍIË	ÌMTŽ‰Ë	Íˆ[YÜ˜]Y›\	×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLHÛˆHš]™\ˆÛÜ‰ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\È8 %[œÙ\Ý\›ˆÞXÛIËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	Ó\ÚHLLH\È˜\Ý\ˆ[ˆ›Ü˜Ú[™ÈHÙYÙHÛˆ\ÈÛÜˆÙX[‰ÈJKˆŠÈYˆ	ØÚ]žK\Ú[™\˜YËLŒËLŒLÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÚ[™\˜YÈML	ËLˆŒËLNˆŒLËˆŽˆ	ÝXÚÉËÝÎˆ	ÐŒLLH
+ÓHLXÝ]
+IË[ˆ	ÐŒLLKT	ËÙ[Nˆ	ÌMNLLŒŽ‰ËˆÚ\ˆ	ÑÓHÚ\˜ÛH\È
+ÌÊÊIËÞ\Îˆ	Ô\ÜÛØÚÈÈÌÊÉËÛÛ™Nˆ	ÖY\È8 %ÚY[HÛÛ™Y	Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌÈÕPÍŒŒŒIË	ÌŒMLÍ	Ë	ÍˆÈP‰×WKÜÎˆ	ÑÓHLXÝ]
+ŒLLJIËÜˆLˆˆÝ]ˆ	ÑYÙHÝ]LXÝ]	ËˆXÎˆ	Ó\ÚHÓLÍÈÛˆHÛÜ‹Üˆ™XYHÛÙHÙ™ˆHØÚÈÞ[[™\ˆÛÙHYÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆ™[X\›ŽˆÙ^HÛˆLZ[ˆ[[ÙXÝ\š]HYÚÝÜÈ›\Ú[™ËÞXÛHÙ™‹ÛÛ‹™\X]Þ	ËˆZÛˆ	ÌÌ[Z[ˆÈÛ˜›Ø\™™[X\›ˆÛÜšÜÈÚ]›ÈÛÛ	Ëˆ›ÝNˆ	ÕHÞLZ[]H™[X\›ˆ\Èœ™YH]ÛÝÈ8 %YÙ]ÍHZ[]\ÈÛˆÚ]K‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	Ó\ÚHÓLÍËÜˆÙYÙH
+È™XXÚÈH[\ˆØÚÈ›Ù‰ÈJKˆŠÈYˆ	ØÚ]žK\Ú[™\˜YËLŒMLŒNIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÚ[™\˜YÈML	ËLˆŒMLNˆŒNKˆŽˆ	ÝXÚÉËÝÎˆ	ÐŒLNH
+ÓHLXÝ]LLZ\Ú›Ùš[JIË[ˆ	ÐŒLNKT	ËˆÙ[Nˆ	ÌLÍLŒŒÈÈLÍLNNIËÚ\ˆ	ÑÓH‘H
+]YÌˆÈÑÎLÍÑJIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆˆÈ\ÜÚ]™H[žHÛˆ›Þš[\ÉËˆÛÛ™Nˆ	Ó[Z]Y8 %\ÝX[H›ÙÜ˜[[YY›ÝÛÛ™Y	Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÓLÓ‹LÌŒÌÍÌL	Ë	ÌLÍMÍÍÍÌ	Ë	ÍPˆÈ‰×KÉÜ›Þ	Ë	ÓLÓ‹LÌŒÌÍÌŒ	Ë	ÌLÍLÎN	Ë	ÍPˆ›Þ
+YÚÛÝ[žHÈŠI×WKˆÜÎˆ	ÑÓHLXÝ]
+ŒLNJIËÜˆLˆÝ]ˆ	ÑYÙHÝ]LXÝ]	ËˆXÎˆ	Ó\ÚHLLÈÓMHÛˆHš]™\ˆÛÜ‰ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆ™[X\›ˆ]˜Z[X›HÛˆ›YKZÙ^Hš[\ÉËZÛˆ	ÓÐ‘ÜˆÌ[Z[ˆÈ™[X\›ˆÛˆ›Û‹\›Þ	Ëˆ[Žˆ	Ó›È8 %ÛÛYHÛÛÈØ[H’Sˆ›ÜˆHÙYY	Ëˆ›ÝNˆ	Ô›Þš[\ÎˆYXKY›Øˆ\È]ZXÚÎÈRÓ™YYÈHÙXÝ\š]H™[X\›‹‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	Ó\ÚHLLˆØ]ÚHÛÜˆš[HÛˆŒMŠË‰ÈJKˆŠÈYˆ	ØÚ]žK[X[XKLŒLËLŒMIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÓX[XIËLˆŒLËLNˆŒMKÝÎˆ	ÒLL	Ëˆ[ˆ	ÐŒLM‹T	ËÙ[Nˆ	ÌLÍLŒŒÉËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›È8 %›ÙÜ˜[H]	Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÓÒLŒLL‰Ë	ÌLÍNŽIË	ÍˆÈP‰×WKÜÎˆ	ÑÓHLLLXÝ]	ËÜˆLˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËˆZÛˆ	ÌÌ[Z[ˆ™[X\›ˆÜˆÐ‘	Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ÝÞ[ÝKXØ[\žKLŒËLŒLIËZÎˆ	ÕÞ[ÝIËYˆ	ÐØ[\žIËLˆŒËLNˆŒLKÝÎˆ	ÕÖM	Ëˆ[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLŒ
+ÝÚ\
+IËˆÚ\ˆ	ÍMÈ
+Ý
+HÈMÌˆÈÛˆŒL
+ÉËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÑÝÚ\ÛÛ™\ÎÈÈÚ\™YYÈHËXØ\X›HÛÛ™\‰Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÎMÍ‹LŒŒ	Ë	ÍˆÙ\\˜]H›Ø‰×KÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÎNLLŒIË	ÔÛX\Ù^HÛˆHÈXœšY	×WKˆÜÎˆ	ÕÖMÈÖM	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖMÛˆHÛÜ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÈÛˆ›YKZÙ^Hš[\È8 %HÛ\ÜÚXÈYÛš][Û‹XÞXÛH
+ÈÛÜ‹XÞXÛH[˜ÙIËˆZÛˆ	ÓÐ‘ÈÛÛYH™YYH™\Ù]šXHH[[[Øš[^™\ˆ›Þ	Ëˆ›ÝNˆ	ÐÛÛ™š\›HÝœÈÈÚ\™Y›Ü™H[ÝHÝ]8 %HÈÚ\\ÈÝ[\Y‘ÈˆÛˆHÙ^HXY‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	Ó\ÚHÖM\ÈHÛX[ˆØ^H[‹ˆÙYÙH[™™XXÚÛÜšÜÈ]HÙX[X\šÜÈX\Ú[K‰ÈJKˆŠÈYˆ	ÝÞ[ÝKXØ[\žKLŒL‹LŒMÉËZÎˆ	ÕÞ[ÝIËYˆ	ÐØ[\žIËLˆŒL‹LNˆŒMËˆÝÎˆ	ÕÖM
+Ú\ŒLÊÊIË[ˆ	ÕÖMT	ËˆÙ[Nˆ	ÎMÎKLM
+
+IËÚ\ˆ	ÎHÈÚ\
+LŽXš]QTÊHŒLÊËÈÚ\ŒL‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›È›Üˆ8 %]\Ý™H›ÙÜ˜[[YY	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÎNLLŒM	Ë	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ó[Z]Y8 %XÚ\RÓÙ[ˆ™YYÈHM‹[Z[ˆ[[[Øš[^™\ˆ™\Ù]	ËˆZÛˆ	ÓÐ‘
+ÈM‹[Z[]HÙXÝ\š]HØZ]Ûˆ[ÜÝÛÛÉËˆ[Žˆ	Ó›Ë]X[žHÛÛÈ™YYHÙYYÔSˆ™XYš\œÝ	Ëˆ›ÝNˆ	ÒXÚ\Þ[Ý\È\™HÚ\™HÚX\ÛÛ™HÛÛÈ]Z]ˆœš[™ÈHÛÛÙÛÛ‰Ëˆ[žNˆ	Ó\ÚHÖMÛˆHÛÜŽÈÛX\ZÙ^Hš[\ÈYHHÖM[Y\™Ù[˜ÞH›YH[ˆH›Ø‹‰ÈJKˆŠÈYˆ	ÝÞ[ÝK]XÛÛXKLŒM‹LŒŒÉËZÎˆ	ÕÞ[ÝIËYˆ	ÕXÛÛXIËLˆŒM‹LNˆŒŒËŽˆ	ÝXÚÉËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÎNLLL	Ë	ÌÐˆÈˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÚÛ™KXXØÛÜ™LŒLŒL‰ËZÎˆ	ÒÛ™IËYˆ	ÐXØÛÜ™	ËLˆŒLNˆŒL‹ÝÎˆ	ÒÌHÈÌÉËˆ[ˆ	ÒÌKT	ËÙ[Nˆ	ÌÍLLLKULPL	ËÚ\ˆ	ÒQˆ
+ÑÎLÍŠIËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\È8 %QˆÛÛ™\ÈÚ][ÜÝÛÛ™\œÉËˆ™[NˆÖÉÙ›Ø‰Ë	ÒÔMUÒÍLÌÈÕPÑÎLÎPIË	ÌÍLLLKULPL	Ë	Í‰×WKÜÎˆ	ÒÛ™HXÝ]
+ÌJIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓˆ
+YÚÙXÝ\š]Hš[\ÊHÈÓN‰ËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ó›ÈYHÛ˜›Ø\™8 %Ð‘ÛÛ™YYY	ËZÛˆ	ÓÐ‘ÈÛÛYH™YYH[[[Øš[^™\ˆS‰Ëˆ[Žˆ	ÔÛÛY][Y\È8 %SˆžH’Sˆœ›ÛHHX[\ˆÜˆHÛÙHÙ\šXÙIËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚX›Ý™HHÛÙ™[X\ÙIË[žNˆ	Ó\ÚHÓˆÜˆÙYÙH
+È™XXÚ‰ÈJKˆŠÈYˆ	ÚÛ™KXÚ]šXËLŒM‹LŒŒIËZÎˆ	ÒÛ™IËYˆ	ÐÚ]šXÉËLˆŒM‹LNˆŒŒKÝÎˆ	ÒÓ‰Ëˆ[ˆ	ÒÌËT	ËÙ[Nˆ	ÍÌŒMËUKPLLIËˆÚ\ˆ	ÒQÈ
+]YÌÈÈÑÎLÎ
+IËÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›È8 %›ÙÜ˜[H]	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒÔUŒ–	Ë	ÍÌŒMËUKPLLIË	ÍˆÈPˆÛX\Ù^I×WKÜÎˆ	ÒÓˆYÚÙXÝ\š]IËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘ÛÛY\[™[ÙXÝ\š]HØZ]	Ë[Žˆ	ÔÛÛYHÛÛÈØ[SˆžH’S‰Ëˆ›ÝNˆ	Ñ[Y\™Ù[˜ÞH›YH]™\È[ˆH›Øˆ8 %Ý]]œ›ÛHHÛÜˆXÛÙK‰Ë[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	Ûš\ÜØ[‹X[[XKLŒËLŒL‰ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ð[[XIËLˆŒËLNˆŒL‹ˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÙ[Nˆ	ÌŽQLËRLPIËˆÚ\ˆ	ÒQˆ
+]YÌ‹[ˆH[[YÙ[Ù^JIËÞ\Îˆ	ÓUÈKÍ‰ËˆÛÛ™Nˆ	Ó›È8 %[[YÙ[Ù^H\È›ÙÜ˜[[YY	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍLÈÈÕÕÐŒUNŒIË	ÌŽQLËRLPIË	Íˆ[[YÙ[Ù^I×WKÜÎˆ	Ó”ÓŒM	ËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒMÛˆHš]™\ˆÛÜ‰ËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈYYÚ]S‰Ëˆ[Žˆ	ÖQTÈ8 %SˆÛÛY\Èœ›ÛHHÓHÛÙH
+ÙYHÛÛÈˆš\ÜØ[ˆÓJIËˆ›ÝNˆ	ÐÓHÛÙH\ÈÛˆHÚ]HX™[ÛˆHÓH™Z[™HÚXÚÈ[™[È[™\ˆH\Ú‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ëˆ[žNˆ	Ó\ÚH”ÓŒM8 %\ÈÛÜˆ\ÈH˜YÙYÙHØ[™Y]K‰ÈJKˆŠÈYˆ	Ûš\ÜØ[‹\›ÙÝYKLŒMLŒŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ô›ÙÝYIËLˆŒMLNˆŒŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÙ[Nˆ	ÌŽQLËMRLÐ‰ËˆÚ\ˆ	ÒQÈÈ]YÌÈÛˆ]\ˆZ[ÉËÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÌŽQLËMRLÐ‰Ë	Íˆ[[YÙ[Ù^I×WKÜÎˆ	Ó”ÓŒM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ8 %ÓKY\š]™YS‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú][™ZKY[[˜KLŒLKLŒM‰ËZÎˆ	Ò][™ZIËYˆ	Ñ[[˜IËLˆŒLKLNˆŒM‹ˆÝÎˆ	ÒLŒ
+ÒPMH˜[Z[JIË[ˆ	ÒLŒT	ËÙ[Nˆ	ÎNNM‹LÖL	ËˆÚ\ˆ	ÒQˆ
+ÑÎLÍŠIËÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÙ›\	Ë	ÓÔÓÒÐKLÍŒ	Ë	ÎMMÌLÖL	Ë	ÌÐˆÈˆ›\	×WKÜÎˆ	ÒLŒ	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLŒÈLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ8 %SˆžH’Sˆ
+X[\ˆÜˆÛÙHÙ\šXÙJIËˆ›ÝNˆ	Ò][™ZKÒÚXHSˆžH’Sˆ\ÈH\ÝX[Û\›ÝHÝ]‰Ë[žNˆ	Ó\ÚHLŒ	ÈJKˆŠÈYˆ	ÚÚXK[Ü[XKLŒLKLŒMIËZÎˆ	ÒÚXIËYˆ	ÓÜ[XIËLˆŒLKLNˆŒMKÝÎˆ	ÒÒÌLÈLN	Ëˆ[ˆ	ÒÒÌLT	ËÙ[Nˆ	ÎNNM‹L•L	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÚXH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÔÖMRQ“L	Ë	ÎMML•L	Ë	ÍˆÛX\Ù^H
+VÔÖ
+I×WKÜÎˆ	ÒÒÌL	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÒPMÈÈLN	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHÒPMÉÈJKˆŠÈYˆ	ÙÙÙK\˜[KLMLLŒLËLŒN	ËZÎˆ	Ô˜[IËYˆ	ÌML	ËLˆŒLËLNˆŒNŽˆ	ÝXÚÉËˆÝÎˆ	ÖLMÌÈÖL	Ë[ˆ	ÖLMÌT	ËÙ[Nˆ	ÍŽLLÎÉËˆÚ\ˆ	ÒQˆ
+]YÌŠIËÞ\Îˆ	ÔÒÔ‘QSHÈÒÒSIËÛÛ™Nˆ	ÖY\ÈÛˆÛÛYK›ÙÜ˜[H\ÈØY™\‰Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÑÔMMLÕ	Ë	ÍŽLLÎÐP‰Ë	ÌÐˆÈP‰×WKÜÎˆ	ÐÖLXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÎˆÞXÛHÛˆÚ]Ù^HK[ˆÙ^H‹[ˆ™]ÈÙ^IËZÛˆ	ÓÐ‘
+ÈYYÚ]S‰Ëˆ[Žˆ	ÖQTÈ›ÜˆRÓ8 %Sˆ™XYœ›ÛHHÒÔ‘QSHÜˆžH’S‰Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ú™Y\]Ü˜[™Û\‹LŒËLŒMÉËZÎˆ	Ò™Y\	ËYˆ	ÕÜ˜[™Û\ˆ’ÉËLˆŒËLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÖLMÈÖL	Ë[ˆ	ÖLMT	ËÙ[Nˆ	ÍŽMÌ‰ËˆÚ\ˆ	ÒQˆ
+]YÌŠIËÞ\Îˆ	ÔÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÙ›Ø‰Ë	ÓÒŽLÐPIË	ÍŽMÌPIË	ÌÐ‰×WKÜÎˆ	ÐÖL	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÖL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÈÛ˜›Ø\™Y	ËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ›ÜˆRÓ	Ëˆ›ÝNˆ	ÔÛÙ]ÜÜ˜[™Û\œÈ\™H[ˆX\ÞH›Û‹Y\ÝXÝ]™H[žH8 %ÛÈ›ÝYÚHÚ[™ÝÈš\\ˆ™Y›Ü™H[ÝHÝXÚHÙYÙK‰Ëˆ[žNˆ	ÔÛÙÜˆ[žš\ˆ\™Üˆ\ÚHÖL‰ÈJKˆŠÈYˆ	ÝËZ™]KLŒLKLŒN	ËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	Ò™]IËLˆŒLKLNˆŒNÝÎˆ	ÒM‰Ëˆ[ˆ	ÒMU	ËÙ[Nˆ	ÍRÌÍÌŒ‰ËˆÚ\ˆ	ÒQ
+YYØ[[ÜÊHÈTPˆQÛˆŒMŠÉËÞ\Îˆ	Ò[[[Øš[^™\ˆÈTP‰ËˆÛÛ™Nˆ	ÒQÚ]HØ\X›HÛÛ™\ŽÈTPˆ\È›ÝHÛÛ™H›Ø‰Ëˆ™[NˆÖÉÙ›\	Ë	Ó‘ÌLN	Ë	ÍRÌÍÌŒQIË	ÌÐˆÈˆ›\	×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘ÈTPˆ]›Ü›H™YYÈ[ˆTP‹XØ\X›HÛÛ	Ëˆ[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]HÈÔÈÛÙH™YYYÛˆÛÛYIËˆ›ÝNˆ	Ñš[™Ý]TPˆœÈ›Û‹STPˆ™Y›Ü™H[ÝH][ÝKˆ]\ÈHY™™\™[›Øˆ[™HY™™\™[šXÙK‰ËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ë[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	Ø›]ËLÜÙ\šY\ËLŒ‹LŒLIËZÎˆ	Ð“UÉËYˆ	ÌÈÙ\šY\È
+NL
+IËLˆŒ‹LNˆŒLKÝÎˆ	ÒNL‰Ëˆ[ˆ	ÒNL‰ËÙ[Nˆ	ÐÐTÌÈ›Ø‰ËÚ\ˆ	ÐÐTÌÈÈÐTÌÊÈ
+ÑÎMJIËˆÞ\Îˆ	ÐÐTÌÉËÛÛ™Nˆ	Ó›È8 %ÐTÈÛÜšËÙ[ˆ™[˜Ú	Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÒÔMUÒÍLLÉË	ÍŽNNÉË	ÌÐˆÈ‰×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHNL‰ËØ™ˆ	ÔÛÛY][Y\È8 %ÐTÌÊÈÙ[ˆ™YYÈ™[˜ÚÛÜšÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÐÐTÈ[Ù[H™XYTÓˆ™\]Z\™Y	Ë[Žˆ	ÒTÓˆœ›ÛHHQKÐÐTÉËˆ›ÝNˆ	Ô][ÝH\ÈÛ™HYÚÜˆ™Y™\ˆ]Ý]ˆ]\È›ÝHš]™]Ø^HŒ[Z[]H›Ø‹ˆHNL‹ÑNLÈÛÝ\H[™ÛÛ™\X›H˜[ˆÛˆÈŒLÈ[Û™ÜÚYHHŒÌÙY[‹‰Ëˆ[žNˆ	Ó\ÚHNL‰ÈJKˆŠÈYˆ	ÛY\˜ÙY\ËXØÛ\ÜËLŒLŒM	ËZÎˆ	ÓY\˜ÙY\ËP™[ž‰ËYˆ	ÐËPÛ\ÜÈ
+ÌŒ
+IËLˆŒLNˆŒMˆÝÎˆ	ÒM	Ë[ˆ	ÒM	ËÙ[Nˆ	Ñ”ÌÈÛX\Ù^IËˆÚ\ˆ	Ñ”ÌÈ
+[™œ˜\™Y
+IËÞ\Îˆ	Ñ”ÌÈÈTÌÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒVVŒÌÌL‰Ë	ÐLŒLMLŒ	Ë	ÌÐ‹Íˆ”ÌÈTˆÙ^I×WKÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	Ó›È8 %”ÌÈ™YYÈRTËÑTÓÛÜšÈ[™\ÜÝÛÜ™Ø[Ý[][Û‰ËÛŽˆ	Ó›ÉËˆZÛˆ	ÑRTÈ™XY\ÜÝÛÜ™Ø[ËÙ^Hš[HÜš]IË[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÈ]IËˆ›ÝNˆ	ÔÜXÚX[\Ý›Ø‹ˆšXÙH]\ÈÛ™K‰Ë[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	ÜÝX˜\K[Ý]˜XÚËLŒMKLŒNIËZÎˆ	ÔÝX˜\IËYˆ	ÓÝ]˜XÚÉËLˆŒMKLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÕP
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÔÕPT	ËÙ[Nˆ	ÎÍKPSIËˆÚ\ˆ	ÒQÈÈ]YÌÉËÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMRÉË	ÎÍKPSIË	ÍˆÛX\Ù^I×WKÜÎˆ	ÔÕP	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ëˆ[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÛX^™KLËLŒMLŒN	ËZÎˆ	ÓX^™IËYˆ	ÓX^™LÉËLˆŒMLNˆŒNÝÎˆ	ÓPVŒ	Ëˆ[ˆ	ÓPVŒ‹T	ËÙ[Nˆ	Ð’KMËMQIËÚ\ˆ	ÒQHÈ]YÈ›ÉËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÕÐV”ÒÑLLÑIË	Ð’KMËMQIË	ÌÐˆÈˆÛX\Ù^I×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHPVŒ	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó[Z]Y	ËZÛˆ	ÓÐ‘	Ëˆ[žNˆ	Ó\ÚHPVŒ	ÈJKˆŠÈYˆ	Ú\›^KY]šYÛÛ‹XÛÛ[[Û‰ËZÎˆ	Ò\›^KQ]šYÛÛ‰ËYˆ	Ó[ÜÝ[Ù[ÉËLˆNNLËLNˆŒ‹ˆŽˆ	Û[ÝÉËÝÎˆ	ÒLÈÈL‰Ë[ˆ	ÒLÉËÙ[Nˆ	Ý˜\šY\ÈžH[Ù[	ËˆÚ\ˆ	Ó›Û™HÛˆ[ÜÝ8 %”ÓH›Øˆ\ÈÙ\\˜]IËˆÞ\Îˆ	Ò[™ËYœ™YHÙXÝ\š]H›Øˆ
+›ÝH˜[œÜÛ™\ˆÙ^JIËÛÛ™Nˆ	Û‹ØIËˆ™[NˆÖÉÙ›Ø‰Ë	Ý˜\šY\ÉË	Ý˜\šY\ÉË	Ò”ÓH›Þ[Z]H›Ø‰×WKÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHYÛš][ÛŽÈØYX˜YÈØÚÜÈÙ[ˆÚ\™HHÛÙIËØ™ˆ	Û‹ØIËˆÛŽˆ	ÔÙXÝ\š]H›ØˆZ\š[™ÈšXHHÙÛY]\ˆY[IËˆZÛˆ	ÐÝ]žHÛÙHÈ[\™\ÜÚ[ÛŽÈ›ØˆZ\š[™ÈÙ\\˜]IËˆ›ÝNˆ	Ó[ÝÜ˜ÞXÛHÜÝZÙ^HÛÜšÈ\ÈYÚ[X\™Ú[ˆ[™ÝË]ÛÛˆÛÛÙœ™XY[™]\‹‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	Ù›Ü™\Ý\\™]KLŒLKLŒM‰ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LLÑ‹LÍLÝ\\ˆ]IËLˆŒLKLNˆŒM‹ˆŽˆ	ÝXÚÉËÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽ	ËˆÚ\ˆ	ÍMŒÈXš]	ËÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÚ][ˆXš]ÛÛ™\‰Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒUMÎLÉË	ÉË	ÍˆÈP‰×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\Îˆ[œÙ\Ý\›ˆÞXÛIËZÛˆ	ÓÐ‘
+ÈL[Z[ˆ[YYXØÙ\ÜÉËˆÜˆ	Ñš]™\ˆÚYK[™\ˆ\ÚYÙˆHÝY\š[™ÈÛÛ[[‰Ë[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y\ØØ\KLŒLËLŒNIËZÎˆ	Ñ›Ü™	ËYˆ	Ñ\ØØ\IËLˆŒLËLNˆŒNKŽˆ	ÜÝ]‰ËÝÎˆ	ÒLLIËˆ[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽL‰ËˆÚ\ˆ	ÍMŒÈXš]ÈQHÛˆ›Þš[\ÉËÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ð›YHÙ^\ÈY\ÎÈ›Þ›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍˆÈPˆ
+][š][JI×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËˆZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y^Ü™\‹LŒLKLŒNIËZÎˆ	Ñ›Ü™	ËYˆ	Ñ^Ü™\‰ËLˆŒLKLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽLIËˆÚ\ˆ	ÒQH]YÈ›ÈÛˆ›ÞÈMŒÈÛˆ›YIËÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›ÈÛˆ›Þ	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍPˆËÈ™[[ÝHÝ\	×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ìˆ›Þ›ØœÈ[ˆHÝ\Û\ˆÙ\]Y[˜ÙIËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	ÔÛXÙH[\˜Ù\Üˆ˜\šX[ÈÚ\™HH]›Ü›K‰Ë[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y\Ú[Û‹LŒLËLŒŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ\Ú[Û‰ËLˆŒLËLNˆŒŒÝÎˆ	ÒLLIËˆ[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽLIËˆÚ\ˆ	ÒQH]YÈ›È
+›Þ
+HÈMŒÈ
+›YJIËÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ð›YHÛ›IËˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍP‰×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËÛŽˆ	Ìˆ›ØœÉËˆZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™[]\Ý[™ËLŒMKLŒŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Ó]\Ý[™ÉËLˆŒMKLNˆŒŒËÝÎˆ	ÒLLIËˆ[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽLN	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍˆÈP‰×WKÜÎˆ	ÒLLHLXÝ]	ËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËÛŽˆ	Ìˆ›ØœÉËˆZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™]˜[œÚ]LŒMKLŒŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Õ˜[œÚ]È˜[œÚ]ÛÛ›™XÝ	ËLˆŒMKLNˆŒŒËˆŽˆ	Ý˜[‰ËÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQHÈMŒÈžHš[IËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Õ˜\šY\ÉË™[NˆÖÉÙ›\	Ë	ÉË	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÈÛˆÛÛYHš[\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	ÕÛÜšÈ˜[œÈ\™Hœ™\]Y[ØÚÛÝ]Ø[È8 %HÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÚY\ˆØ^H[‹‰Ëˆ[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y^Y][Û‹LŒMKLŒŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Ñ^Y][Û‰ËLˆŒMKLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÙ[Nˆ	ÌMTŽM‰ËˆÚ\ˆ	ÒQH]YÈ›ÉËÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÎLÌM‰Ë	ÉË	ÍP‰×WKˆÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ìˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™\˜[™Ù\‹LŒNKLŒŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Ô˜[™Ù\‰ËLˆŒNKLNˆŒŒËŽˆ	ÝXÚÉËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËÞ\Îˆ	ÔUÉËˆÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓQ‹PLPIË	ÉË	Í‰×WKÜÎˆ	ÒLLHLXÝ]	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËØ™ˆ	ÖY\ÉËÛŽˆ	Ìˆ›ØœÉËˆZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	ÙÛXË\ÚY\œ˜KLŒMLŒNIËZÎˆ	ÑÓPÉËYˆ	ÔÚY\œ˜HML	ËLˆŒMLNˆŒNKŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLNIË[ˆ	ÐŒLNKT	ËÙ[Nˆ	ÌLÍLŒŒÉËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›Ø‰Ë	ÓLÓ‹LÌŒÌÍÌL	Ë	ÌLÍMÍÍÍÌ	Ë	ÍPˆÈ‰×WKˆÜÎˆ	ÑÓHLXÝ]	ËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLLÈÓMIËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘Üˆ™[X\›‰Ëˆ›ÝNˆ	ÔØ[YH]›Ü›H\ÈHÚ[™\˜YÈÙˆHØ[YHYX\œË‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKY\]Z[›ÞLŒLLŒMÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ñ\]Z[›Þ	ËLˆŒLLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLL	Ë[ˆ	ÐŒLM‹T	ËÙ[Nˆ	ÌLÍLL‰ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÒLŒLL‰Ë	ÌLÍNŽIË	ÍˆÈP‰×WKˆÜÎˆ	ÑÓHLLLXÝ]	ËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›ˆÜˆÐ‘	Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKXÜ^™KLŒLKLŒNIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐÜ^™IËLˆŒLKLNˆŒNKÝÎˆ	ÒLL	Ëˆ[ˆ	ÐŒLM‹T	ËÙ[Nˆ	ÌLÍLŒŒÉËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÒLŒLL‰Ë	ÉË	ÍˆÈP‰×WKˆÜÎˆ	ÑÓHLLLXÝ]	ËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›ˆÜˆÐ‘	Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žK]ZÙKLŒMKLŒŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÕZÙHÈÝX\˜˜[‰ËLˆŒMKLNˆŒŒˆŽˆ	ÜÝ]‰ËÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËˆÙ[Nˆ	ÌLÍN	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËÞ\Îˆ	Ô\ÜÚ]™H[žHÈ\ÚÝ\	ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹LÌŒÌÍÌL	Ë	ÌLÍN	Ë	Í‰×WKÜÎˆ	ÑÓHLXÝ]	ËÜˆLˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›ØˆÜÜÚX›HÚ]HÛÜšÚ[™È›Ø‰ËˆZÛˆ	ÓÐ‘
+ÈÙXÝ\š]H™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKZ[\[KLŒMLŒŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ò[\[IËLˆŒMLNˆŒŒÝÎˆ	ÒLL	Ëˆ[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËˆÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTMPIË	ÉË	ÍP‰×WKÜÎˆ	ÑÓHLXÝ]	ËÜˆLˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆ™[X\›ˆÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKXÛÛÜ˜YËLŒMKLŒŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐÛÛÜ˜YÉËLˆŒMKLNˆŒŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	ÐŒLNIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›Ø‰Ë	ÓLÓ‹LÌŒÌÍÌL	Ë	ÉË	ÍˆÈP‰×WKˆÜÎˆ	ÑÓHLXÝ]	ËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›ˆÜˆÐ‘	Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žK]˜]™\œÙKLŒKLŒMÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Õ˜]™\œÙIËLˆŒKLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÈÈ‘HžHYX\‰ËˆÞ\Îˆ	ÔÌÊÈÈ[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	ÐÚ\˜ÛH\ÈY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	ÍˆÈP‰×WKˆÜÎˆ	ÑÓHLXÝ]	ËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ëˆ›ÝNˆ	ÐÚXÚÈÚXÚÚ\Ù[™\˜][Ûˆ™Y›Ü™HÝ][™È8 %\È[Ù[Ü[œÈHÚ[™Ù[Ý™\‹‰Ëˆ[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛK]˜]ËLNN‹LŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÕUÈÈTÔËRÙ^H
+Û\ˆÓJIËLˆNN‹LNˆŒ‹ˆÝÎˆ	ÐŒLˆÈŒˆ[]	Ë[ˆ	ÐŒ‹TH‹ˆŒ‹TMIËˆÙ[Nˆ	Ý˜\šY\ÈžH[]˜[YIËÚ\ˆ	Ó›Û™H8 %™\Ú\ÝÜˆ[][ˆH›YIËˆÞ\Îˆ	ÕUÈÈTÔËRÙ^IËÛÛ™Nˆ	Û‹ØH8 %X]ÚH[]™\Ú\Ý[˜ÙIËˆ™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÔÙ\\˜]HÙ^[\ÜÈ[žKYˆš]Y	×WKÜÎˆ	ÑÓH‹XÝ]
+ŒLŠIËÜˆ‹ˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÜˆ[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËˆZÛˆ	Ô™XYH[]˜[YHÚ]HUÈ[\œ›ÙØ]Ü‹[ˆÝ][™X]Ú	Ëˆ›ÝNˆ	ÌMH[]˜[Y\ËˆØ\œžHH[Ù]Üˆ[ˆ[\œ›ÙØ]Üˆ8 %ÝY\ÜÚ[™È\›œÈH[Z[]HØÚÛÝ][Y\ˆXXÚžK‰ËˆÜˆ	Õ[™\ˆ\Ú
+Ð‘RHÛˆHX\›Y\Ý
+IË[žNˆ	Ó\ÚHÓLÍÈÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝÞ[ÝKXÛÜ›ÛKLŒKLŒLÉËZÎˆ	ÕÞ[ÝIËYˆ	ÐÛÜ›ÛIËLˆŒKLNˆŒLËÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÙ[Nˆ	ÎMÎKLŒ	ËˆÚ\ˆ	ÍMÈ
+Ý
+HÈÈÛˆ]\‰ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÑÝY\ËÈ™YYÈHÈÛÛ™\‰Ë™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÖY\ÈÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKXÛÜ›ÛKLŒMLŒNIËZÎˆ	ÕÞ[ÝIËYˆ	ÐÛÜ›ÛIËLˆŒMLNˆŒNKÝÎˆ	ÕÖM	Ëˆ[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËÚ\ˆ	ÎHÈÚ\	ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÌÐˆÈˆÛX\Ù^I×WKˆÜÎˆ	ÕÖM	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ó[Z]Y	ËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK\˜]LŒLËLŒN	ËZÎˆ	ÕÞ[ÝIËYˆ	ÔU	ËLˆŒLËLNˆŒNŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÌÐˆÈˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK][™˜KLŒMLŒŒIËZÎˆ	ÕÞ[ÝIËYˆ	Õ[™˜IËLˆŒMLNˆŒŒKŽˆ	ÝXÚÉËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKZYÚ[™\‹LŒMLŒNIËZÎˆ	ÕÞ[ÝIËYˆ	ÒYÚ[™\‰ËLˆŒMLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÈP‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK\š]\ËLŒLLŒMIËZÎˆ	ÕÞ[ÝIËYˆ	Ôš]\ÉËLˆŒLLNˆŒMKˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÙ[Nˆ	ÎNLMÌŒÌ	ËÚ\ˆ	ÑÈÚ\ÛX\Ù^IËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPÖ	Ë	ÎNLMÌŒÌ	Ë	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖMÛˆHÛÜ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘ÈÛX\›Þ™\Ù]ÛˆÛÛYIËˆ›ÝNˆ	Ó›ÈÛÛ™[[Û˜[YÛš][Ûˆ8 %H[Y\™Ù[˜ÞH›YHÛ›HÜ[œÈHÛÜ‹‰Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë\žLŒLLŒMIËZÎˆ	Ó^\ÉËYˆ	Ô–ÍL	ËLˆŒLLNˆŒMKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÙ[Nˆ	ÎNLMNLIËÚ\ˆ	ÑÈÚ\ÛX\Ù^IËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÎNLMNLIË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘ÈÛX\™\Ù]ÛˆÛÛYIË[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÚÛ™KXÜ‹LŒL‹LŒM‰ËZÎˆ	ÒÛ™IËYˆ	ÐÔ‹U‰ËLˆŒL‹LNˆŒM‹Žˆ	ÜÝ]‰ËÝÎˆ	ÒÌIËˆ[ˆ	ÒÌKT	ËÙ[Nˆ	ÌÍLLNUKPL	ËÚ\ˆ	ÒQˆ
+ÑÎLÍŠIËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓS’RÍ‹LU	Ë	ÉË	Í‰×WKˆÜÎˆ	ÒÛ™HXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘ÈSˆžH’SˆÛˆÛÛYIË[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXÜ‹LŒMËLŒŒ‰ËZÎˆ	ÒÛ™IËYˆ	ÐÔ‹U‰ËLˆŒMËLNˆŒŒ‹Žˆ	ÜÝ]‰ËÝÎˆ	ÒÓ‰Ëˆ[ˆ	ÒÌËT	ËÙ[Nˆ	ÍÌŒMËUKPLLIËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUŒ–	Ë	ÍÌŒMËUKPLLIË	ÍˆÈP‰×WKˆÜÎˆ	ÒÓˆYÚÙXÝ\š]IËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛYHÛÛÈØ[SˆžH’S‰Ë[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	ÚÛ™K\[ÝLŒM‹LŒŒ‰ËZÎˆ	ÒÛ™IËYˆ	Ô[Ý	ËLˆŒM‹LNˆŒŒ‹Žˆ	ÜÝ]‰ËÝÎˆ	ÒÓ‰Ëˆ[ˆ	ÒÌËT	ËÙ[Nˆ	ÍÌŒMËUÍËPLLIËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUŒ–	Ë	ÉË	ÍP‰×WKÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ëˆ[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	ÚÛ™K[Ù\ÜÙ^KLŒLKLŒMÉËZÎˆ	ÒÛ™IËYˆ	ÓÙ\ÜÙ^IËLˆŒLKLNˆŒMËŽˆ	Ý˜[‰ËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQ‰ËÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÒÔUŒV	Ë	ÉË	ÍPˆÈˆËÈÛY[™ÈÛÜœÉ×WKÜÎˆ	ÒÛ™HXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉËˆ[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXÚ]šXËLŒ‹LŒLIËZÎˆ	ÒÛ™IËYˆ	ÐÚ]šXÉËLˆŒ‹LNˆŒLKÝÎˆ	ÒÌIËˆ[ˆ	ÒÌKT	ËÙ[Nˆ	ÌÍLLLKTÓKPLIËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÑÎLÎPIË	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÒÛ™HXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ØXÝ\˜K[YLŒMLŒŒ	ËZÎˆ	ÐXÝ\˜IËYˆ	ÓQ	ËLˆŒMLNˆŒŒŽˆ	ÜÝ]‰ËÝÎˆ	ÒÓ‰Ëˆ[ˆ	ÒÌËT	ËÙ[Nˆ	ÍÌŒMËUKPLIËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÐXÝ\˜HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUŒV	Ë	ÉË	ÍP‰×WKÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ëˆ[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	Ûš\ÜØ[‹X[[XKLŒLËLŒN	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ð[[XIËLˆŒLËLNˆŒNˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÙ[Nˆ	ÌŽQLËNR‰ËˆÚ\ˆ	ÒQˆÈQÈžHYX\‰ËÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	ÍˆÈPˆ[[YÙ[Ù^I×WKÜÎˆ	Ó”ÓŒM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ8 %ÓKY\š]™YS‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹\Ù[˜KLŒLËLŒNIËZÎˆ	Óš\ÜØ[‰ËYˆ	ÔÙ[˜IËLˆŒLËLNˆŒNKÝÎˆ	Ó”ÓŒM	Ëˆ[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÉËÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÐÕÕÐŒUN	Ë	ÉË	Í‰×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚH”ÓŒM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ð˜\ÙHš[\È\ÙHH›YHÙ^HÚ]HÙ\\˜]H›Øˆ˜]\ˆ[ˆH›Þ‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹Yœ›ÛY\‹LŒKLŒNIËZÎˆ	Óš\ÜØ[‰ËYˆ	Ñœ›ÛY\‰ËLˆŒKLNˆŒNKŽˆ	ÝXÚÉËˆÝÎˆ	ÑLÌHÈ”ÓŒMžHš[IË[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	ÔÛÛYIË™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒUMÍLIË	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÑLÌHXÝ]	ËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ûš\ÜØ[‹\]š[™\‹LŒLËLŒŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ô]š[™\‰ËLˆŒLËLNˆŒŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM	Ë[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÉËÞ\Îˆ	ÓUÈ‰ËˆÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	ÍˆÈP‰×WKÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹]][‹LŒM‹LŒŒÉËZÎˆ	Óš\ÜØ[‰ËYˆ	Õ][‰ËLˆŒM‹LNˆŒŒËŽˆ	ÝXÚÉËˆÝÎˆ	Ó”ÓŒM	Ë[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈ
+]YÌÊIËÞ\Îˆ	ÓUÈ‰ËˆÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍˆÈP‰×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚH”ÓŒM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú][™ZK\ÛÛ˜]KLŒLKLŒNIËZÎˆ	Ò][™ZIËYˆ	ÔÛÛ˜]IËLˆŒLKLNˆŒNKˆÝÎˆ	ÒLŒÈLŒˆžHš[IË[ˆ	ÒLŒT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÈÛˆ›YHÙ^\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÔÖMRQ“L	Ë	ÉË	ÍˆÛX\Ù^HÛˆ[Z]Y	×WKÜÎˆ	ÒLŒ	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLŒÈLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë›ÝNˆ	ÔSˆžH’Sˆ\ÈH›Ý[™XÚÈÛˆ][™ZKÒÚXK›ÝHÝ]‰Ëˆ[žNˆ	Ó\ÚHLŒ	ÈJKˆŠÈYˆ	Ú][™ZK\Ø[Y™KLŒLËLŒN	ËZÎˆ	Ò][™ZIËYˆ	ÔØ[H™IËLˆŒLËLNˆŒNŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQ‰ËÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÜ›Þ	Ë	ÕNQ“Ð‹MŒÉË	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÒLŒˆYÚÙXÝ\š]IËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	Ú][™ZK]XÜÛÛ‹LŒM‹LŒŒIËZÎˆ	Ò][™ZIËYˆ	ÕXÜÛÛ‰ËLˆŒM‹LNˆŒŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQˆžHYX\‰ËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉË™[NˆÖÉÜ›Þ	Ë	ÕNQ“Ð‹MŒLIË	ÉË	ÍˆÛX\Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	ÚÚXK\ÛÝ[LŒMLŒNIËZÎˆ	ÒÚXIËYˆ	ÔÛÝ[	ËLˆŒMLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒÒÌLÈLŒˆžHš[IË[ˆ	ÒÒÌLT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÚXH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÈÛˆ›YIË™[NˆÖÉÙ›\	Ë	ÓÔÓÒÐKNÍU	Ë	ÉË	Íˆ›\	×WKˆÜÎˆ	ÒÒÌL	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÒPMÉËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHÒPMÉÈJKˆŠÈYˆ	ÚÚXK\ÛÜ™[ËLŒM‹LŒŒ	ËZÎˆ	ÒÚXIËYˆ	ÔÛÜ™[ÉËLˆŒM‹LNˆŒŒŽˆ	ÜÝ]‰ËÝÎˆ	ÒLŒ‰Ëˆ[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQ‰ËÞ\Îˆ	ÒÚXH[[[Øš[^™\‰ËˆÛÛ™Nˆ	Õ˜\šY\ÉË™[NˆÖÉÜ›Þ	Ë	ÔÖMSTM‘ÑL	Ë	ÉË	ÍˆÈPˆÛX\Ù^I×WKÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	ÚÚXKY›ÜKLŒMLŒN	ËZÎˆ	ÒÚXIËYˆ	Ñ›ÜIËLˆŒMLNˆŒNÝÎˆ	ÒÒÌL	Ë[ˆ	ÒÒÌLT	ËˆÚ\ˆ	ÒQ‰ËÞ\Îˆ	ÒÚXH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÙ›\	Ë	ÓÔÓÒÐKNÍU	Ë	ÉË	Íˆ›\	×WKÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÒPMÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHÒPMÉÈJKˆŠÈYˆ	Ú™Y\YÜ˜[™XÚ\›ÚÙYKLŒLKLŒLÉËZÎˆ	Ò™Y\	ËYˆ	ÑÜ˜[™Ú\›ÚÙYH
+ÒÌŠIËLˆŒLKLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐÖL
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÖLMÌT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	Ô‘’HÈÒÔ‘QSIËÛÛ™Nˆ	Ó›ÈÛˆ›Þ	Ë™[NˆÖÉÜ›Þ	Ë	ÒVV‹PÌPÉË	ÉË	ÍP‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKZÙ^HÚ]ˆÛÜšÚ[™ÉËZÛˆ	ÓÐ‘
+ÈYYÚ]S‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ëˆ›ÝNˆ	Ñš\œÝYX\œÈÙˆHÒÌˆ›ÙK‰Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ú™Y\YÜ˜[™XÚ\›ÚÙYKLŒMLŒŒIËZÎˆ	Ò™Y\	ËYˆ	ÑÜ˜[™Ú\›ÚÙYIËLˆŒMLNˆŒŒKˆŽˆ	ÜÝ]‰ËÝÎˆ	ÐÖL
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÖLMÌT	ËˆÙ[Nˆ	ÍŽMÍL‰ËÚ\ˆ	ÒQˆ
+]YÌŠIËÞ\Îˆ	Ô‘’HÈÒÔ‘QSIËÛÛ™Nˆ	Ó›ÈÛˆ›Þ	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹MŒLÌ‰Ë	ÍŽMÍL‰Ë	ÍPˆÛX\Ù^I×WKÜÎˆ	ÐÖL	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKZÙ^HÚ]ˆÛÜšÚ[™ÉËˆZÛˆ	ÓÐ‘
+ÈYYÚ]S‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ú™Y\XÚ\›ÚÙYKLŒMLŒŒIËZÎˆ	Ò™Y\	ËYˆ	ÐÚ\›ÚÙYIËLˆŒMLNˆŒŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÑšX]]›Ü›H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹MŒLÌ‰Ë	ÉË	ÍˆÈP‰×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó[Z]Y	ËˆZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË›ÝNˆ	ÑšX]]›Ü›K›ÝHÖL™Y\[ÝH^XÝ8 %œš[™ÈÒTŒ‹‰Ëˆ[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	Ú™Y\]Ü˜[™Û\‹LŒNLŒŒÉËZÎˆ	Ò™Y\	ËYˆ	ÕÜ˜[™Û\ˆ“	ËLˆŒNLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQH
+]YÈQTÊIËˆÞ\Îˆ	ÔÝ[[\È[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓÒLLÌŒIË	ÉË	ÍˆÈP‰×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈS‹ÛÛY\[™[	Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ò“\ÈHY™™\™[]›Ü›Hœ›ÛHH’È8 %È›Ý\ÜÝ[YHÖL‰Ëˆ[žNˆ	ÔÛÙÜˆ[žš\ˆ\™Üˆ\ÚHÒTŒ‹‰ÈJKˆŠÈYˆ	ÙÙÙKXÚ\™Ù\‹LŒLKLŒŒÉËZÎˆ	ÑÙÙIËYˆ	ÐÚ\™Ù\ˆÈÚ[[™Ù\‰ËLˆŒLKLNˆŒŒËˆÝÎˆ	ÐÖL
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÖLMÌT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	Ô‘’IËÛÛ™Nˆ	Ó›ÈÛˆ›Þ	Ë™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹MŒLÌ‰Ë	ÉË	ÍˆÈP‰×WKÜÎˆ	ÐÖL	ËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKZÙ^HÚ]ˆÛÜšÚ[™ÉËˆZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ØÚž\Û\‹\XÚYšXØKLŒMËLŒŒÉËZÎˆ	ÐÚž\Û\‰ËYˆ	ÔXÚYšXØIËLˆŒMËLNˆŒŒËŽˆ	Ý˜[‰ËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQH
+]YÈQTÊIËˆÞ\Îˆ	ÔÝ[[\È[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹NMÌÎMNL	Ë	ÉË	ÍˆÈÐˆËÈÛY[™ÈÛÜœÉ×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	ÙÙÙKXØ\˜]˜[‹LŒLŒŒ	ËZÎˆ	ÑÙÙIËYˆ	ÑÜ˜[™Ø\˜]˜[‰ËLˆŒLNˆŒŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÐÖL	Ë[ˆ	ÖLMT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËÞ\Îˆ	ÔÒÔ‘QSIËˆÛÛ™Nˆ	ÖY\ÈÛˆÛÛYIË™[NˆÖÉÙ›Ø‰Ë	ÒVV‹PÌPÉË	ÉË	ÍPˆÈ‰×WKÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÖL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÈÛ˜›Ø\™Y	ËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÈ›ÜˆRÓ	Ë›ÝNˆ	Õ™\žHÛÛ[[ÛˆØÚÛÝ]Ø[ˆÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÞH[žK‰Ëˆ[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ü˜[K\›ÛX\Ý\‹LŒMLŒŒÉËZÎˆ	Ô˜[IËYˆ	Ô›ÓX\Ý\ˆÈ›ÓX\Ý\ˆÚ]IËLˆŒMLNˆŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÑšX]]›Ü›H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›\	Ë	ÉË	ÉË	ÌÐˆ›\	×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ëˆ[Žˆ	ÖQTÉË›ÝNˆ	Ñ›Y]˜[œÈ8 %^XÝ[ZÙ^\Ë[ÜÝÚ]›È\\ÛÜšËˆ™\šYžHÝÛ™\œÚ\‰Ëˆ[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	ÝË]YÝX[‹LŒNLŒŒÉËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	ÕYÝX[‰ËLˆŒNLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLMŒ•	Ë[ˆ	ÒLMŒ•T	ËÚ\ˆ	ÓTPˆ
+QÈQTÊIËˆÞ\Îˆ	ÓTPˆ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	Ó‘Ñ”ÌLLIË	ÉË	Í‰×WKÜˆKˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLMŒ•	ËØ™ˆ	ÖY\ÈÚ][ˆTP‹XØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÓTPˆRÓ8 %ÜXÚX[\Ý›Ø‰Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]H]IËˆ›ÝNˆ	ÓTPˆ\ÈHY™™\™[šXÙHœ˜XÚÙ]ˆ][ÝH]\ÈÛ™K‰Ë[žNˆ	Ó\ÚHLMŒ•	ÈJKˆŠÈYˆ	Ø]YKXMLŒKLŒM‰ËZÎˆ	Ð]YIËYˆ	ÐM	ËLˆŒKLNˆŒM‹ÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËˆÚ\ˆ	ÒQ
+YYØ[[ÜÊIËÞ\Îˆ	Ò[[[Øš[^™\ˆ	ËˆÛÛ™Nˆ	ÕÚ]HØ\X›HÛÛ™\‰Ë™[NˆÖÉÙ›\	Ë	ÒVV‘”ÐŽ‰Ë	ÉË	ÌÐˆÈˆ›\	×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËØ™ˆ	ÔÛÛY][Y\È8 %Ù[ˆ™[˜Ú	ËÛŽˆ	Ó›ÉËˆZÛˆ	Õ\ÝX[H™YYÈHÛ\Ý\ˆÈ[[[È]IË[Žˆ	ÐÔÈÛÙIË[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÛY\˜ÙY\Ë\Üš[\‹LŒLLŒN	ËZÎˆ	ÓY\˜ÙY\ËP™[ž‰ËYˆ	ÔÜš[\‰ËLˆŒLLNˆŒNˆŽˆ	Ý˜[‰ËÝÎˆ	ÒMÈSLŒÈžHš[IË[ˆ	ÒM	ËˆÚ\ˆ	Ñ”ÌÈÛˆ]\ŽÈX\›Y\ˆ˜\žIËÞ\Îˆ	Ñ”ÌÈÈTÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÌÐ‰×WKÜÎˆ	ÒM	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHM	ËØ™ˆ	Ó›ÈÛˆ”ÌÈ8 %RTÈÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	ÑRTÈ™XY
+È\ÜÝÛÜ™Ø[ÉËˆ[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÉË›ÝNˆ	ÐÛÛ[Y\˜ÚX[›Y]ÛÜšËˆÜXÚX[\Ý›Ø‹šXÙHXØÛÜ™[™ÛKˆHŒËLŒHTÈÜš[\ˆÛÜ™HÙÙHÜˆœ™ZYÚ[™\ˆ˜YÙ\È8 %Ø[YH˜[‹ÛÚÈ[™\ˆÜÙHXZÙ\Ë‰Ëˆ[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	ÜÝX˜\KY›Ü™\Ý\‹LŒMLŒN	ËZÎˆ	ÔÝX˜\IËYˆ	Ñ›Ü™\Ý\‰ËLˆŒMLNˆŒNŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÕP	Ë[ˆ	ÔÕPT	ËÚ\ˆ	ÒQÈÈ]YÌÉËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMRÉË	ÉË	ÍˆÛX\Ù^I×WKÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ëˆ[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÜÝX˜\KXÜ›ÜÜÝ™ZËLŒLËLŒŒ‰ËZÎˆ	ÔÝX˜\IËYˆ	Ò[\™^˜HÈÜ›ÜÜÝ™ZÉËLˆŒLËLNˆŒŒ‹ˆŽˆ	ÜÝ]‰ËÝÎˆ	ÔÕP	Ë[ˆ	ÔÕPT	ËÚ\ˆ	ÒQÈÈ]YÌÉËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMRÉË	ÉË	Í‰×WKÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ëˆ[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÛX^™KXÞKLŒLËLŒŒIËZÎˆ	ÓX^™IËYˆ	ÐÖMIËLˆŒLËLNˆŒŒKŽˆ	ÜÝ]‰ËÝÎˆ	ÓPVŒ	Ëˆ[ˆ	ÓPVŒ‹T	ËÚ\ˆ	ÒQHÈ]YÈ›ÉËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÕÐV”ÒÑLLÑIË	ÉË	ÌÐˆÈˆÛX\Ù^I×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHPVŒ	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó[Z]Y	ËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHPVŒ	ÈJKˆŠÈYˆ	ÛZ]ÝXš\ÚK[Ý][™\‹LŒMLŒŒIËZÎˆ	ÓZ]ÝXš\ÚIËYˆ	ÓÝ][™\‰ËLˆŒMLNˆŒŒKˆŽˆ	ÜÝ]‰ËÝÎˆ	ÓRULIË[ˆ	ÓRULKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÓZ]ÝXš\ÚH[[[Øš[^™\‰ËÛÛ™Nˆ	ÔÛÛYIË™[NˆÖÉÜ›Þ	Ë	ÓÕPÒŒM“‰Ë	ÉË	Í‰×WKˆÜÎˆ	ÓRULHXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHRULIËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÓÙ[‰Ë[žNˆ	Ó\ÚHRULIÈJKˆŠÈYˆ	Ý\ÛK[[Ù[Ë^KLŒMËLŒ	ËZÎˆ	Õ\ÛIËYˆ	Ó[Ù[ÈÈ[Ù[IËLˆŒMËLNˆŒˆÝÎˆ	Ó›Û™H8 %›ÈYXÚ[šXØ[Ù^IËÙ[Nˆ	ÒÙ^HØ\™ÈÛ™HÙ^HÈÙ^H›Ø‰ËˆÚ\ˆ	Ó‘ÈÙ^HØ\™“HÛ™HÙ^IËÞ\Îˆ	Õ\ÛH“HÈ‘ÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÓÜ[Û˜[“H›Ø‰×WKÜÎˆ	Û‹ØIËÝ]ˆ	Û‹ØIËXÎˆ	Û‹ØIËˆØ™ˆ	Ó›ÈÛÛ™[[Û˜[Ð‘Ü	ËˆÛŽˆ	ÓÝÛ™\ˆZ\œÈH™]ÈØ\™šXHHÝXÚØÜ™Y[ˆÚ][ˆ^\Ý[™ÈØ\™	ËˆZÛˆ	Õ\ÛHÙ\šXÙH8 %›ÝHØÚÜÛZ]›Ø‰Ëˆ›ÝNˆ	Õ\™H\È›Ý[™ÈÈÝ]ˆØÚÛÝ]È\™HHÛ›H™X[\ÝXÈØ[[™\™H\È›ÈYXÚ[šXØ[Ý™\œšYHÛˆHÛÜ‹‰ËˆÜˆ	Ó›Û™H[ˆH\ÝX[XÙH8 %XYÛ›ÜÝXÈÛÛ›™XÝÜˆ\È™Z[™Hœ›Ûš[IËˆ[žNˆ	Ó›ÈYXÚ[šXØ[Ù^]Ø^KˆÈ›Ý][\[žHÛÛÈÛˆHœ˜[Y[\ÜÈÛ\ÜÈ8 %™Y™\ˆHÝÛ™\ˆÈ\ÛHÜˆ›ØYÚYK‰ÈJKˆŠÈYˆ	ÜÛ\š\Ë\žœ‹\˜[™Ù\‰ËZÎˆ	ÔÛ\š\ÉËYˆ	Ô–”ˆÈ˜[™Ù\ˆÈÙ[™\˜[	ËLˆŒLLNˆŒ‹ˆŽˆ	Û[ÝÉËÝÎˆ	ÔÛ\š\ÉËÙ[Nˆ	Ý˜\šY\ÈžH[Ù[	ËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™IËˆÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHYÛš][Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ó›È[[[Øš[^™\ˆÛˆ[ÜÝˆ˜\ÝYÚ[X\™Ú[ˆÛÜšÈ8 %ÛÜÝØÚÚ[™ÈH›[šÜË‰ËÜˆ	Û‹ØIËˆ[žNˆ	Û‹ØIÈJKˆŠÈYˆ	ÝÞ[ÝKXØ[\žKLNNMËLŒIËZÎˆ	ÕÞ[ÝIËYˆ	ÐØ[\žIËLˆNNMËLNˆŒKÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈÈÛˆ]HZ[ÉËˆÞ\Îˆ	Ô™KZ[[[Øš[^™\ˆÈX\›HÉËÛÛ™Nˆ	ÍÈÛÛ™\ÈX\Ú[IËˆ™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÐY\›X\šÙ]ÜˆX[\ˆY[Û‰×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMËÜˆ[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØHÛˆ›Û‹XÚ\	ËÛŽˆ	Û‹ØIËˆZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙHHÛÜ‰Ëˆ›ÝNˆ	Ñ˜\Ý[Û™^H8 %›ÈÚ\›ÈÛÛˆÛÛ™š\›HÚ]HÚ\ÛšY™™\ˆ™Y›Ü™H[ÝH][ÝHH›ÙÜ˜[[Z[™È™YK‰Ëˆ[žNˆ	Ó\ÚHÖMÈÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝÞ[ÝKXØ[\žKLŒ‹LŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÐØ[\žIËLˆŒ‹LNˆŒ‹ÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÉËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÖY\È8 %È\ÈHX\ÞHÛ™IË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•M	Ë	ÉË	ÌÐˆÈˆÙ\\˜]H›Ø‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÖY\È8 %YÛš][Û‹XÞXÛH›ØÙY\™IËZÛˆ	ÓÐ‘ÜˆPÕH™\Ù]ÛˆÛÛYIË[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKXØ[\žKLŒNLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÐØ[\žIËLˆŒNLNˆŒˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMÉË	ÉË	ÍˆÈPˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖMÛˆHÛÜ‰ËØ™ˆ	ÖY\ÈÚ][ˆXØ\X›HÛÛ	ËˆÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆÙXÝ\š]HØZ]	Ëˆ›ÝNˆ	Õ‘ÐH]›Ü›KˆÚX\ÛÛ™HÛÛÈÚ[›ÝÝXÚ]‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKXÛÜ›ÛKLNNNLŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÐÛÜ›ÛIËLˆNNNLNˆŒ‹ÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ô™KZ[[[Øš[^™\‰ËˆÛÛ™Nˆ	Û‹ØIË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÑX[\ˆY[ÛˆYˆš]Y	×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÈÜˆ[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËˆZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙIË[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKXÛÜ›ÛKLŒËLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÐÛÜ›ÛIËLˆŒËLNˆŒÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÈÈMÈÝÛˆ]\‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•M	Ë	ÉË	ÌÐ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÖY\ÈÛˆÚ\š[\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	Ð˜\ÙHš[\ÈÙˆ\ÙHYX\œÈÙ[ˆ]™H›ÈÚ\][8 %ÚXÚÈ™Y›Ü™H][Ý[™Ë‰Ëˆ[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKXÛÜ›ÛKLŒŒLŒIËZÎˆ	ÕÞ[ÝIËYˆ	ÐÛÜ›ÛIËLˆŒŒLNˆŒKˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMÉË	ÉË	ÌÐˆÈˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÈÚ][ˆXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKX]˜[Û‹LŒKLŒL‰ËZÎˆ	ÕÞ[ÝIËYˆ	Ð]˜[Û‰ËLˆŒKLNˆŒL‹ÝÎˆ	ÕÖM	Ëˆ[ˆ	ÕÖMT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	ÑÝY\ËÈ™YYÈHÈÛÛ™\‰Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	ÍˆÛX\Ù^I×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÈÛ›IËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÓÛ™HÙˆHX\›Y\ÝÞ[ÝHÛX\ZÙ^H]›Ü›\È[ˆHTË‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKX]˜[Û‹LŒLËLŒN	ËZÎˆ	ÕÞ[ÝIËYˆ	Ð]˜[Û‰ËLˆŒLËLNˆŒNˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÈP‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK^X\š\ËLŒËLŒN	ËZÎˆ	ÕÞ[ÝIËYˆ	ÖX\š\ÉËLˆŒËLNˆŒNÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝÈÈÛˆ]\‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÑÝY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMLŽU	Ë	ÉË	ÌÐ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÖY\ÈÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ë›ÝNˆ	ÔÛÛYH˜\ÙHš[\ÈÚ\YÚ]›È[[[Øš[^™\‹‰Ëˆ[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK^X\š\ËZXKLŒMËLŒŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÖX\š\ÈPHÈX\š\ÈÙY[‰ËLˆŒMËLNˆŒŒˆÝÎˆ	ÓPVŒ	Ë[ˆ	ÓPVŒ‹T	ËÚ\ˆ	ÒQHÈ]YÈ›È
+X^™JIËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÌÐ‰×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHPVŒ	ËØ™ˆ	ÖY\È8 %\ÙHHX^™HY[K›ÝÞ[ÝIËˆÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘\ÈHX^™H‰Ëˆ›ÝNˆ	ÑÓÕÒNˆ\È\ÈH™X˜YÙYX^™H‹ˆÞ[ÝH›[šÜÈ[™Þ[ÝHÛÙØ\™HÚ[›Ý˜Z[[ÝK‰Ëˆ[žNˆ	Ó\ÚHPVŒ	ÈJKˆŠÈYˆ	ÝÞ[ÝK\š]\ËLŒLŒIËZÎˆ	ÕÞ[ÝIËYˆ	Ôš]\ÉËLˆŒLNˆŒKˆÝÎˆ	ÕÖMÈÈÖMžHš[IË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝ	ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\ˆÈX\›HÛX\[žIËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÓSÖŒŒUÉË	ÉË	ÌÐˆÛX\Ù^H
+Ü[ÛŠI×WKÜÎˆ	ÕÖMÈÈÖM	ËÜˆˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHš[IËXÎˆ	Ó\ÚHÖMÈÜˆÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÉËˆZÛˆ	ÓÐ‘	Ë›ÝNˆ	ÔÛX\ZÙ^Hš[\È]™H›ÈÛÛ™[[Û˜[YÛš][Û‹‰Ë[žNˆ	Ó\ÚHžHš[IÈJKˆŠÈYˆ	ÝÞ[ÝK\š]\ËLŒM‹LŒŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	Ôš]\ÉËLˆŒM‹LNˆŒŒ‹ˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMHÈTLM“IË	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖMÛˆHÛÜ‰ËØ™ˆ	ÖY\ÈÚ][ˆXØ\X›HÛÛ	ËˆÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ›ÝNˆ	Ó›ÈYXÚ[šXØ[YÛš][Ûˆ8 %H›YHÛ›HÜ[œÈHÛÜ‹‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK[X]š^LŒËLŒLÉËZÎˆ	ÕÞ[ÝIËYˆ	ÐÛÜ›ÛHX]š^ÈX]š^	ËLˆŒËLNˆŒLËÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÈÈMÈÝžHYX\‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë›ÝNˆ	ÐÛÜ›ÛHYXÚ[šXØ[ËˆÛXXÈšX™HÙˆHØ[YHYX\œÈ\ÈHØ[YHØ\‹‰Ëˆ[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK\ÛÛ\˜KLŒLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÐØ[\žHÛÛ\˜IËLˆŒLNˆŒÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝ	ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•M	Ë	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK]™[ž˜KLŒKLŒMIËZÎˆ	ÕÞ[ÝIËYˆ	Õ™[ž˜IËLˆŒKLNˆŒMKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	ÑÝY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	ÍˆÛX\Ù^I×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKXÚ‹LŒNLŒŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÐËR‰ËLˆŒNLNˆŒŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMÉË	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKN‹LŒMËLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÎˆÈÔŽ‰ËLˆŒMËLNˆŒÝÎˆ	ÔÕP	Ëˆ[ˆ	ÔÕPT	ËÚ\ˆ	ÔÝX˜\HQÈÈ]YÌÉËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐˆÈ‰×WKÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËØ™ˆ	ÖY\È8 %ÛÜšÈ]\ÈHÝX˜\IËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘\ÈÝX˜\H”–‰Ë[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÑÓÕÒNˆZ[žHÝX˜\KˆÝX˜\H›[šËÝX˜\HÛÙØ\™KˆØ[YHØ\ˆ\ÈH”–‹‰Ëˆ[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÝÞ[ÝK\Ý\˜KLŒŒLŒIËZÎˆ	ÕÞ[ÝIËYˆ	ÑÔˆÝ\˜HÈÝ\˜IËLˆŒŒLNˆŒKÝÎˆ	ÒLL‰Ëˆ[ˆ	Ð“UÌIËÙ[Nˆ	Ð“UË\Ý[H›Ø‰ËÚ\ˆ	Ð“UÈ‘SKÐ‘ÉËˆÞ\Îˆ	Ð“UÈ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐˆ“UË\Ý[I×WKÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL‰ËØ™ˆ	Ð“UÈ›ØÙY\™H8 %Ù[ˆ™[˜Ú	ËÛŽˆ	Ó›ÉËˆZÛˆ	Ð“UÈ‘SKÐ‘ÈÛÜšËTÓˆ™\]Z\™Y	Ë[Žˆ	ÒTÓ‰Ëˆ›ÝNˆ	ÑÓÕÒNˆ\È\ÈH“UÈ[™\›™X]ˆÞ[ÝHÛÛ[™ÈÚ[›ÝÙYH]ˆ][ÝH]\ÈH“UÈÜˆ™Y™\ˆ]Ý]‰Ëˆ[žNˆ	Ó\ÚHLL‰ÈJKˆŠÈYˆ	ÝÞ[ÝK]XÛÛXKLNNMKLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÕXÛÛXIËLˆNNMKLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÕÖMÈÈÉË[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËˆÞ\Îˆ	Ô™KZ[[[Øš[^™\‰ËÛÛ™Nˆ	Û‹ØIË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÑX[\ˆY[ÛˆYˆš]Y	×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÈÜˆ[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØIËˆÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙHHYÛš][Û‰Ëˆ›ÝNˆ	Ó›ÈÚ\ˆ]ZXÚÈ›Ø‹[™\ÙH\™HÝ[]™\ž]Ú\™K‰Ëˆ[žNˆ	Ó\ÚHÖMÈÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝÞ[ÝK]XÛÛXKLŒKLŒMIËZÎˆ	ÕÞ[ÝIËYˆ	ÕXÛÛXIËLˆŒKLNˆŒMKŽˆ	ÝXÚÉËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÑÝY\ËÈ™YYÈHÈÛÛ™\‰Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÈÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	Ð˜\ÙHÛÜšÈXÚÜÈÙˆ\ÙHYX\œÈÙ[ˆ]™H›ÈÚ\][‰Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK][™˜KLŒLŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	Õ[™˜IËLˆŒLNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™HÈÈžHYX\‰ËˆÞ\Îˆ	Ô™KZ[[[Øš[^™\ˆÈX\›HÉËÛÛ™Nˆ	ÍÈY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÐY[Û‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÈÛˆÚ\š[\ÉËˆÛŽˆ	ÖY\ÉËZÛˆ	ÐÝ]žHÛÙKÜˆÐ‘YˆÚ\Y	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK][™˜KLŒËLŒLÉËZÎˆ	ÕÞ[ÝIËYˆ	Õ[™˜IËLˆŒËLNˆŒLËŽˆ	ÝXÚÉËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÑÝY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËˆÛŽˆ	ÖY\ÈÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK][™˜KLŒŒ‹LŒIËZÎˆ	ÕÞ[ÝIËYˆ	Õ[™˜IËLˆŒŒ‹LNˆŒKŽˆ	ÝXÚÉËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLM–	Ë	ÉË	ÍˆÈPˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÈÚ]HÝ\œ™[XØ\X›HÛÛ	ËˆÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]È™]Ù\ÝZ[ÈX^H™YYX[\‰Ëˆ›ÝNˆ	Ó™]Ù\ÝÙ[™\˜][Ûˆ8 %ÚXÚÈ[Ý\ˆÛÛÛÝ™\œÈ]™Y›Ü™H[ÝHÛÛ[Z]ÈH›Ø‹‰Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKM[›™\‹LNNM‹LŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	Í[›™\‰ËLˆNNM‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËˆÞ\Îˆ	Ô™KZ[[[Øš[^™\‰ËÛÛ™Nˆ	Û‹ØIË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÐY[Û‰×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÈÜˆ[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËˆZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙIË[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKM[›™\‹LŒËLŒIËZÎˆ	ÕÞ[ÝIËYˆ	Í[›™\‰ËLˆŒËLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝ	ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•M	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKM[›™\‹LŒLËLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	Í[›™\‰ËLˆŒLËLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÌÐˆÈˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKZYÚ[™\‹LŒKLŒÉËZÎˆ	ÕÞ[ÝIËYˆ	ÒYÚ[™\‰ËLˆŒKLNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÈÈMÈÝžHYX\‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•M	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝKZYÚ[™\‹LŒLŒLÉËZÎˆ	ÕÞ[ÝIËYˆ	ÒYÚ[™\‰ËLˆŒLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	ÑÝY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	ÍˆÛX\Ù^I×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKZYÚ[™\‹LŒŒLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÒYÚ[™\‰ËLˆŒŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMÉË	ÉË	ÍˆÈP‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK\˜]LŒKLŒIËZÎˆ	ÕÞ[ÝIËYˆ	ÔU	ËLˆŒKLNˆŒKŽˆ	ÜÝ]‰ËÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÉËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÌÐ‰×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK\˜]LŒ‹LŒL‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÔU	ËLˆŒ‹LNˆŒL‹Žˆ	ÜÝ]‰ËÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÑÝY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK\˜]LŒNKLŒIËZÎˆ	ÕÞ[ÝIËYˆ	ÔU	ËLˆŒNKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMÉË	ÉË	ÌÐˆÈˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÈÚ][ˆXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë›ÝNˆ	Õ‘ÐH]›Ü›KYÚ\Ý]›Û[YHÞ[ÝH[ˆHTÈšYÚ›ÝË‰Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK\Ù\][ÚXKLŒKLŒÉËZÎˆ	ÕÞ[ÝIËYˆ	ÔÙ\][ÚXIËLˆŒKLNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÈÈMÈÝžHYX\‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•M	Ë	ÉË	ÌÐˆÈ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK\Ù\][ÚXKLŒLŒŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÔÙ\][ÚXIËLˆŒLNˆŒŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMTÈÖMTžHYX\‰ËˆÚ\ˆ	ÑÝÈŒLÈŒLKLŒL‹ŒLÊÉËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	ÑÝÑÈY\Ë›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÈP‰×WKÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÈX\›IËZÛˆ	ÓÐ‘ÈM‹[Z[ˆØZ]Ûˆ	Ëˆ›ÝNˆ	ÓÛ™È[ˆÜ[›š[™È[™YHÚ\Ù[™\˜][ÛœÈ8 %ÚXÚÈHÙ^HXYÝ[\‰Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK[[™ÜZ\Ù\‹LŒLŒŒIËZÎˆ	ÕÞ[ÝIËYˆ	Ó[™ÜZ\Ù\‰ËLˆŒLNˆŒŒKˆŽˆ	ÜÝ]‰ËÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMTÈÖMTžHYX\‰ËˆÚ\ˆ	ÑÈÈŒL‹ŒLÊÉËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÈÛˆ	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ›ÝNˆ	ÒYÚ]˜[YH™ZXÛKˆ™\šYžHÝÛ™\œÚ\Ø\™Y[HÛˆ[ˆRÓØ[‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKYš˜ÜZ\Ù\‹LŒËLŒM	ËZÎˆ	ÕÞ[ÝIËYˆ	Ñ’ˆÜZ\Ù\‰ËLˆŒËLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÑÝY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK\ÚY[›˜KLŒLŒL	ËZÎˆ	ÕÞ[ÝIËYˆ	ÔÚY[›˜IËLˆŒLNˆŒLŽˆ	Ý˜[‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝ	ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÍˆÈPˆËÈÛY[™ÈÛÜœÉ×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	Ñœ™\]Y[ØÚÛÝ]Ø[8 %HÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÚY\ˆ[žK‰Ëˆ[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÝÞ[ÝK\ÚY[›˜KLŒŒKLŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÔÚY[›˜IËLˆŒŒKLNˆŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLM–	Ë	ÉË	ÍPˆÈˆËÈÛY[™ÈÛÜœÉ×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÈÚ]HÝ\œ™[XØ\X›HÛÛ	ËˆÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝKM[›™\‹LŒLLŒL‰ËZÎˆ	ÕÞ[ÝIËYˆ	Í[›™\‰ËLˆŒLLNˆŒL‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÌˆÈÚ\	ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÈÚ]HËXØ\X›HÛÛ™\‰Ëˆ™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐˆÈ‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÈÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÑÈÚ\YX\œÈÛ›H8 %ŒLÈÛˆ\ÈHÚ\[™HY™™\™[›Ø‹‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK\ÚY[›˜KLŒLKLŒL‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÔÚY[›˜IËLˆŒLKLNˆŒL‹Žˆ	Ý˜[‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÌˆÈÚ\	ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	ÖY\ÈÚ]HËXØ\X›HÛÛ™\‰Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMQ‰Ë	ÉË	ÍPˆÈˆËÈÛY[™ÈÛÜœÉ×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÑÈÚ\YX\œÈÛ›K‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÝÞ[ÝK\ÚY[›˜KLŒLËLŒŒ	ËZÎˆ	ÕÞ[ÝIËYˆ	ÔÚY[›˜IËLˆŒLËLNˆŒŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÙ[Nˆ	ÎMÎKLM	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	ÕÞ[ÝHÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍPˆÈˆËÈÛY[™ÈÛÜœÉ×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ›ÝNˆ	Õ™\žHÛÛ[[Ûˆ˜[Z[K]˜[ˆØÚÛÝ]ˆÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÚY\ˆ[žK‰Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËY\ËLŒËLŒL‰ËZÎˆ	Ó^\ÉËYˆ	ÑTÈÍL	ËLˆŒËLNˆŒL‹ˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÑÝY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÐØ[\žH[™\›™X]‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËY\ËLŒLËLŒN	ËZÎˆ	Ó^\ÉËYˆ	ÑTÈÍL	ËLˆŒLËLNˆŒNˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËZ\ËLŒ‹LŒLÉËZÎˆ	Ó^\ÉËYˆ	ÒTÈLÈTÈÍL	ËLˆŒ‹LNˆŒLËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÑÝY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËZ\ËLŒMLŒŒ	ËZÎˆ	Ó^\ÉËYˆ	ÒTÉËLˆŒMLNˆŒŒˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	Í‰×WKÜÎˆ	ÕÖM	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë\žLŒLŒIËZÎˆ	Ó^\ÉËYˆ	Ô–ÌÌÈ–ÍL	ËLˆŒLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÈÖMÈžHš[IË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÍMÈÝ	ËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLL–	Ë	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë\žLŒM‹LŒŒ‰ËZÎˆ	Ó^\ÉËYˆ	Ô–ÍL	ËLˆŒM‹LNˆŒŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\
+QTÊIËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMHÈTLM‰Ë	ÉË	ÍˆÈP‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËYÞŒLŒLLŒŒÉËZÎˆ	Ó^\ÉËYˆ	ÑÖŒ	ËLˆŒLLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMTÈÖMTžHYX\‰ËˆÚ\ˆ	ÑÈÈŒL‹ŒLÊÉËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÈÛˆ	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]Ûˆ	Ë›ÝNˆ	Í[›™\ˆ]›Ü›H[™\›™X]‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[MÌLŒLŒŒIËZÎˆ	Ó^\ÉËYˆ	ÓMÌ	ËLˆŒLNˆŒŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMTÈÖMTžHYX\‰ËˆÚ\ˆ	ÑÈÈŒL‹ŒLÊÉËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÈÛˆ	Ëˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	Í‰×WKÜÎˆ	ÕÖM	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ëˆ›ÝNˆ	Ó[™ÜZ\Ù\ˆ]›Ü›KˆYÚ˜[YH8 %™\šYžHÝÛ™\œÚ\ÛˆRÓ‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[žLŒMKLŒŒIËZÎˆ	Ó^\ÉËYˆ	Ó–ŒÈ–Ì	ËLˆŒMKLNˆŒŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÎHÈÚ\	ËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	Í‰×WKÜÎˆ	ÕÖM	ËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËYÜËLŒ‹LŒLIËZÎˆ	Ó^\ÉËYˆ	ÑÔÈÌÈÔÈÍL	ËLˆŒ‹LNˆŒLKˆ›ÝNˆ	Ó^\ÈÛÛ›ÈŒLˆÔÈ[ˆHTÈ8 %H\™Ù[™\˜][Ûˆ[™Y[ˆŒLH[™H›Ý\\œš]™Y\ÈHŒLËˆHYX\ˆØ\\™H\È™X[‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËˆÚ\ˆ	ÍMÈÝ	ËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÖY\ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	ÍˆÛX\Ù^I×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ëˆ[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[ÍŒLŒËLŒMÉËZÎˆ	Ó^\ÉËYˆ	ÓÈŒ	ËLˆŒËLNˆŒMËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMTÈÖMTžHYX\‰ËˆÚ\ˆ	ÑÝÈŒLÈŒLKLŒL‹ŒLÊÉËÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËˆÛÛ™Nˆ	Ó›ÈÛˆ	Ë™[NˆÖÉÜ›Þ	Ë	ÒTLMPÖ	Ë	ÉË	ÍˆÈP‰×WKÜÎˆ	ÕÖM	ËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘ÈM‹[Z[ˆØZ]Ûˆ	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	ÜØÚ[Û‹]ËLŒKLŒM‰ËZÎˆ	ÔØÚ[Û‰ËYˆ	ÝÉËLˆŒKLNˆŒM‹ÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËˆÚ\ˆ	ÍMÈÝÈÈÛˆŒLJÉËÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËˆÛÛ™Nˆ	ÑÝY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐ‰×WKÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÔØÚ[Ûˆ\ÈÞ[ÝH8 %ÛÜšÈ][ˆHÞ[ÝHY[K‰Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÜØÚ[Û‹^‹^LŒLŒMIËZÎˆ	ÔØÚ[Û‰ËYˆ	ÞˆÈ	ËLˆŒLNˆŒMKÝÎˆ	ÕÖMÉËˆ[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÈÈMÈÝžHYX\‰ËˆÞ\Îˆ	ÕÞ[ÝH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÑÔMÕ•Œ	Ë	ÉË	ÌÐ‰×WKˆÜÎˆ	ÕÖMÈXÝ]	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËˆZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ÜØÚ[Û‹YœœËLŒLËLŒM‰ËZÎˆ	ÔØÚ[Û‰ËYˆ	Ñ”‹TÉËLˆŒLËLNˆŒM‹ÝÎˆ	ÔÕP	Ëˆ[ˆ	ÔÕPT	ËÚ\ˆ	ÔÝX˜\HQÈÈ]YÌÉËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐ‰×WKÜˆˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËØ™ˆ	ÖY\È8 %ÛÜšÈ]\ÈHÝX˜\IËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘\ÈÝX˜\H”–‰Ë[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÑÓÕÒNˆÝX˜\HZ[ˆÝX˜\H›[šÈ[™ÝX˜\HÛÙØ\™K›ÝÞ[ÝK‰Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÜØÚ[Û‹ZXKLŒM‰ËZÎˆ	ÔØÚ[Û‰ËYˆ	ÚPIËLˆŒM‹LNˆŒM‹ÝÎˆ	ÓPVŒ	Ëˆ[ˆ	ÓPVŒ‹T	ËÚ\ˆ	ÒQHÈ]YÈ›È
+X^™JIËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÙ›Ø‰Ë	ÉË	ÉË	ÌÐ‰×WKÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHPVŒ	ËØ™ˆ	ÖY\È8 %X^™HY[IËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÐ‘\ÈHX^™H‰Ëˆ›ÝNˆ	ÑÓÕÒNˆ™X˜YÙYX^™H‹Ø[YH\ÈHX\š\ÈPH]™\XÙY]‰Ë[žNˆ	Ó\ÚHPVŒ	ÈJK‚ˆÊˆOOOOH“Ô‘ÈSÓÓˆÈQTÕT–HOOOOH
+‹ÂˆŠÈYˆ	Ù›Ü™YŒMLLNNMËLŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LML	ËLˆNNMËLNˆŒËŽˆ	ÝXÚÉËˆÝÎˆ	ÒÌ‰Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈUÈÙ[ˆKL‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÛˆÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎÛˆHÛÜ‰ËˆØ™ˆ	Ó[Z]YÛˆX\›HUÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\Îˆ[œÙ\Ý\›ˆÞXÛIËZÛˆ	ÑX\›HUÈÙ[ˆ™YYÈHÓH8 %ÚXÚÈ™Y›Ü™H[ÝHÛÛ[Z]	Ëˆ›ÝNˆ	ÌNNM‹LNNNUÈ\ÈH]ÚÝØ\™Û™KˆÛÛ™š\›HHYX\ˆ™Y›Ü™H][Ý[™È[ˆRÓ‰Ë[žNˆ	Ó\ÚH“ÌÎÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ù›Ü™YŒMLLŒŒKLŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LML	ËLˆŒŒKLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÐÌMÌÎIË	ÉË	ÍPˆËÈ™[[ÝHÝ\	×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]È™]Ù\ÝZ[ÈX^H™YYX[\‰Ëˆ›ÝNˆ	Ó]\ÝÙ[™\˜][Ûˆ8 %™\šYžH[Ý\ˆÛÛÛÝ™\œÈ]™Y›Ü™H[ÝHZÙHH›Ø‹‰Ë[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™\Ý\\™]KLNNNKLŒL	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LLÑ‹LÍLÝ\\ˆ]IËLˆNNNKLNˆŒLŽˆ	ÝXÚÉËˆÝÎˆ	ÒÌˆÈL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍÈÈMŒÈXš]žHYX\‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™\Ý\\™]KLŒMËLŒŒ‰ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹LLÑ‹LÍLÝ\\ˆ]IËLˆŒMËLNˆŒŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÎLÌM‰Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ìˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y\ØØ\KLŒKLŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Ñ\ØØ\IËLˆŒKLNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	Ò	Ë[ˆ	ÒT	ËÚ\ˆ	ÍÈÈMŒÈXš]	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™Y\ØØ\KLŒLŒL‰ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ\ØØ\IËLˆŒLNˆŒL‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÈXš]	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULÌÌIË	ÉË	Í‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™Y\ØØ\KLŒŒLŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ\ØØ\IËLˆŒŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÐÌMÌÎIË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y^Ü™\‹LŒ‹LŒL	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ^Ü™\‰ËLˆŒ‹LNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLˆÈ	Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÈXš]	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULŒL‰Ë	ÉË	Í‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™Y^Ü™\‹LŒŒLŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ^Ü™\‰ËLˆŒŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÐÌMÌÎIË	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë›ÝNˆ	ÔÛXÙH[\˜Ù\Üˆ][]HÚ\™\È\È]›Ü›K‰Ë[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y›ØÝ\ËLŒLŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Ñ›ØÝ\ÉËLˆŒLNˆŒËˆÝÎˆ	Ñ“ÌÎ
+X˜™JIË[ˆ	Ñ“ÌŒIËÚ\ˆ	ÍÈÛˆÚ\Yš[\ÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆ‹ˆÝ]ˆ	ÕX˜™IËXÎˆ	ÕX˜™HXÛÙ\ˆ8 %›Ý[ˆYÙHÜˆ\Ù\ˆXXÚ[™IËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÈÛˆÚ\Yš[\ÉËZÛˆ	ÔÓHÛÜšÈÛˆX\›HØ\œÉËˆ›ÝNˆ	ÑÓÕÒNˆX˜™HÙ^]Ø^Kˆ[ÝH™YYHYXØ]YX˜™HXÛÙ\ˆ[™Ý]\ˆ8 %›Ý[™È[ÙHÝXÚ\È]‰Ëˆ[žNˆ	ÕX˜™HXÚÈÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ù›Ü™Y›ØÝ\ËLŒLŒLIËZÎˆ	Ñ›Ü™	ËYˆ	Ñ›ØÝ\ÉËLˆŒLNˆŒLKˆÝÎˆ	ÒL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÈXš]	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	Ñ›Ü™›ÜYX˜™H›Üˆ\ÈÙ[™\˜][Ûˆ8 %]XÚX\ÚY\ˆ[ˆHØ\ˆ™Y›Ü™H]‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™Y\Ú[Û‹LŒ‹LŒL‰ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ\Ú[Û‰ËLˆŒ‹LNˆŒL‹ˆÝÎˆ	ÒL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÈXš]	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULÍIË	ÉË	Í‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™[]\Ý[™ËLNNM‹LŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ó]\Ý[™ÉËLˆNNM‹LNˆŒˆÝÎˆ	ÒÌ‰Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈUÈÙ[ˆKL‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÛˆÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	Ó[Z]YÛˆX\›HUÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÑX\›HUÈX^H™YYHÓIË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™[]\Ý[™ËLŒKLŒM	ËZÎˆ	Ñ›Ü™	ËYˆ	Ó]\Ý[™ÉËLˆŒKLNˆŒMˆÝÎˆ	ÒL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈXš]œ›ÛHŒLIËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÚ]HšYÚÛÛ™\‰Ë™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULÌÌIË	ÉË	Í‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™]]\\ËLNNM‹LŒÉËZÎˆ	Ñ›Ü™	ËYˆ	Õ]\\ÉËLˆNNM‹LNˆŒËˆÝÎˆ	ÒÌˆÈ	Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈUÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	Ó[Z]YX\›IËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÔÓHÛÜšÈÛˆHX\›Y\Ý	Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™]]\\ËLŒLŒNIËZÎˆ	Ñ›Ü™	ËYˆ	Õ]\\ÉËLˆŒLNˆŒNKˆÝÎˆ	ÒLˆÈLLHžHYX\‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈQHÛˆ]\ˆ›Þ	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ð›YHY\ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍP‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËXÎˆ	Ó\ÚH“ÌÎÜˆLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÙ^\ÈÈˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	ÔÜ[œÈHLˆÈLLHÚ[™Ù[Ý™\ˆ8 %ÚXÚÈH›YH™Y›Ü™HÝ][™Ë‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ù›Ü™YYÙKLŒËLŒM	ËZÎˆ	Ñ›Ü™	ËYˆ	ÑYÙIËLˆŒËLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈXš]œ›ÛHŒLIËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÚ]HšYÚÛÛ™\‰Ë™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULÍIË	ÉË	ÍˆÈP‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™YYÙKLŒMKLŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	ÑYÙIËLˆŒMKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ìˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y^Y][Û‹LNNMËLŒ‰ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ^Y][Û‰ËLˆNNMËLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒÌˆÈ	Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈUÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	Ó[Z]YX\›IËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘Ûˆ]\‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™Y^Y][Û‹LŒËLŒM	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ^Y][Û‰ËLˆŒËLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈXš]œ›ÛHŒLIËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÚ]HšYÚÛÛ™\‰Ë™[NˆÖÉÙ›Ø‰Ë	ÐÕÕÐŒULÌÌIË	ÉË	ÍˆÈP‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™\˜[™Ù\‹LNNNLŒLIËZÎˆ	Ñ›Ü™	ËYˆ	Ô˜[™Ù\‰ËLˆNNNLNˆŒLKŽˆ	ÝXÚÉËˆÝÎˆ	ÒÌˆÈ	Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	Ó›Û™HÈÈžHš[IËˆÞ\Îˆ	ÔUÈÛˆÚ\Yš[\ÉËÛÛ™Nˆ	ÖY\ÈÛˆÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\š[\ÉËˆ›ÝNˆ	Ô[HÙˆ\ÙHÛÜšÈXÚÜÈ]™H›ÈÚ\][8 %ÚXÚÈ™Y›Ü™H][Ý[™È›ÙÜ˜[[Z[™Ëˆ›Ü™ÛÛ›È›Ü[Y\šXØ[ˆ˜[™Ù\ˆ›ÜˆŒL‹LŒNÈHØ\[ˆHYX\œÈ\™H\È™X[‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™Y\Ù\šY\ËLNNM‹LŒM	ËZÎˆ	Ñ›Ü™	ËYˆ	ÑKTÙ\šY\ÈÈXÛÛ›Û[™IËLˆNNM‹LNˆŒMŽˆ	Ý˜[‰ËˆÝÎˆ	ÒÌˆÈL‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍÈÈMŒÈžHYX\‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	Ñ›Y][™Ú]HÛÜšËˆ^XÝRÓÚ][ˆ\\ÛÜšÈ8 %™\šYžHÝÛ™\œÚ\‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Ù›Ü™YšY\ÝKLŒLKLŒNIËZÎˆ	Ñ›Ü™	ËYˆ	ÑšY\ÝIËLˆŒLKLNˆŒNKˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÍMŒÈXš]	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÈÚ][ˆXš]ÛÛ™\‰Ë™[NˆÖÉÙ›\	Ë	ÒÔMUÒÍIË	ÉË	ÌÐˆÈ‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Ù›Ü™Y›^LŒKLŒNIËZÎˆ	Ñ›Ü™	ËYˆ	Ñ›^	ËLˆŒKLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLˆÈLLHžHYX\‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈQHÛˆ]\ˆ›Þ	ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ð›YHY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËXÎˆ	Ó\ÚH“ÌÎÜˆLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÙ^\ÈÈˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ù›Ü™XÜ›ÝÛšXËLNNNLŒLIËZÎˆ	Ñ›Ü™	ËYˆ	ÐÜ›ÝÛˆšXÝÜšXHÈÌIËLˆNNNLNˆŒLKˆÝÎˆ	ÒÌˆÈ	Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈMŒÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	Ñ^\ÛXÙHÌ\È\›ˆ\ÛÛœÝ[H]]XÝ[ÛˆÚ]Û™HÙ^HÜˆ›Û™K‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	ÛY\˜Ý\žKYÜ˜[™X\œ]Z\ËLNNNLŒLIËZÎˆ	ÓY\˜Ý\žIËYˆ	ÑÜ˜[™X\œ]Z\ÉËLˆNNNLNˆŒLKˆÝÎˆ	ÒÌˆÈ	Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈMŒÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	ÔØ[YHØ\ˆ\ÈHÜ›ÝÛˆšXÝÜšXK‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Û[˜ÛÛ‹]ÝÛ˜Ø\‹LNNNLŒLIËZÎˆ	Ó[˜ÛÛ‰ËYˆ	ÕÝÛˆØ\‰ËLˆNNNLNˆŒLKˆÝÎˆ	ÒÌˆÈ	Ë[ˆ	ÒÌ‹T	ËÚ\ˆ	ÍÈÈMŒÉËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	ÖY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚH“ÌÎ	ËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	Ó]™\žH›Y]È[ˆ\ÙH›Ü™]™\‹ˆ[\ˆ]›Ü›KØ[YH\ÈÜ›ÝÛˆšXË‰Ë[žNˆ	Ó\ÚH“ÌÎ	ÈJKˆŠÈYˆ	Û[˜ÛÛ‹[˜]šYØ]Ü‹LŒËLŒMÉËZÎˆ	Ó[˜ÛÛ‰ËYˆ	Ó˜]šYØ]Ü‰ËLˆŒËLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLˆÈLLHžHYX\‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈQHÛˆ]\‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ð›YHY\ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓUÖNIË	ÉË	ÍP‰×WKˆÜˆˆKÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËXÎˆ	Ó\ÚH“ÌÎÜˆLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÙ^\ÈÈˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉË[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Û[˜ÛÛ‹[ZÞ‹LŒLËLŒŒ	ËZÎˆ	Ó[˜ÛÛ‰ËYˆ	ÓRÖ‰ËLˆŒLËLNˆŒŒˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	ÒQH]YÈ›ÉËˆÞ\Îˆ	ÔUÈÈTÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹PLÌÌLÌÌ	Ë	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ìˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	Ô\ÚX]ÛˆÙX\ˆÙ[XÝÜˆ8 %›ÈYXÚ[šXØ[YÛš][ÛˆÈXÚË‰Ë[žNˆ	Ó\ÚHLLIÈJKˆÊˆOOOOHÓHOOOOH
+‹ÂˆŠÈYˆ	ØÚ]žK\Ú[™\˜YËLNNNKLŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÚ[™\˜YÈML	ËLˆNNNKLNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	ÔÌÈ˜[œÜÛ™\‰ËˆÞ\Îˆ	Ô\ÜÛØÚÈÈÌÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÔLS‰Ë	ÉË	Í‰×WKˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌL[Z[ˆ™[X\›ˆÛˆÌÉËZÛˆ	ÌÌ[Z[ˆÈ™[X\›‰Ëˆ›ÝNˆ	Ô\ÜÛØÚÈš[\È]™H›ÈÚ\][8 %H™\Ú\ÝÜˆ\È[ˆHØÚÈÞ[[™\‹‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žK\Ú[™\˜YËLŒŒLŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÚ[™\˜YÈML	ËLˆŒŒLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘HÈ™]Ù\ˆQTÉËˆÞ\Îˆ	Ô\ÜÚ]™H[žHÈ\ÚÝ\	ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÖQÌÌŒUŒ‰Ë	ÉË	ÍPˆÈ‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	ÐYXKY›ØˆÚ]HÛÜšÚ[™È›Ø‰ËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]H™[X\›‰Ëˆ›ÝNˆ	Ó™]Ù\ÝÙ[™\˜][Ûˆ8 %ÛÛ™š\›HÛÛÛÝ™\˜YÙH™Y›Ü™HÛÛ[Z][™Ë‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ÙÛXË\ÚY\œ˜KLNNNKLŒ‰ËZÎˆ	ÑÓPÉËYˆ	ÔÚY\œ˜HML	ËLˆNNNKLNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	ÔÌÈ˜[œÜÛ™\‰ËˆÞ\Îˆ	Ô\ÜÛØÚÈÈÌÉËÛÛ™Nˆ	ÖY\ÉËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌL[Z[ˆ™[X\›‰ËZÛˆ	ÌÌ[Z[ˆÈ™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXË\ÚY\œ˜KLŒËLŒLÉËZÎˆ	ÑÓPÉËYˆ	ÔÚY\œ˜HML	ËLˆŒËLNˆŒLËŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\È
+ÌÊÊIËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÌÌ[Z[ˆÈ™[X\›‹›ÈÛÛ™YYY	Ëˆ›ÝNˆ	Ñœ™YH]ÛÝÈ8 %YÙ]ÍHZ[]\ÈÛˆÚ]K‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXË\ÚY\œ˜KLŒŒLŒ	ËZÎˆ	ÑÓPÉËYˆ	ÔÚY\œ˜HML	ËLˆŒŒLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘HÈ™]Ù\ˆQTÉËˆÞ\Îˆ	Ô\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÖQÌÌŒUŒ‰Ë	ÉË	ÍPˆÈ‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]H™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žK]ZÙKLŒLŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÕZÙHÈÝX\˜˜[‰ËLˆŒLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	ÔÌÉËˆÞ\Îˆ	Ô\ÜÛØÚÈÈÌÉËÛÛ™Nˆ	ÖY\ÉËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌL[Z[ˆ™[X\›‰ËZÛˆ	ÌÌ[Z[ˆÈ™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žK]ZÙKLŒËLŒM	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÕZÙHÈÝX\˜˜[‰ËLˆŒËLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\È
+ÌÊÊIËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	ÍPˆÈ‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÌÌ[Z[ˆÈ™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žK]ZÙKLŒŒKLŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÕZÙHÈÝX\˜˜[‰ËLˆŒŒKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘HÈ™]Ù\ˆQTÉËˆÞ\Îˆ	Ô\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÖQÌÌŒUŒ‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]H™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKY\]Z[›ÞLŒKLŒIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ñ\]Z[›Þ	ËLˆŒKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLHÈŒL‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žKY\]Z[›ÞLŒNLŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ñ\]Z[›Þ	ËLˆŒNLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆˆÈ\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTMTÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žK[X[XKLŒLŒL‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÓX[XIËLˆŒLNˆŒL‹ˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žK[X[XKLŒM‹LŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÓX[XIËLˆŒM‹LNˆŒˆÝÎˆ	ÐŒLNIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTMPIË	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKZ[\[KLNNNKLŒLÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ò[\[IËLˆNNNKLNˆŒLËˆÝÎˆ	ÐŒLˆÈŒLLHžHYX\‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÔÌÈÈÚ\˜ÛH\ÉËˆÞ\Îˆ	Ô\ÜÛØÚÈÈÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ëˆ›ÝNˆ	ÓÛ™È›Y]Y˜]›Ý\š]H[‹ˆÛÛ™š\›HÚXÚÙ^]Ø^H™Y›Ü™H[ÝHÝ]‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žKXÛØ˜[Z‹LŒKLŒLIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐÛØ˜[È‰ËLˆŒKLNˆŒLKˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žK]˜^Y[˜ÛÜ™KLŒLËLŒŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Õ˜^ÈZXÚÈ[˜ÛÜ™IËLˆŒLËLNˆŒŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLL	Ë[ˆ	ÐŒLM‹T	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘Üˆ™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKXØ[X\›ËLŒLLŒMIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐØ[X\›ÉËLˆŒLLNˆŒMKˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žKXØ[X\›ËLŒM‹LŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐØ[X\›ÉËLˆŒM‹LNˆŒˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ô\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTMPIË	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKY^™\ÜËLNNM‹LŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ñ^™\ÜÈÈÓPÈØ]˜[˜IËLˆNNM‹LNˆŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÐŒLˆÈŒLLHžHYX\‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	Ó›Û™HÈÚ\˜ÛH\ÈžHYX\‰ËˆÞ\Îˆ	Ô\ÜÛØÚÈÈÌÊÉËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‹ÜˆÝ]žHÛÙHÛˆ›Û‹XÚ\	Ëˆ›ÝNˆ	ÐÛÛ˜XÝÜˆ[™Ú]H›Y]Ëˆ™\žHÛ™È[ˆÚ]]HÚ[™ÙH8 %HÛÛÙÝØÚÈ][K‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žKXÛÛÜ˜YËLŒLŒL‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐÛÛÜ˜YÈÈÓPÈØ[ž[Û‰ËLˆŒLNˆŒL‹Žˆ	ÝXÚÉËˆ›ÝNˆ	ÑÓHZ[›ÈŒLËLŒMÛÛÜ˜YÈ›Üˆ›Ü[Y\šXØNÈHØ\[ˆHYX\œÈ\™H\È™X[‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXË^]ZÛÛ‹LŒËLŒM	ËZÎˆ	ÑÓPÉËYˆ	Ö]ZÛÛˆÈ]ZÛÛˆ	ËLˆŒËLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	ÍPˆÈ‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXË^]ZÛÛ‹LŒMKLŒŒ	ËZÎˆ	ÑÓPÉËYˆ	Ö]ZÛÛˆÈ]ZÛÛˆ	ËLˆŒMKLNˆŒŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ô\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹LÌŒÌÍÌL	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØZXÚË[XÜ›ÜÜÙKY[˜Û]™KLŒLŒMÉËZÎˆ	ÐZXÚÉËYˆ	ÓPÜ›ÜÜÙHÈ[˜Û]™IËLˆŒLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLHÈLLžHYX\‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÐÚ\˜ÛH\ÈÈ‘IËˆÞ\Îˆ	ÔÌÊÈÈ[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Õ˜\šY\ÉË™[NˆÖÉÜ›Þ	Ë	ÓÒLŒLL‰Ë	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÜˆLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÓÐ‘Üˆ™[X\›‰Ëˆ›ÝNˆ	ÔÜ[œÈHÚ\˜ÛH\ÈÈ‘HÚ[™Ù[Ý™\ˆ8 %ÚXÚÈHÙ^K‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ØØY[XËY\ØØ[YKLŒËLŒM	ËZÎˆ	ÐØY[XÉËYˆ	Ñ\ØØ[YIËLˆŒËLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÍŒÌ	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ëˆ›ÝNˆ	ÒYÚ]Y™ZXÛKˆ™\šYžHÝÛ™\œÚ\Ø\™Y[HÛˆ[ˆRÓØ[‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØØY[XËY\ØØ[YKLŒMKLŒŒ	ËZÎˆ	ÐØY[XÉËYˆ	Ñ\ØØ[YIËLˆŒMKLNˆŒŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ô\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLP‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ëˆ›ÝNˆ	ÒYÚ]Yˆ™\šYžHÝÛ™\œÚ\‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØØY[XËXÝËX]ËLŒLŒNIËZÎˆ	ÐØY[XÉËYˆ	ÐÕÈÈUÉËLˆŒLNˆŒNKˆÝÎˆ	ÒLLÈŒLNHžHYX\‰Ë[ˆ	ÐŒLM‹T	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆˆÈ\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	Ó‘ÌMÍŽ	Ë	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ÜÛXXË\Ø]\›‹LŒKLŒL	ËZÎˆ	ÔÛXXÉËYˆ	ÑÍˆÈØ]\›ˆ]\˜IËLˆŒKLNˆŒLˆÝÎˆ	ÐŒLLHÈŒL‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ëˆ›ÝNˆ	ÑXYœ˜[™Ë]™HØ\œÈ8 %Ý[[HÛˆH›ØYˆHØ]\›ˆYHÙˆŒ‹LŒL\ÈHØ[YH\˜H[™ZÙ\ÈHØ[YHÓH›[šÜË‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆÊˆOOOOHÓ‘HÈPÕTHOOOOH
+‹ÂˆŠÈYˆ	ÚÛ™KXXØÛÜ™LNNNLŒ‰ËZÎˆ	ÒÛ™IËYˆ	ÐXØÛÜ™	ËLˆNNNLNˆŒ‹ˆÝÎˆ	ÒÌIË[ˆ	ÒÌIËÚ\ˆ	Ó›Û™HÈLËLMÚ\žHš[IËˆÞ\Îˆ	ÑX\›HÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÓNˆÜˆ[\™\ÜÚ[Û‰ËØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\š[\ÉËˆ›ÝNˆ	ÓX[žHÙˆ\ÙH]™H›ÈÚ\ˆÚXÚÈ™Y›Ü™H][Ý[™È›ÙÜ˜[[Z[™Ë‰Ë[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXXØÛÜ™LŒËLŒÉËZÎˆ	ÒÛ™IËYˆ	ÐXØÛÜ™	ËLˆŒËLNˆŒËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆ
+ÑÎLÍŠIËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÑÎLÎPIË	ÉË	ÌÐˆÈ‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘ÈSˆžH’SˆÛˆÛÛYIË[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXXØÛÜ™LŒLËLŒMÉËZÎˆ	ÒÛ™IËYˆ	ÐXØÛÜ™	ËLˆŒLËLNˆŒMËˆÝÎˆ	ÒÓ‰Ë[ˆ	ÒÌËT	ËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÐPÒŽLÌ’ÌLŒLIË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛYHÛÛÈØ[SˆžH’S‰Ë[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	ÚÛ™KXXØÛÜ™LŒNLŒŒ‰ËZÎˆ	ÒÛ™IËYˆ	ÐXØÛÜ™	ËLˆŒNLNˆŒŒ‹ˆÝÎˆ	ÒÓ‰Ë[ˆ	ÒÌËT	ËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÐÕÕÐŒQÌL	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	ÚÛ™KXÚ]šXËLŒKLŒIËZÎˆ	ÒÛ™IËYˆ	ÐÚ]šXÉËLˆŒKLNˆŒKˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆÈLËLMžHYX\‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXÚ]šXËLŒL‹LŒMIËZÎˆ	ÒÛ™IËYˆ	ÐÚ]šXÉËLˆŒL‹LNˆŒMKˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆ
+ÑÎLÍŠIËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓS’RÍ‹LU	Ë	ÉË	Í‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXÚ]šXËLŒŒ‹LŒIËZÎˆ	ÒÛ™IËYˆ	ÐÚ]šXÉËLˆŒŒ‹LNˆŒKˆÝÎˆ	ÒÓ‰Ë[ˆ	ÒÌËT	ËÚ\ˆ	ÒQÈÈ™]Ù\ˆ]YÉËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUM	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉËˆ›ÝNˆ	Ó™]Ù\ÝÙ[™\˜][Ûˆ8 %ÛÛ™š\›HÛÛÛÝ™\˜YÙK‰Ë[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	ÚÛ™KXÜ‹LŒ‹LŒ‰ËZÎˆ	ÒÛ™IËYˆ	ÐÔ‹U‰ËLˆŒ‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KXÜ‹LŒËLŒLIËZÎˆ	ÒÛ™IËYˆ	ÐÔ‹U‰ËLˆŒËLNˆŒLKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓQ‹TÌIË	ÉË	ÌÐˆÈ‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™K\[ÝLŒËLŒMIËZÎˆ	ÒÛ™IËYˆ	Ô[Ý	ËLˆŒËLNˆŒMKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÒÔMUÒÍLÌ	Ë	ÉË	ÍˆÈP‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™K[Ù\ÜÙ^KLŒKLŒL	ËZÎˆ	ÒÛ™IËYˆ	ÓÙ\ÜÙ^IËLˆŒKLNˆŒLŽˆ	Ý˜[‰ËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÓÕPÑÎLÎNRPIË	ÉË	ÍˆÈP‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉËˆ›ÝNˆ	ÐÛÛ[[ÛˆØÚÛÝ]8 %HÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÚY\ˆ[žK‰Ë[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™K[Ù\ÜÙ^KLŒNLŒ	ËZÎˆ	ÒÛ™IËYˆ	ÓÙ\ÜÙ^IËLˆŒNLNˆŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÒÓ‰Ë[ˆ	ÒÌËT	ËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUŒ–	Ë	ÉË	ÍˆÈÐ‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	ÚÛ™KYš]Z‹LŒËLŒŒ‰ËZÎˆ	ÒÛ™IËYˆ	Ñš]È‹U‰ËLˆŒËLNˆŒŒ‹ˆÝÎˆ	ÒÌHÈÓˆžHYX\‰Ë[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÒQˆY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHÓNˆÜˆÓ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉËˆ›ÝNˆ	ÔÜ[œÈHÌHÈÓˆÚ[™Ù[Ý™\ˆ8 %ÚXÚÈH›YK‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÚÛ™K\šYÙ[[™KLŒ‹LŒ	ËZÎˆ	ÒÛ™IËYˆ	ÔšYÙ[[™IËLˆŒ‹LNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÒÌHÈÓˆžHYX\‰Ë[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	ÒQˆY\ÉËÜˆˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËXÎˆ	Ó\ÚHÓNˆÜˆÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ØXÝ\˜K]]ÞLŒLŒM	ËZÎˆ	ÐXÝ\˜IËYˆ	ÕÈÖ	ËLˆŒLNˆŒMˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÐXÝ\˜H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÙ›Ø‰Ë	ÒÔMUÒÍLÌ	Ë	ÉË	Í‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ØXÝ\˜K]\™LŒMKLŒ	ËZÎˆ	ÐXÝ\˜IËYˆ	ÕÈ‘	ËLˆŒMKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒÓ‰Ë[ˆ	ÒÌËT	ËÚ\ˆ	ÒQÈ
+]YÌÊIËˆÞ\Îˆ	ÐXÝ\˜HÛX\[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUŒ–	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓ‰ÈJK‚ˆÊˆOOOOH’TÔÐSˆÈS‘’S’UHOOOOH
+‹ÂˆŠÈYˆ	Ûš\ÜØ[‹X[[XKLŒ‹LŒ‰ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ð[[XIËLˆŒ‹LNˆŒ‹ˆÝÎˆ	ÑLÌIË[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQˆÈMŒžHYX\‰ËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™YS‰Ëˆ›ÝNˆ	ÐÓHX™[\È™Z[™HÚXÚÈ[™[Üˆ[™\ˆH\Ú‰Ë[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ûš\ÜØ[‹X[[XKLŒNKLŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ð[[XIËLˆŒNKLNˆŒˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈÈ]YÌÈQTÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔU	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹\Ù[˜KLŒLŒL‰ËZÎˆ	Óš\ÜØ[‰ËYˆ	ÔÙ[˜IËLˆŒLNˆŒL‹ˆÝÎˆ	ÑLÌIË[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQˆÈMŒžHYX\‰ËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ûš\ÜØ[‹]™\œØKLŒËLŒNIËZÎˆ	Óš\ÜØ[‰ËYˆ	Õ™\œØIËLˆŒËLNˆŒNKˆÝÎˆ	ÑLÌHÈ”ÓŒMžHš[IË[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQˆÈQÉËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHš[IËˆXÎˆ	Ó\ÚHLÌHÜˆ”ÓŒM	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ð˜\ÙHš[\È\™HÝ[HZ[ˆ›YHÙ^H8 %ÚX\\Ýš\ÜØ[ˆÛˆHÝ‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ûš\ÜØ[‹[]\˜[›ËLŒËLŒŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ó]\˜[›ÉËLˆŒËLNˆŒŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM	Ë[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹[X^[XKLŒLŒŒÉËZÎˆ	Óš\ÜØ[‰ËYˆ	ÓX^[XIËLˆŒLNˆŒŒËˆÝÎˆ	Ó”ÓŒM	Ë[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹\›ÙÝYKLŒLŒLÉËZÎˆ	Óš\ÜØ[‰ËYˆ	Ô›ÙÝYIËLˆŒLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM	Ë[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÐÕÕÐŒUN	Ë	ÉË	Íˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹\›ÙÝYKLŒŒKLŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ô›ÙÝYIËLˆŒŒKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	Ò]YÌÈQTÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹[‹LŒL‹LŒŒIËZÎˆ	Óš\ÜØ[‰ËYˆ	Ó•ˆÈ•ŒŒ	ËLˆŒL‹LNˆŒŒKŽˆ	Ý˜[‰ËˆÝÎˆ	ÑLÌHÈ”ÓŒMžHš[IË[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\‰ËXÎˆ	Ó\ÚHLÌHÜˆ”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ñ›Y]˜[œÈ8 %™\šYžHÝÛ™\œÚ\ÛˆRÓ‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆÊˆOOOOHUS‘RHÈÒPHOOOOH
+‹ÂˆŠÈYˆ	Ú][™ZKY[[˜KLŒKLŒL	ËZÎˆ	Ò][™ZIËYˆ	Ñ[[˜IËLˆŒKLNˆŒLˆÝÎˆ	ÒLMHÈLŒ	Ë[ˆ	ÒLMKT	ËÚ\ˆ	ÒQˆÈMŒžHYX\‰ËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLMHÈLŒ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	ÔÛÛYHX\›Hš[\È]™H›È[[[Øš[^™\ˆ][‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ú][™ZKY[[˜KLŒMËLŒ	ËZÎˆ	Ò][™ZIËYˆ	Ñ[[˜IËLˆŒMËLNˆŒˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQˆžHYX\‰ËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉË™[NˆÖÉÜ›Þ	Ë	ÕNQ“Ð‹MŒLIË	ÉË	ÍˆÛX\Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	ÕHŒLKLŒŒH][™ZKÒÚXHY\ÜÝYHÙ[™\ÈÛˆ›Û‹Z[[[Øš[^™\ˆš[\È8 %ÚXÚÈÚ]\ˆÛ™H\È]™[ˆš]Y‰Ë[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	Ú][™ZK\ÛÛ˜]KLŒ‹LŒL	ËZÎˆ	Ò][™ZIËYˆ	ÔÛÛ˜]IËLˆŒ‹LNˆŒLˆÝÎˆ	ÒLMHÈLŒ	Ë[ˆ	ÒLŒT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLŒ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHLŒ	ÈJKˆŠÈYˆ	Ú][™ZK\ÛÛ˜]KLŒŒLŒ	ËZÎˆ	Ò][™ZIËYˆ	ÔÛÛ˜]IËLˆŒŒLNˆŒˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQTÉËˆÞ\Îˆ	Ò][™ZHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÕNQ“Ð‹MŒÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	Ú][™ZK\Ø[Y™KLŒKLŒL‰ËZÎˆ	Ò][™ZIËYˆ	ÔØ[H™IËLˆŒKLNˆŒL‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLMHÈLŒ	Ë[ˆ	ÒLŒT	ËÚ\ˆ	ÒQˆÈMŒ	ËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLŒ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHLŒ	ÈJKˆŠÈYˆ	Ú][™ZKXXØÙ[LŒ‹LŒŒ‰ËZÎˆ	Ò][™ZIËYˆ	ÐXØÙ[	ËLˆŒ‹LNˆŒŒ‹ˆÝÎˆ	ÒLŒÈLŒˆžHYX\‰Ë[ˆ	ÒLŒT	ËÚ\ˆ	ÒQˆÈQÉËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHLŒÜˆLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	Ð˜\ÙHš[\Èœ™\]Y[HÚ\YÚ]›È[[[Øš[^™\‹‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ú][™ZK\[\ØYKLŒŒLŒ	ËZÎˆ	Ò][™ZIËYˆ	Ô[\ØYIËLˆŒŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQTÉËˆÞ\Îˆ	Ò][™ZHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÕNQ“Ð‹MŒNIË	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	ÚÚXK[Ü[XKLŒM‹LŒŒ	ËZÎˆ	ÒÚXIËYˆ	ÓÜ[XIËLˆŒM‹LNˆŒŒˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQ‰ËˆÞ\Îˆ	ÒÚXHÛX\Ù^IËÛÛ™Nˆ	Õ˜\šY\ÉË™[NˆÖÉÜ›Þ	Ë	ÔÖMR‘‘‘ÑL	Ë	ÉË	ÍˆÛX\Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ë[žNˆ	Ó\ÚHLŒ‰ÈJKˆŠÈYˆ	ÚÚXK\ÜÜYÙKLŒKLŒŒ‰ËZÎˆ	ÒÚXIËYˆ	ÔÜÜYÙIËLˆŒKLNˆŒŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒÒÌLÈLŒˆžHYX\‰Ë[ˆ	ÒÒÌLT	ËÚ\ˆ	ÒQˆÈQÉËˆÞ\Îˆ	ÒÚXH[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHÒPMÈÜˆLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÚÚXK\ÙYÛ˜KXØ\›š]˜[LŒ‹LŒ	ËZÎˆ	ÒÚXIËYˆ	ÔÙYÛ˜HÈØ\›š]˜[	ËLˆŒ‹LNˆŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÒÒÌLÈLŒˆžHYX\‰Ë[ˆ	ÒÒÌLT	ËÚ\ˆ	ÒQˆÈQÉËˆÞ\Îˆ	ÒÚXH[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHÒPMÈÜˆLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	ÐÛÛ[[Ûˆ˜[Z[K]˜[ˆØÚÛÝ]ˆÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÚY\ˆ[žK‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÚÚXK][\šYKLŒŒLŒ	ËZÎˆ	ÒÚXIËYˆ	Õ[\šYIËLˆŒŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLŒ‰Ë[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQTÉËˆÞ\Îˆ	ÒÚXHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÕNQ“Ð‹MŒ	Ë	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHLŒ‰ÈJK‚ˆÊˆOOOOHÕSS•TÈOOOOH
+‹ÂˆŠÈYˆ	ÙÙÙK\˜[KLNNMLŒ	ËZÎˆ	ÑÙÙIËYˆ	Ô˜[HML	ËLˆNNMLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÖLMMÈÈLMŒ	Ë[ˆ	ÖLMŒT	ËÚ\ˆ	Ó›Û™HÈQˆžHYX\‰ËˆÞ\Îˆ	ÔÒÒSHÈÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓÛˆÚ\Y	Ëˆ›ÝNˆ	Ô™KLNNNXÚÜÈÙ[ˆ]™H›ÈÚ\‰Ë[žNˆ	Ó\ÚHÖLÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÙÙÙK\˜[KLŒKLŒL‰ËZÎˆ	ÑÙÙIËYˆ	Ô˜[HML	ËLˆŒKLNˆŒL‹Žˆ	ÝXÚÉËˆÝÎˆ	ÐÖL	Ë[ˆ	ÖLMT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÔÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÛÛYIË™[NˆÖÉÙ›Ø‰Ë	ÓÒŽLÐPIË	ÉË	ÌÐˆÈ‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ü˜[KLMLLŒNKLŒ	ËZÎˆ	Ô˜[IËYˆ	ÌML
+
+IËLˆŒNKLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQH
+]YÈQTÊIËˆÞ\Îˆ	ÔÝ[[\È[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓÒMŒM‰Ë	ÉË	ÍP‰×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÑÓÕÒNˆHÙ[™\˜][Ûˆ[Ý™YÈÒTŒ‹ˆHÛ\ˆÖL›[šÈÚ[›Ýš]‰Ë[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	Ú™Y\YÜ˜[™XÚ\›ÚÙYKLNNNKLŒL	ËZÎˆ	Ò™Y\	ËYˆ	ÑÜ˜[™Ú\›ÚÙYIËLˆNNNKLNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÖLMMÈÈLMŒ	Ë[ˆ	ÖLMŒT	ËÚ\ˆ	ÒQˆÈM	ËˆÞ\Îˆ	ÔÒÒSHÈÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ú™Y\]Ü˜[™Û\‹LNNMËLŒ‰ËZÎˆ	Ò™Y\	ËYˆ	ÕÜ˜[™Û\ˆ‰ËLˆNNMËLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÖLMMÈÈLMŒ	Ë[ˆ	ÖLMŒT	ËÚ\ˆ	Ó›Û™HÈQˆžHYX\‰ËˆÞ\Îˆ	ÔÒÒSHÛˆÚ\Y	ËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\	Ëˆ›ÝNˆ	ÔÛÙÜˆÛÈ›ÝYÚHÚ[™ÝÈš\\ˆ™Y›Ü™H[ÝH™XXÚ›ÜˆHÙYÙK‰Ë[žNˆ	ÔÛÙÜˆ[žš\	ÈJKˆŠÈYˆ	Ú™Y\XÛÛ\\ÜË\]š[ÝLŒËLŒMÉËZÎˆ	Ò™Y\	ËYˆ	ÐÛÛ\\ÜÈÈ]š[Ý	ËLˆŒËLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐÖL	Ë[ˆ	ÖLMT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÔÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ú™Y\YÛYX]Ü‹LŒŒLŒ	ËZÎˆ	Ò™Y\	ËYˆ	ÑÛYX]Ü‰ËLˆŒŒLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQH
+]YÈQTÊIËˆÞ\Îˆ	ÔÝ[[\È[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓÒLLÌŒIË	ÉË	ÍˆÈP‰×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ò“Ü˜[™Û\ˆ]›Ü›H8 %ÒTŒ‹›ÝÖL‰Ë[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	ØÚž\Û\‹LÌLŒKLŒL	ËZÎˆ	ÐÚž\Û\‰ËYˆ	ÌÌÈÙÙHXYÛ[IËLˆŒKLNˆŒLˆÝÎˆ	ÐÖL	Ë[ˆ	ÖLMT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÔÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÛÛYIË™[NˆÖÉÙ›Ø‰Ë	ÒÓÐ‘IË	ÉË	ÍˆÈP‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ÙÙÙKZ›Ý\›™^KY\˜[™ÛËLŒLŒŒÉËZÎˆ	ÑÙÙIËYˆ	Ò›Ý\›™^HÈ\˜[™ÛÉËLˆŒLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐÖL
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÖLMÌT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	Ô‘’HÈÒÔ‘QSIËÛÛ™Nˆ	Ó›ÈÛˆ›Þ	Ë™[NˆÖÉÜ›Þ	Ë	ÓLÓ‹MŒLÌ‰Ë	ÉË	ÍP‰×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKZÙ^HÚ]ˆÛÜšÚ[™ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ÙšX]MLLŒL‹LŒNIËZÎˆ	ÑšX]	ËYˆ	ÍL	ËLˆŒL‹LNˆŒNKˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÑšX][[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHÒTŒ‰ÈJK‚ˆÊˆOOOOHUT“ÈOOOOH
+‹ÂˆŠÈYˆ	ÝËZ™]KYÛÛ‹LNNNKLŒL	ËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	Ò™]HÈÛÛˆ
+ZÍSZÍJIËLˆNNNKLNˆŒLˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQ
+YYØ[[ÜÊIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆˆÈÉËÛÛ™Nˆ	ÕÚ]HØ\X›HÛÛ™\‰ËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËˆØ™ˆ	ÖY\ÈÛˆ[[[È‹ÌÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÙ[ˆ™YYÈÛ\Ý\ˆÈ[[[È]IË[Žˆ	ÐÔÈÛÙIËˆ›ÝNˆ	Ò[[[Øš[^™\ˆˆ\È˜\ˆœšY[™Y\ˆ[ˆH[[[ÈØ\œÈ]›ÛÝÙY‰Ë[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÝË\\ÜØ]LŒ‹LŒNIËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	Ô\ÜØ]	ËLˆŒ‹LNˆŒNKˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQÈTPˆÛˆ]\‰ËˆÞ\Îˆ	Ò[[[Øš[^™\ˆÈTP‰ËÛÛ™Nˆ	ÒQÛ›IË™[NˆÖÉÙ›\	Ë	Ó‘ÌLN	Ë	ÉË	Íˆ›\	×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËˆØ™ˆ	ÖY\ÈÚ]HšYÚÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓTPˆ\ÈHÜXÚX[\Ý›Ø‰Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ›ÝNˆ	Ñ\ÝX›\ÚTPˆœÈ›Û‹STPˆ™Y›Ü™H[ÝH][ÝH8 %Y™™\™[›Ø‹Y™™\™[šXÙK‰Ë[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÝËX]\ËLŒNLŒ	ËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	Ð]\ÉËLˆŒNLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLMŒ•	Ë[ˆ	ÒLMŒ•T	ËÚ\ˆ	ÓTPˆ
+QTÊIËˆÞ\Îˆ	ÓTPˆ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆKˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLMŒ•	ËˆØ™ˆ	ÓTP‹XØ\X›HÛÛÛ›IËÛŽˆ	Ó›ÉËZÛˆ	ÓTPˆRÓ8 %ÜXÚX[\Ý	Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ[žNˆ	Ó\ÚHLMŒ•	ÈJKˆŠÈYˆ	Ø]YK\MKXM‹LŒKLŒ	ËZÎˆ	Ð]YIËYˆ	ÔMHÈM‰ËLˆŒKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒMˆÈLMŒ•žHYX\‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQÈTPˆQTÉËˆÞ\Îˆ	Ò[[[Øš[^™\ˆÈTP‰ËÛÛ™Nˆ	ÒQÛ›IËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHMˆÜˆLMŒ•	ËØ™ˆ	ÓÙ[ˆ™[˜ÚÛÜšÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÐÛ\Ý\ˆÈ[[[È]H\ÝX[H™\]Z\™Y	Ë[Žˆ	ÐÔÈÛÙIËˆ›ÝNˆ	ÔšXÙH\ÙH\ÈÜXÚX[\ÝÛÜšÈÜˆ™Y™\ˆÝ]‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ø›]ËLÜÙ\šY\ËLŒL‹LŒNIËZÎˆ	Ð“UÉËYˆ	ÌÈÙ\šY\È
+ŒÌ
+IËLˆŒL‹LNˆŒNˆÝÎˆ	ÒLL‰Ë[ˆ	Ð“UÌIËÚ\ˆ	Ñ‘SHÈ‘ÉËˆÞ\Îˆ	Ñ‘SKP‘ÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	Ó‘ÒQÓ‘ÌIË	ÉË	ÌÐˆÈ‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL‰ËˆØ™ˆ	Õ\ÝX[H™[˜Ú8 %‘SKÐ‘È[Ù[HÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	Ñ‘SKÐ‘È™XYTÓˆ™\]Z\™Y	Ë[Žˆ	ÒTÓ‰Ëˆ›ÝNˆ	Ó›ÝHš]™]Ø^H›Ø‹ˆ][ÝHYÚÜˆ™Y™\ˆÝ]ˆHÌŒ]™\XÙ\È\È›ÜˆŒNH\È]ÈÝÛˆ™XÛÜ™[™\ÈH\™\ˆ›ØˆYØZ[‹‰Ë[žNˆ	Ó\ÚHLL‰ÈJKˆŠÈYˆ	Ø›]Ë^Ë^KLŒËLŒN	ËZÎˆ	Ð“UÉËYˆ	ÖÈÈIËLˆŒËLNˆŒNŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒNLˆÈLLˆžHYX\‰Ë[ˆ	ÒNL‰ËÚ\ˆ	ÐÐTÌÈÈ‘SKP‘ÉËˆÞ\Îˆ	ÐÐTÌÈÈ‘SKP‘ÉËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHNLˆÜˆLL‰ËØ™ˆ	ÓÙ[ˆ™[˜Ú	ËÛŽˆ	Ó›ÉËZÛˆ	Ó[Ù[H™XYTÓˆ™\]Z\™Y	Ë[Žˆ	ÒTÓ‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÛZ[šKXÛÛÜ\‹LŒËLŒ	ËZÎˆ	ÓZ[šIËYˆ	ÐÛÛÜ\‰ËLˆŒËLNˆŒˆÝÎˆ	ÒNLˆÈLLˆžHYX\‰Ë[ˆ	ÒNL‰ËÚ\ˆ	ÐÐTÈÈ‘SKP‘ÉËˆÞ\Îˆ	Ð“UÈÐTÈÈ‘SIËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHNLˆÜˆLL‰ËØ™ˆ	ÓÙ[ˆ™[˜Ú	ËÛŽˆ	Ó›ÉËZÛˆ	Ð“UÈ›ØÙY\™KTÓˆ™\]Z\™Y	Ë[Žˆ	ÒTÓ‰Ëˆ›ÝNˆ	ÐH“UÈ[ˆHÛX[›ÙH8 %šXÙH]]Ø^K‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÛY\˜ÙY\ËYXÛ\ÜËLŒËLŒM‰ËZÎˆ	ÓY\˜ÙY\ËP™[ž‰ËYˆ	ÑKPÛ\ÜÉËLˆŒËLNˆŒM‹ˆÝÎˆ	ÒM	Ë[ˆ	ÒM	ËÚ\ˆ	Ñ”ÌÈ
+[™œ˜\™Y
+IËˆÞ\Îˆ	Ñ”ÌÈÈTÌÉËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	Ó›È8 %RTËÑTÓÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	ÑRTÈ™XY\ÜÝÛÜ™Ø[ËÙ^Hš[HÜš]IË[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÉËˆ›ÝNˆ	ÔÜXÚX[\Ý›Ø‹ˆšXÙH]\ÈÛ™K‰Ë[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	Ý›Û›Ë^ÍŒ^ÎLLŒLŒ	ËZÎˆ	Õ›Û›ÉËYˆ	ÖÍŒÈÎL	ËLˆŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒMM”‰Ë[ˆ	ÒMM”‰ËÚ\ˆ	Õ›Û›ÈÙ[ZK\ÛX\ÈÑSIËˆÞ\Îˆ	Õ›Û›ÈÑSIËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHMM”‰ËˆØ™ˆ	ÕÛÛY\[™[Ù[ˆÑSHÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	ÐÑSH›ØÙY\™IË[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÓšXÚKˆÛÛ™š\›H[Ý\ˆÛÛÛÝ™\œÈ›Û›È™Y›Ü™H[ÝHZÙHHØ[‰Ë[žNˆ	Ó\ÚHMM”‰ÈJK‚ˆÊˆOOOOHÕPT•HÈPV‘HÈRUÕP’TÒHOOOOH
+‹ÂˆŠÈYˆ	ÜÝX˜\K[Ý]˜XÚË[YØXÞKLŒKLŒM	ËZÎˆ	ÔÝX˜\IËYˆ	ÓÝ]˜XÚÈÈYØXÞIËLˆŒKLNˆŒMŽˆ	ÜÝ]‰ËˆÝÎˆ	ÑUMÈÈÕP	Ë[ˆ	ÑUMÉËÚ\ˆ	ÍMŒˆÈQ‰ËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHUMÈÈÕP	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ë[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÜÝX˜\K[Ý]˜XÚËLŒŒLŒ	ËZÎˆ	ÔÝX˜\IËYˆ	ÓÝ]˜XÚÉËLˆŒŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÕP
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÔÕPT	ËÚ\ˆ	ÒQÈÈ]YÌÈQTÉËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMRÉË	ÉË	ÍˆÛX\Ù^I×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ë[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÜÝX˜\K]ÜžLŒLŒŒIËZÎˆ	ÔÝX˜\IËYˆ	Ò[\™^˜HÔ–ÈÔ–ÈÕIËLˆŒLNˆŒŒKˆÝÎˆ	ÔÕP	Ë[ˆ	ÔÕPT	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ë[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÒYÚ]Y[\ÚX\ÝØ\‹ˆ™\šYžHÝÛ™\œÚ\ÛˆRÓ‰Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ÛX^™KM‹LŒËLŒŒIËZÎˆ	ÓX^™IËYˆ	ÓX^™M‰ËLˆŒËLNˆŒŒKˆÝÎˆ	ÓPVŒÈVŒÍžHYX\‰Ë[ˆ	ÓPVŒ‹T	ËÚ\ˆ	ÒQˆÈQHžHYX\‰ËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHPVŒÜˆVŒÍ	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó[Z]Y	ËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÛX^™KXÞKXÞÌLŒËLŒ	ËZÎˆ	ÓX^™IËYˆ	ÐÖNHÈÖLÌ	ËLˆŒËLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÓPVŒ	Ë[ˆ	ÓPVŒ‹T	ËÚ\ˆ	ÒQHÈ]YÈ›ÉËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÕÐV”ÒÑLLÑIË	ÉË	ÌÐˆÈ‰×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHPVŒ	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó[Z]Y	ËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHPVŒ	ÈJKˆŠÈYˆ	ÛZ]ÝXš\ÚK[[˜Ù\‹LŒ‹LŒMÉËZÎˆ	ÓZ]ÝXš\ÚIËYˆ	Ó[˜Ù\ˆÈXÛ\ÙIËLˆŒ‹LNˆŒMËˆÝÎˆ	ÓRULIË[ˆ	ÓRULKT	ËÚ\ˆ	ÒQˆÈMŒIËˆÞ\Îˆ	ÓZ]ÝXš\ÚH[[[Øš[^™\‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHRULIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÓÙ[‰Ë[žNˆ	Ó\ÚHRULIÈJK‚ˆÊˆOOOOHÕÑT”ÔÔ•ÈÈTURTQS•OOOOH
+‹ÂˆŠÈYˆ	Ú\›^KLŒMLŒ	ËZÎˆ	Ò\›^KQ]šYÛÛ‰ËYˆ	ÕÝ\š[™ÈÈÛÙZ[
+”ÓJIËLˆŒMLNˆŒŽˆ	Û[ÝÉËˆÝÎˆ	ÒLÉË[ˆ	ÒLÉËÚ\ˆ	Ó›Û™H[ˆHÙ^H8 %”ÓH›Øˆ\ÈÙ\\˜]IËˆÞ\Îˆ	Ò[™ËYœ™YHÙXÝ\š]H[Ù[IËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHYÛš][ÛŽÈØYX˜YÜÈÙ[ˆÚ\™HHÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Ñ›ØˆZ\š[™È›ÝYÚHÙÛY]\ˆY[IËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‹[ˆZ\ˆH›Ø‰Ëˆ›ÝNˆ	ÒYÚ[X\™Ú[‹ÝË]ÛÛÛÜšËˆH›YH[™H›Øˆ\™HÛÈÙ\\˜]H›Ø›[\Ë‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	ÚÛ™K[[ÝËXÛÛ[[Û‰ËZÎˆ	ÒÛ™IËYˆ	Ó[ÝÜ˜ÞXÛHÈUˆ
+[ÜÝ
+IËLˆNNLLNˆŒ‹Žˆ	Û[ÝÉËˆÝÎˆ	ÒLHÈÓIË[ˆ	ÒLIËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈTÔÈÛˆ]\ˆÜÜšZÙ\ÉËˆÞ\Îˆ	ÒTÔÈÛˆÛÛYIËÛÛ™Nˆ	ÒTÔÈ™YYÈ›ÙÜ˜[[Z[™ÉËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHYÛš][Û‰ËØ™ˆ	Û‹ØIËÛŽˆ	ÒTÔÈZ\š[™È™YYÈH™YX\Ý\ˆÙ^IËˆZÛˆ	ÐÝ]žHÛÙNÈTÔÈRÓ\ÝX[HYX[œÈX[\‰Ëˆ›ÝNˆ	ÑÓÕÒNˆYˆ]\ÈTÔÈ[™H™YX\Ý\ˆÙ^H\ÈÛÛ™K]\ÈHX[\ˆ›Ø‹‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	ÞX[XZK[[ÝËXÛÛ[[Û‰ËZÎˆ	ÖX[XZIËYˆ	Ó[ÝÜ˜ÞXÛHÈUˆ
+[ÜÝ
+IËLˆNNLLNˆŒ‹Žˆ	Û[ÝÉËˆÝÎˆ	ÖRÍIË[ˆ	ÖRÍIËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈ[[[Øš[^™\ˆÛˆ]\‰ËˆÞ\Îˆ	ÖX[XZH[[[Øš[^™\ˆÛˆÛÛYIËÛÛ™Nˆ	Û‹ØHÛˆ[ÜÝ	ËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	ÚØ]Ø\ØZÚK\Ý^ZÚK[[ÝÉËZÎˆ	ÒØ]Ø\ØZÚIËYˆ	Ó[ÝÜ˜ÞXÛHÈUˆ
+[ÜÝ
+IËLˆNNLLNˆŒ‹Žˆ	Û[ÝÉËˆÝÎˆ	ÒÐLLÈÈÕVŒM	Ë[ˆ	ÒÐLLÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËˆÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰ËÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	ØØ[˜[KXœœLŒLLŒ‰ËZÎˆ	ÐØ[‹P[IËYˆ	ÓX]™\šXÚÈÈY™[™\‰ËLˆŒLLNˆŒ‹Žˆ	Û[ÝÉËˆÝÎˆ	ÐØ[‹P[HÈ””	ËÚ\ˆ	Ñ‘K”Ë”ËˆÙ^HÛˆÛÛYH[Ù[ÉËÞ\Îˆ	Ð””‘K”Ë”Ë‰ËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHYÛš][Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Ñ‘K”Ë”Ëˆ]\ˆÙ^\ÈZ\ˆ›ÝYÚHX[\ˆÛÛ	ËZÛˆ	ÐÝ]žHÛÙHÚ\™HHYXÚ[šXØ[ØÚÈ\Èš]Y	Ëˆ›ÝNˆ	ÔÚYKXžK\ÚY\È\™HÛÛ[[Ûˆ\˜[Ø[ËˆÛÛ™š\›HÚ]\ˆ]\ÈHYXÚ[šXØ[Ù^HÜˆH‘K”Ë”Ëˆ]\ˆ™Y›Ü™H[ÝHš]™HÝ]ˆHÜY\ˆ[™žZÙ\ˆ›ØYXXÚ[™\È\™HHÙ\\˜]H™XÛÜ™\™K[™ÛÈ\™HHÝ][™\ˆ[™™[™YØYH]XYË‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	Ù\]Z\Y[XÛÛ[[Û‰ËZÎˆ	ÐØ]\œ[\‰ËYˆ	Ñ\]Z\Y[X\Ý\ˆÙ^\È
+ÐUÈY\™HÈØ\ÙJIËLˆNMÌLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	ÐÐUTLÈY\™HTLMIË[ˆ	ÌMŽLÈMŒ	ËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆKˆËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÔÝ[™\™X\Ý\ˆÙ^\È8 %\ÝX[H\ÝÝ]œ›ÛHÝØÚÉËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]œ›ÛHHÝ[™\™X\Ý\ˆ›[šÉËˆ›ÝNˆ	Ó[ÜÝX]žH\]Z\Y[\Ù\ÈHÛX[Ù]ÙˆÛÛ[[ÛˆX\Ý\ˆÙ^\Ëˆ›Ø‹\Ú]HØ[È\™H]ZXÚÈ[Û™^HYˆ[ÝHÝØÚÈ[K‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJK‚ˆŠÈYˆ	Û^\ËY\ËLNNMËLŒ‰ËZÎˆ	Ó^\ÉËYˆ	ÑTÈÌÈTÈÌÌ	ËLˆNNMËLNˆŒ‹ˆÝÎˆ	ÕÖMÈÖMÈžHYX\‰Ë[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÎÈMÈÝÛˆ]\‰ËˆÞ\Îˆ	Ó^\È[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHÖMÈÜˆÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÈÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÐØ[\žH[™\›™X]ˆÛÛ™š\›HH›YH™Y›Ü™HÝ][™È8 %\È[ˆÜ[œÈHÚ[™Ù[Ý™\‹‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Û^\ËY\ËLŒNKLŒIËZÎˆ	Ó^\ÉËYˆ	ÑTÈÍL	ËLˆŒNKLNˆŒKˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM‘‰Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËZ\ËLŒŒKLŒIËZÎˆ	Ó^\ÉËYˆ	ÒTÉËLˆŒŒKLNˆŒKˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM‘‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËYÜËLNNNLŒIËZÎˆ	Ó^\ÉËYˆ	ÑÔÈÌÈÔÈÈÔÈÌ	ËLˆNNNLNˆŒKˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖM	ËÚ\ˆ	ÍÉËˆÞ\Îˆ	Ó^\È[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËYÜËLŒLËLŒŒ	ËZÎˆ	Ó^\ÉËYˆ	ÑÔÈÍLÈÔÈL	ËLˆŒLËLNˆŒŒˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\	ËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[ËLNNMKLŒ‰ËZÎˆ	Ó^\ÉËYˆ	ÓÈÈÈÌ	ËLˆNNMKLNˆŒ‹ˆÝÎˆ	ÕÖMÈÖMžHYX\‰Ë[ˆ	ÕÖM	ËÚ\ˆ	Ó›Û™HX\›NÈÈœ›ÛHH]HLÉËˆÞ\Îˆ	Ó^\È[[[Øš[^™\ˆÛˆ]\‰ËÛÛ™Nˆ	ÖY\ÈÛˆÉËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÖY\ÉËZÛˆ	ÐÝ]žHÛÙHÛˆHX\›Y\ÝÈÐ‘ÛˆÚ\Y	Ëˆ›ÝNˆ	ÑX\›HÈÈ™Y]HH[[[Øš[^™\ˆ[\™[K‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[ËLŒNLŒ	ËZÎˆ	Ó^\ÉËYˆ	ÓÈL	ËLˆŒNLNˆŒˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM‘‰Ë	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ëˆ›ÝNˆ	ÒYÚ˜[YH8 %™\šYžHÝÛ™\œÚ\Ûˆ[ˆRÓØ[‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë\žLNNNKLŒÉËZÎˆ	Ó^\ÉËYˆ	Ô–Ì	ËLˆNNNKLNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÈÈÖMžHš[IË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÉËˆÞ\Îˆ	Ó^\È[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHš[IËˆXÎˆ	Ó\ÚHÖMÈÜˆÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Û^\Ë\žLŒŒËLŒIËZÎˆ	Ó^\ÉËYˆ	Ô–ÍLÈ–L	ËLˆŒŒËLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM–	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]È™]Ù\ÝZ[ÈX^H™YYX[\‰Ëˆ›ÝNˆ	Ó™]Ù\ÝÙ[™\˜][Ûˆ8 %ÛÛ™š\›HÛÛÛÝ™\˜YÙH™Y›Ü™HÛÛ[Z][™Ë‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËYÞÌLŒËLŒIËZÎˆ	Ó^\ÉËYˆ	ÑÖÌ	ËLˆŒËLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÉË[ˆ	ÕÖMËT	ËÚ\ˆ	ÍMÈÝ	ËˆÞ\Îˆ	Ó^\È[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ë›ÝNˆ	Í[›™\ˆ]›Ü›H[™\›™X]‰Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	Û^\Ë[ÌLNNNLŒÉËZÎˆ	Ó^\ÉËYˆ	ÓÌ	ËLˆNNNLNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÈÈÖMžHYX\‰Ë[ˆ	ÕÖMËT	ËÚ\ˆ	ÍÈÈMÈÝ	ËˆÞ\Îˆ	Ó^\È[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHÖMÈÜˆÖM	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÖY\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	Ó[™ÜZ\Ù\ˆL]›Ü›K‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Û^\Ë[ŒLŒŒ‹LŒIËZÎˆ	Ó^\ÉËYˆ	ÓŒ	ËLˆŒŒ‹LNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM–	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ëˆ›ÝNˆ	ÒYÚ˜[YKˆ™\šYžHÝÛ™\œÚ\ÛˆRÓ‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[žLŒŒ‹LŒIËZÎˆ	Ó^\ÉËYˆ	Ó–	ËLˆŒŒ‹LNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM–	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë\˜ËLŒMKLŒ	ËZÎˆ	Ó^\ÉËYˆ	ÔÈÈÈ‰ËLˆŒMKLNˆŒˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\	ËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMIË	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈM‹[Z[ˆØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë[ËLŒNLŒ	ËZÎˆ	Ó^\ÉËYˆ	ÓÈL	ËLˆŒNLNˆŒˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM‘‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ëˆ›ÝNˆ	ÓÝÈ›Û[YKYÚ˜[YKˆ™\šYžHÝÛ™\œÚ\‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËXÝŒLŒLKLŒMÉËZÎˆ	Ó^\ÉËYˆ	ÐÕŒ	ËLˆŒLKLNˆŒMËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMËT	ËÚ\ˆ	ÑÈÚ\ÈŒL‹ŒLÊÉËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÑÈY\Ë›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMPÖ	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘ÈM‹[Z[ˆØZ]Ûˆ	Ëˆ›ÝNˆ	Ôš]\È]›Ü›KˆÜ[œÈHÈÈÚ[™Ù[Ý™\ˆ8 %ÚXÚÈHÙ^K‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë]^LŒNKLŒIËZÎˆ	Ó^\ÉËYˆ	ÕVŒÈVL	ËLˆŒNKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMT	ËÚ\ˆ	ÎHÈÚ\
+QTÊIËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLM‘‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]HØZ]	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\Ë\ØÍÌLŒ‹LŒL	ËZÎˆ	Ó^\ÉËYˆ	ÔÐÈÌ	ËLˆŒ‹LNˆŒLˆÝÎˆ	ÕÖM	Ë[ˆ	ÕÖMT	ËÚ\ˆ	ÍMÈÝ	ËˆÞ\Îˆ	Ó^\È[[[Øš[^™\ˆÈX\›HÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÖY\ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLL–	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ð›YHš[\ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	Ñ›Û[™È\™Ü8 %È›Ý›Ü˜ÙHHXÚÈYÛˆHØÚÛÝ]‰Ë[žNˆ	Ó\ÚHÖM	ÈJKˆŠÈYˆ	Û^\ËZÌLLŒLLŒL‰ËZÎˆ	Ó^\ÉËYˆ	ÒÈL	ËLˆŒLLNˆŒL‹ˆÝÎˆ	ÕÖM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÕÖMËT	ËÚ\ˆ	ÑÈÚ\	ËˆÞ\Îˆ	Ó^\ÈÛX\XØÙ\ÜÉËÛÛ™Nˆ	ÖY\ÈÚ]HËXØ\X›HÛÛ™\‰Ë™[NˆÖÉÜ›Þ	Ë	ÒTLMPP‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÖM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[žNˆ	Ó\ÚHÖM	ÈJKˆÊˆOOOOHS‘’S’UHOOOOH
+‹ÂˆŠÈYˆ	Ú[™š[š]KYÌŒLNNNKLŒ‰ËZÎˆ	Ò[™š[š]IËYˆ	ÑÌŒ	ËLˆNNNKLNˆŒ‹ˆÝÎˆ	ÑLÌIË[ˆ	ÑLÌKT	ËÚ\ˆ	Ó›Û™HÈMŒžHYX\‰ËˆÞ\Îˆ	ÓUÈÛˆÚ\Y	ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈSˆÛˆÚ\YÈÝ]žHÛÙHÝ\Ú\ÙIË[Žˆ	ÖQTÈÛˆÚ\Y	Ëˆ›ÝNˆ	ÑX\›HUËˆÛÛYHÙˆ\ÙH]™H›ÈÚ\][‰Ë[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ú[™š[š]KZLÌZLÍKLNNM‹LŒ	ËZÎˆ	Ò[™š[š]IËYˆ	ÒLÌÈLÍIËLˆNNM‹LNˆŒˆÝÎˆ	ÑLÌIË[ˆ	ÑLÌKT	ËÚ\ˆ	ÍMŒÛˆÚ\Y	ËˆÞ\Îˆ	ÓUÈÍIËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ëˆ›ÝNˆ	Óš\ÜØ[ˆX^[XH[™\›™X]‰Ë[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ú[™š[š]K\MKLNNMËLŒ‰ËZÎˆ	Ò[™š[š]IËYˆ	ÔMIËLˆNNMËLNˆŒ‹ˆÝÎˆ	ÑLÌHÈ”ÓŒMžHYX\‰Ë[ˆ	ÑLÌKT	ËÚ\ˆ	ÍMŒÈQˆžHYX\‰ËˆÞ\Îˆ	ÓUÈÍIËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHLÌHÜˆ”ÓŒM	ËØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÕHŒŠÈMHØ\È[[Û™ÈHš\œÝTÈØ\œÈÚ]H›Þ[Z]HÙ^K‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ú[™š[š]KYÌÍKLŒËLŒÉËZÎˆ	Ò[™š[š]IËYˆ	ÑÌÍIËLˆŒËLNˆŒËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	Ó›ÈÛˆ[[YÙ[Ù^IË™[NˆÖÉÜ›Þ	Ë	ÒÐ”•ŒIË	ÉË	Íˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈYYÚ]S‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ëˆ›ÝNˆ	Ð˜\ÙHÛÝ\\ÈÚ\YÚ]HZ[ˆ›YHÙ^NÈHÙY[ˆ\ÝX[H\ÈH[[YÙ[Ù^K‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]KYÌÍËLŒLŒLÉËZÎˆ	Ò[™š[š]IËYˆ	ÑÌÍÈÈÌIËLˆŒLNˆŒLËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍLÉË	ÉË	Íˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\MLLŒMLŒIËZÎˆ	Ò[™š[š]IËYˆ	ÔML	ËLˆŒMLNˆŒKˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈÈ]YÌÈQTÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	ÍˆÈPˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\MŒLŒMLŒŒ‰ËZÎˆ	Ò[™š[š]IËYˆ	ÔMŒ	ËLˆŒMLNˆŒŒ‹ˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈÈ]YÌÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K[LÍK[MKLŒ‹LŒL	ËZÎˆ	Ò[™š[š]IËYˆ	ÓLÍHÈMIËLˆŒ‹LNˆŒLˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÐ”•ŒIË	ÉË	Íˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K[LÍË[MM‹LŒLKLŒLÉËZÎˆ	Ò[™š[š]IËYˆ	ÓLÍÈÈMM‰ËLˆŒLKLNˆŒLËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍMŒŒ‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\MÌLŒMLŒNIËZÎˆ	Ò[™š[š]IËYˆ	ÔMÌ	ËLˆŒMLNˆŒNKˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈÈ]YÌÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ô™[˜[YYH8 %Ø[YH]›Ü›K‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]KYžLŒËLŒ	ËZÎˆ	Ò[™š[š]IËYˆ	Ñ–ÍHÈ–IËLˆŒËLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÐ”•ŒIË	ÉË	Íˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]KYžLŒKLŒLÉËZÎˆ	Ò[™š[š]IËYˆ	Ñ–ÍHÈ–ÍÈÈ–L	ËLˆŒKLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍMŒŒ‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^ÌLŒMLŒMÉËZÎˆ	Ò[™š[š]IËYˆ	ÔVÌ	ËLˆŒMLNˆŒMËŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈÈ]YÌÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ô™[˜[YY–‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^LNNMËLŒÉËZÎˆ	Ò[™š[š]IËYˆ	ÔV	ËLˆNNMËLNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÑLÌIË[ˆ	ÑLÌKT	ËÚ\ˆ	Ó›Û™HÈMŒžHYX\‰ËˆÞ\Îˆ	ÓUÈÛˆÚ\Y	ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\ÈÐ‘
+ÈSˆÝ\Ú\ÙIË[Žˆ	ÖQTÈÛˆÚ\Y	Ëˆ›ÝNˆ	Óš\ÜØ[ˆ]š[™\ˆ[™\›™X]‰Ë[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ú[™š[š]K\^M‹LŒLŒL	ËZÎˆ	Ò[™š[š]IËYˆ	ÔVM‰ËLˆŒLNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒMÈLÌHžHš[IË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÐÕÕÐŒUMÌÌÉË	ÉË	Íˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Óš\ÜØ[ˆ\›XYHÈ][ˆ]›Ü›K‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^LŒLKLŒIËZÎˆ	Ò[™š[š]IËYˆ	ÔVMˆÈV	ËLˆŒLKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÒYÚ˜[YH[™YÚYˆ™\šYžHÝÛ™\œÚ\Ûˆ[ˆRÓØ[‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]KY^LŒLŒLÉËZÎˆ	Ò[™š[š]IËYˆ	ÑVÍHÈVÍÉËLˆŒLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍLÉË	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^LLŒMLŒN	ËZÎˆ	Ò[™š[š]IËYˆ	ÔVL	ËLˆŒMLNˆŒNŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍLÉË	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ô™[˜[YYV8 %Ø[YH]›Ü›K‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^LLŒNKLŒIËZÎˆ	Ò[™š[š]IËYˆ	ÔVLÈVMIËLˆŒNKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQÈÈ]YÌÈQTÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ð[[™]È]›Ü›H›ÜˆŒNH8 %›ÝHÛVÔVL‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^ŒLŒLËLŒŒ	ËZÎˆ	Ò[™š[š]IËYˆ	Ò–ÍHÈVŒ	ËLˆŒLËLNˆŒŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ó][˜ÚY\ÈH–ÍH›ÜˆŒLË™[˜[YYVŒ›ÜˆŒMˆØ[YH™ZXÛK‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^ŒLŒŒKLŒIËZÎˆ	Ò[™š[š]IËYˆ	ÔVŒ	ËLˆŒŒKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	Ò]YÌÈQTÉËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ú[™š[š]K\^ÌLŒMËLŒNIËZÎˆ	Ò[™š[š]IËYˆ	ÔVÌ	ËLˆŒMËLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒM
+Y\˜ÙY\ÊIË[ˆ	ÒM	ËÚ\ˆ	ÓY\˜ÙY\È”ËY˜[Z[IËˆÞ\Îˆ	ÓY\˜ÙY\È]›Ü›H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	Ó›È8 %Y\˜ÙY\ÈRTÈ›ØÙY\™IËÛŽˆ	Ó›ÉËZÛˆ	ÓY\˜ÙY\Ë\Ý[HRTÈÛÜšË›ÝHš\ÜØ[ˆ›Ø‰Ë[Žˆ	ÓY\˜ÙY\È\ÜÝÛÜ™	Ëˆ›ÝNˆ	ÑÓÕÒNˆZ[ÛˆHY\˜ÙY\ÈÓH]›Ü›HÚ]Y\˜ÙY\È[XÝ›ÛšXÜËˆš\ÜØ[ˆÛÙØ\™H[™”ÓŒM›[šÜÈ\™H›ÝÜ›Û™È\™KˆšXÙH[™ÛÛ]\ÈHY\˜ÙY\Ë‰Ëˆ[žNˆ	Ó\ÚHM	ÈJK‚ˆÊˆ[Ù[È™[ÝÈÙ\™H›Ý[™Z\ÜÚ[™ÈžHÜ›ÜÜËXÚXÚÚ[™ÈHÙYYYØZ[œÝH’ÐBˆ”PÈ]X˜\ÙNÈHYX\ˆ˜[™Ù\ÈÛÛYHœ›ÛH”PËHÙ^H]HÙ\È›Ýˆ
+‹ÂˆŠÈYˆ	ÙÙÙKYZÛÝKLNNMËLŒLIËZÎˆ	ÑÙÙIËYˆ	ÑZÛÝIËLˆNNMËLNˆŒLKŽˆ	ÝXÚÉËˆÝÎˆ	ÖLMMÈÈÖLžHYX\‰Ë[ˆ	ÖLMŒT	ËÚ\ˆ	Ó›Û™HX\›NÈQˆ]\‰ËˆÞ\Îˆ	ÔÒÒSHÈÒÔ‘QSHÛˆÚ\Y	ËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\ÈÐ‘
+ÈSˆÝ\Ú\ÙIËˆ[Žˆ	ÖQTÈ›ÜˆRÓÛˆÚ\Y	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	Ú™Y\[X™\KLŒ‹LŒL‰ËZÎˆ	Ò™Y\	ËYˆ	ÓX™\IËLˆŒ‹LNˆŒL‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÐÖLÈLMŒ	Ë[ˆ	ÖLMŒT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÔÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ØÚž\Û\‹]ÝÛ‹XÛÝ[žKLNNM‹LŒM‰ËZÎˆ	ÐÚž\Û\‰ËYˆ	ÕÝÛˆ[™ÛÝ[žIËLˆNNM‹LNˆŒM‹Žˆ	Ý˜[‰ËˆÝÎˆ	ÖLMMÈÈÖLžHYX\‰Ë[ˆ	ÖLMT	ËÚ\ˆ	Ó›Û™HX\›NÈQˆœ›ÛHHŒÉËˆÞ\Îˆ	ÔÒÒSHÈÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ëˆ›ÝNˆ	Õ™\žHÛÛ[[ÛˆZ[š]˜[ˆØÚÛÝ]ˆÛY[™ÈÛÜˆ\ÈÙ[ˆHX\ÚY\ˆ[žK‰Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ØÚ]žKXÛÜ™]KLNNMËLŒLÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐÛÜ™]H
+ÍKÐÍŠIËLˆNNMËLNˆŒLËˆÝÎˆ	ÐŽNHÈŒLLHžHYX\‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÕUÈ[]X\›NÈÚ\˜ÛH\È]\‰ËˆÞ\Îˆ	ÔTÔËRÙ^HÈÌÊÉËÛÛ™Nˆ	ÐÚ\˜ÛH\ÈY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÈÛˆ]\‰ËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›ˆÛˆÌÊÉËˆ›ÝNˆ	ÐÍˆÙ^[\ÜÈš[\È\ÙHH›Ø‹›ÝH›YK[ˆHYÛš][Û‹‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žKX›^™\‹\ÌLLNNMKLŒIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ð›^™\ˆÈËLL›^™\‰ËLˆNNMKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	ÕUÈ[]ÈÌÈžHYX\‰ËˆÞ\Îˆ	ÕUÈÈ\ÜÛØÚÉËÛÛ™Nˆ	Û‹ØHÛˆ[]	ËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌL[Z[ˆ™[X\›ˆÛˆ\ÜÛØÚÉËZÛˆ	Ô™XYH[]˜[YKÜˆÌ[Z[ˆ™[X\›‰Ëˆ›ÝNˆ	ÑY™™\™[™ZXÛH[\™[Hœ›ÛHHŒNJÈ›^™\ˆ]™]\Ù\ÈH˜[YKˆÚ]œ›Û]ÛÛ›È›^™\ˆ][›ÜˆŒ‹LŒNÛÈ]YX\ˆØ\\È™X[‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žKX›^™\‹LŒNKLŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ð›^™\‰ËLˆŒNKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ô\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTMTÉË	ÉË	ÍP‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÐYXKY›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ëˆ›ÝNˆ	Ó˜[YH™]\ÙY8 %›Ý[™È[ˆÛÛ[[ÛˆÚ]HËLL›^™\‹‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKX\Ý›Ë\ØY˜\šKLNNMKLŒIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ð\Ý›ÈÈÓPÈØY˜\šIËLˆNNMKLNˆŒKŽˆ	Ý˜[‰ËˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	ÕUÈ[]ÈÌÉËˆÞ\Îˆ	ÕUÈÈ\ÜÛØÚÉËÛÛ™Nˆ	Û‹ØHÛˆ[]	ËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌL[Z[ˆ™[X\›‰ËZÛˆ	Ô[]™XYÜˆ™[X\›‰Ëˆ›ÝNˆ	ÔÝ[HÛÜšÚ[™Ë]˜YH˜]›Ý\š]KˆØ\œžHHŒˆ[]Ù]‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ØÚ]žK]˜Z[›^™\‹LŒ‹LŒIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Õ˜Z[›^™\ˆÈÓPÈ[›ÞIËLˆŒ‹LNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXËXXØYXKLŒËLŒ	ËZÎˆ	ÑÓPÉËYˆ	ÐXØYXIËLˆŒËLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLHÈŒLNHžHYX\‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÐÚ\˜ÛH\ÈX\›NÈ‘H]\‰ËˆÞ\Îˆ	ÔÌÊÈÈ[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	ÐÚ\˜ÛH\ÈY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÓLÍÈÜˆLL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘Üˆ™[X\›‰Ëˆ›ÝNˆ	ÔÜ[œÈHÚ\˜ÛH\ÈÈ‘HÚ[™Ù[Ý™\ˆ8 %ÚXÚÈHÙ^K‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÙÛXË]\œ˜Z[‹LŒLLŒ	ËZÎˆ	ÑÓPÉËYˆ	Õ\œ˜Z[‰ËLˆŒLLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLÈŒLNHžHYX\‰Ë[ˆ	ÐŒLM‹T	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘Üˆ™[X\›‰Ëˆ›ÝNˆ	Ñ\]Z[›ÞÚ[‹‰Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ÝËYÝKYÛÛ‹LŒLLŒIËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	ÑÕIËLˆŒLLNˆŒKˆÝÎˆ	ÒMˆÈLMŒ•žHYX\‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQÈTPˆœ›ÛHŒMIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆÈTP‰ËÛÛ™Nˆ	ÒQÛ›IËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHMˆÜˆLMŒ•	ËØ™ˆ	ÖY\ÈÚ]HšYÚÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÓTPˆ\ÈHÜXÚX[\Ý›Ø‰Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ›ÝNˆ	Ñ\ÝX›\ÚTPˆœÈ›Û‹STPˆ™Y›Ü™H][Ý[™Ë‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÝËX™Y]KLNNNLŒNIËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	Ð™Y]IËLˆNNNLNˆŒNKˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQ
+YYØ[[ÜÊIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆˆÈÉËÛÛ™Nˆ	ÕÚ]HØ\X›HÛÛ™\‰ËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËØ™ˆ	ÖY\ÈÛˆ[[[È‹ÌÉËÛŽˆ	Ó›ÉËˆZÛˆ	ÓÙ[ˆ™YYÈÛ\Ý\ˆÈ[[[È]IË[Žˆ	ÐÔÈÛÙIË[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÛX^™K[^KLNNNKLŒ	ËZÎˆ	ÓX^™IËYˆ	ÓVMHZX]IËLˆNNNKLNˆŒˆÝÎˆ	ÓPVŒÈVŒÍžHYX\‰Ë[ˆ	ÓPVŒ‹T	ËÚ\ˆ	ÒQˆX\›NÈQH]\‰ËˆÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHVŒÍÜˆPVŒ	ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó[Z]Y	ËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÔÛÙÜ8 %È›ÝÝ]H›ÛÙˆÛˆHØÚÛÝ]]\ÈH^[œÚ]™H\‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÛY\˜ÙY\Ë\ØÛ\ÜËLNNNLŒ	ËZÎˆ	ÓY\˜ÙY\ËP™[ž‰ËYˆ	ÔËPÛ\ÜÉËLˆNNNLNˆŒˆÝÎˆ	ÒM	Ë[ˆ	ÒM	ËÚ\ˆ	Ñ”ÌÈÈ”ÍžHYX\‰ËˆÞ\Îˆ	Ñ”ÌÈÈ”Í	ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	Ó›È8 %RTËÑTÓÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	ÑRTÈ™XY\ÜÝÛÜ™Ø[ÎÈ”Í\ÈX[\‹[Û›H[ˆ˜XÝXÙIËˆ[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÉËˆ›ÝNˆ	ÒYÚ˜[YH[™H\™\ÝY\˜ÙY\ÈÈÙ^Kˆ][ÝH\ÈÜXÚX[\ÝÜˆ™Y™\ˆÝ]‰Ë[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	ÛY\˜ÙY\Ë[Y]š\ËLŒM‹LŒŒÉËZÎˆ	ÓY\˜ÙY\ËP™[ž‰ËYˆ	ÓY]š\ÉËLˆŒM‹LNˆŒŒËŽˆ	Ý˜[‰ËˆÝÎˆ	ÒM	Ë[ˆ	ÒM	ËÚ\ˆ	Ñ”ÌÉËˆÞ\Îˆ	Ñ”ÌÉËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	Ó›È8 %RTÈÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	ÑRTÈ™XY
+È\ÜÝÛÜ™Ø[ÉË[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÉËˆ›ÝNˆ	Õ˜YH˜[‹ˆÜXÚX[\Ý›Øˆ\Ü]H™Z[™ÈHÛÜšÈ™ZXÛH8 %šXÙH]XØÛÜ™[™ÛK‰Ë[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	Ø]YKXN]LNNNKLŒŒÉËZÎˆ	Ð]YIËYˆ	ÐNÈ	ËLˆNNNKLNˆŒŒËˆÝÎˆ	ÒMˆÈLMŒ•žHYX\‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQÈTPˆÛˆ]\‰ËˆÞ\Îˆ	Ò[[[Øš[^™\ˆÈTP‰ËÛÛ™Nˆ	ÒQÛ›IËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHMˆÜˆLMŒ•	ËØ™ˆ	ÓÙ[ˆ™[˜Ú	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛ\Ý\ˆÈ[[[È]H\ÝX[H™\]Z\™Y	Ëˆ[Žˆ	ÐÔÈÛÙIË›ÝNˆ	ÔšXÙH\ÈÜXÚX[\ÝÛÜšÈÜˆ™Y™\ˆÝ]‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ø]YK\MËLŒËLŒ	ËZÎˆ	Ð]YIËYˆ	ÔMÉËLˆŒËLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒMˆÈLMŒ•žHYX\‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQÈTPˆÛˆ]\‰ËˆÞ\Îˆ	Ò[[[Øš[^™\ˆÈTP‰ËÛÛ™Nˆ	ÒQÛ›IËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËˆXÎˆ	Ó\ÚHMˆÜˆLMŒ•	ËØ™ˆ	ÓÙ[ˆ™[˜Ú	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\Ý›Ø‰Ë[Žˆ	ÐÔÈÛÙIËˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ûš\ÜØ[‹YÝ‹LÍÌ‹LŒKLŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	ÑÕTˆÈÍÌ‰ËLˆŒKLNˆŒˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔMUÒÍMŒŒ‰Ë	ÉË	ÌÐˆÈ‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ëˆ›ÝNˆ	ÒYÚ]Y[\ÚX\ÝØ\œËˆ™\šYžHÝÛ™\œÚ\ÛˆRÓ‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹[XY‹LŒLKLŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	ÓXY‰ËLˆŒLKLNˆŒˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔTÌNMM	Ë	ÉË	ÌÐˆÈˆ[[YÙ[Ù^I×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÑU‹]HÙ^HÞ\Ý[H\ÈÜ™[˜\žHš\ÜØ[ˆ8 %›ÈYÚ]›ÛYÙHÛÜšÈ[›Û™Y[ˆÙ^Z[™È]‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹X\›XYKLŒLŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ð\›XYIËLˆŒLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒM
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÓUÈKÍ‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒÔUÉË	ÉË	ÍˆÈP‰×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	Ò[™š[š]HVMˆÈVÚ[‹‰Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	ÚÚXK\š[ËLŒKLŒŒÉËZÎˆ	ÒÚXIËYˆ	Ôš[ÉËLˆŒKLNˆŒŒËˆÝÎˆ	ÒÒÌLÈLŒˆžHYX\‰Ë[ˆ	ÒÒÌLT	ËÚ\ˆ	Ó›Û™HX\›NÈQˆÈQÈ]\‰ËˆÞ\Îˆ	ÒÚXH[[[Øš[^™\ˆÛˆÚ\Y	ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚHÒPMÈÜˆLŒ‰ËØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	ÑX\›H[™˜\ÙHš[\ÈÙ[ˆÚ\YÚ]›È[[[Øš[^™\ˆ][‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ú][™ZK]™[ÜÝ\‹LŒL‹LŒŒIËZÎˆ	Ò][™ZIËYˆ	Õ™[ÜÝ\‰ËLˆŒL‹LNˆŒŒKˆÝÎˆ	ÒLŒÈLŒˆžHš[IË[ˆ	ÒLŒT	ËÚ\ˆ	ÒQˆÈQÉËˆÞ\Îˆ	Ò][™ZH[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHš[IËˆXÎˆ	Ó\ÚHLŒÜˆLŒ‰ËØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ù›Ü™YLYMLLNNNKLŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	Ñ‹MLÈ‹MML	ËLˆNNNKLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÒLˆÈLLHžHYX\‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍÈÈQHžHYX\‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Õ˜\šY\ÈžHÚ\	ËÜˆˆKÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚH“ÌÎÜˆLLIËØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	ÔØ[YHÙ^\È\ÈH‹LLÑ‹LÍLÙˆHØ[YHYX\‹ˆÚ\ÜÚ\ËXØXˆ[™ÝÈšYÜÈ8 %Ù[ˆ›Y]™\šYžHÝÛ™\œÚ\‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ù›Ü™YLÍLLŒMKLŒ	ËZÎˆ	Ñ›Ü™	ËYˆ	ÑKLÍLÈKMLÝ]]Ø^IËLˆŒMKLNˆŒŽˆ	Ý˜[‰ËˆÝÎˆ	ÒLLHÈLˆžHZ[	Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÈXš]ÈQIËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHZ[	ËˆXÎˆ	Ó\ÚH“ÌÎÜˆLLIËØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ›ÝNˆ	ÕHKTÙ\šY\È˜[ˆ[™Y[ˆŒM]HÝ]]Ø^HÚ\ÜÚ\ÈØ\œšYYÛˆ8 %›ÞXÚÜË[X[[˜Ù\ËÚ]\Ë‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Ú™Y\\™[™YØYKLŒMKLŒŒÉËZÎˆ	Ò™Y\	ËYˆ	Ô™[™YØYIËLˆŒMKLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÑšX]]›Ü›H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÑšX]]›Ü›H8 %ÒTŒ‹›ÝHÖLH˜YÙHÝYÙÙ\ÝË‰Ë[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	Ú™Y\XÛÛ[X[™\‹LŒ‹LŒL	ËZÎˆ	Ò™Y\	ËYˆ	ÐÛÛ[X[™\‰ËLˆŒ‹LNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐÖL	Ë[ˆ	ÖLMT	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÔÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ÚÛ™KY[[Y[LŒËLŒLIËZÎˆ	ÒÛ™IËYˆ	Ñ[[Y[	ËLˆŒËLNˆŒLKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒÌIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆ
+ÑÎLÍŠIËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓN‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHÓN‰ÈJKˆŠÈYˆ	ÚÛ™KZ[œÚYÚLŒLLŒŒ‰ËZÎˆ	ÒÛ™IËYˆ	Ò[œÚYÚ	ËLˆŒLLNˆŒŒ‹ˆÝÎˆ	ÒÌHÈÓˆžHYX\‰Ë[ˆ	ÒÌKT	ËÚ\ˆ	ÒQˆÈQÈžHYX\‰ËˆÞ\Îˆ	ÒÛ™H[[[Øš[^™\ˆÈÛX\[žIËÛÛ™Nˆ	ÒQˆY\ÉËÜˆˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËXÎˆ	Ó\ÚHÓNˆÜˆÓ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ë[Žˆ	ÔÛÛY][Y\ÉË[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÜÝX˜\KX\ØÙ[LŒNKLŒ	ËZÎˆ	ÔÝX˜\IËYˆ	Ð\ØÙ[	ËLˆŒNKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÕP
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÔÕPT	ËÚ\ˆ	ÒQÈÈ]YÌÈQTÉËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÒTLMRÉË	ÉË	ÍˆÛX\Ù^I×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ë[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ØØY[XË\ÜžLŒLŒM‰ËZÎˆ	ÐØY[XÉËYˆ	ÔÔ–	ËLˆŒLNˆŒM‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLHÈLLžHYX\‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÐÚ\˜ÛH\ÈÈ‘IËˆÞ\Îˆ	ÔÌÊÈÈ[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	ÐÚ\˜ÛH\ÈY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÓLÍÈÜˆLL	ËØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆ›YHš[\ÉËZÛˆ	ÓÐ‘Üˆ™[X\›‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	Û[˜ÛÛ‹[ZÞ[ZØËLŒËLŒNIËZÎˆ	Ó[˜ÛÛ‰ËYˆ	ÓRÖÈRÐÉËLˆŒËLNˆŒNKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLˆÈLLHžHYX\‰Ë[ˆ	ÒL‹T	ËÚ\ˆ	ÍMŒÎÈQHÛˆ]\‰ËˆÞ\Îˆ	ÔUÉËÛÛ™Nˆ	Ð›YHY\ÉËÜˆˆKÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËˆXÎˆ	Ó\ÚH“ÌÎÜˆLLIËØ™ˆ	ÖY\ÉËÛŽˆ	ÌˆÙ^\ÈÈˆ›ØœÉËZÛˆ	ÓÐ‘
+È[YYXØÙ\ÜÉËˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ØÚž\Û\‹\ÙXœš[™ËLŒLNNM‹LŒMÉËZÎˆ	ÐÚž\Û\‰ËYˆ	ÔÙXœš[™ÈÈŒ	ËLˆNNM‹LNˆŒMËˆÝÎˆ	ÖLMMÈÈÖLžHYX\‰Ë[ˆ	ÖLMT	ËÚ\ˆ	Ó›Û™HX\›NÈQˆ]\‰ËˆÞ\Îˆ	ÔÒÒSHÈÒÔ‘QSIËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ›ÜˆRÓ	Ëˆ›ÝNˆ	ÔÙXœš[™È›ÝYÚŒL™[˜[YYŒ›ÜˆŒLK‰Ë[žNˆ	Ó\ÚHÖL	ÈJKˆŠÈYˆ	ÛZ]ÝXš\ÚK[Z\˜YÙKLŒMLŒ	ËZÎˆ	ÓZ]ÝXš\ÚIËYˆ	ÓZ\˜YÙIËLˆŒMLNˆŒˆÝÎˆ	ÓRULIË[ˆ	ÓRULKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÓZ]ÝXš\ÚH[[[Øš[^™\‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHRULIËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÓÙ[‰Ë[žNˆ	Ó\ÚHRULIÈJK‚ˆÊˆOOOOHÔ”ÐÒHOOOOH
+‹ÂˆŠÈYˆ	ÜÜœØÚKNLLKLNNMKLNNMÉËZÎˆ	ÔÜœØÚIËYˆ	ÎLLH
+NLÊIËLˆNNMKLNˆNNMËˆÝÎˆ	ÔÜœØÚHÈM‹Y˜[Z[IË[ˆ	ÒMU	ËÚ\ˆ	Ó›Û™HÈX\›H[[[Øš[^™\ˆžHYX\‰ËˆÞ\Îˆ	ÑX\›HÜœØÚH[[[Øš[^™\ˆÛˆ]\ˆØ\œÉËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHMˆÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\ÝÈH[[[Øš[^™\ˆ›ÞÛÈH]IËˆ›ÝNˆ	Ó\ÝÙˆHZ\‹XÛÛÛYLL\È[™šXÙYXØÛÜ™[™ÛKˆ™\šYžHÝÛ™\œÚ\[™][ÝH\ÈÜXÚX[\ÝÛÜšË‰Ëˆ[žNˆ	Ó›Û‹[X\šÚ[™È[žHÛ›IÈJKˆŠÈYˆ	ÜÜœØÚKNLLKLNNNLŒ	ËZÎˆ	ÔÜœØÚIËYˆ	ÎLLH
+NMŠHÈ›ÞÝ\ˆ
+NŠIËLˆNNNLNˆŒˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQˆÈQ
+YYØ[[ÜÊIËˆÞ\Îˆ	ÔÜœØÚH[[[Øš[^™\‰ËÛÛ™Nˆ	ÕÚ]HØ\X›HÛÛ™\‰ËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	Ò[[[Øš[^™\ˆ›ÞÛÜšÎÈÙ[ˆX[\‰Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ›ÝNˆ	ÕQËY˜[Z[H›YKÜœØÚH[XÝ›ÛšXÜËˆ›ÝHš]™]Ø^H›Øˆ8 %][ÝHYÚÜˆ™Y™\ˆÝ]‰Ëˆ[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÜÜœØÚKNLLKLŒKLŒNIËZÎˆ	ÔÜœØÚIËYˆ	ÎLLH
+NMËÎNLJHÈØ^[X[ˆÈ›ÞÝ\‰ËLˆŒKLNˆŒNKˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQˆÈQÈQTÈÛˆ]\‰ËˆÞ\Îˆ	ÔÜœØÚH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÈÛˆ]\‰ËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËˆØ™ˆ	ÕÛÛY\[™[	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\ÝÜˆX[\‰Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ›ÝNˆ	ÕH›YH\ÈX\ÞNÈH[XÝ›ÛšXÜÈ\™H›ÝˆÛÛ™š\›HÛÛÛÝ™\˜YÙH™Y›Ü™H][Ý[™Ë‰Ëˆ[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÜÜœØÚKXØ^Y[›™KLŒËLŒL	ËZÎˆ	ÔÜœØÚIËYˆ	ÐØ^Y[›™H
+MMKÎMMÊIËLˆŒËLNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÒQ
+YYØ[[ÜÊIËˆÞ\Îˆ	ÕQËY˜[Z[H[[[Øš[^™\‰ËÛÛ™Nˆ	ÕÚ]HØ\X›HÛÛ™\‰ËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËˆØ™ˆ	ÖY\ÈÚ]QËXØ\X›HÛÛ[™ÉËÛŽˆ	Ó›ÉËZÛˆ	Ò[[[È]H\ÝX[H™\]Z\™Y	Ë[Žˆ	ÐÔÈÛÙIËˆ›ÝNˆ	ÔÚ\™\ÈH•ÈÝX\™YÈ]›Ü›H8 %ÛÜšÈ]Ú]QÈÛÛ[™Ë›ÝHÜœØÚK[Û›HÛÛ‰Ëˆ[žNˆ	Ó\ÚHM‰ÈJKˆŠÈYˆ	ÜÜœØÚKXØ^Y[›™K[XXØ[‹LŒLKLŒIËZÎˆ	ÔÜœØÚIËYˆ	ÐØ^Y[›™HÈXXØ[ˆÈ[˜[Y\˜IËLˆŒLKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒMˆÈLMŒ•žH[Ù[	Ë[ˆ	ÒMU	ËÚ\ˆ	ÐQTÈ
+TP‹Y\˜JIËˆÞ\Îˆ	ÔÜœØÚHÈQÈQTÈ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHMˆÜˆLMŒ•	ËˆØ™ˆ	ÔÜXÚX[\ÝÛÛ[™ÈÛ›IËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\ˆÜˆÜXÚX[\Ý	Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ›ÝNˆ	ÓXXØ[ˆ\È[ˆ]YHMH[™\›™X]ˆYÚ˜[YH8 %™\šYžHÝÛ™\œÚ\ÛˆRÓ‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÜÜœØÚK]^XØ[‹LŒŒLŒIËZÎˆ	ÔÜœØÚIËYˆ	Õ^XØ[‰ËLˆŒŒLNˆŒKˆÝÎˆ	Ó›Ý™XÛÜ™Y8 %™X]\È›È\ØX›HÙ^]Ø^IËÚ\ˆ	ÐQTÈÛX\Ù^IËÞ\Îˆ	ÔÜœØÚHQTÉËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÑXÛÙHHÛÜˆYˆH›YH\Èš]Y	ËˆØ™ˆ	ÑX[\ˆ[ˆ˜XÝXÙIËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\‰Ë[Žˆ	Û‹ØIËˆ›ÝNˆ	ÑU‹X[\‹[Û›H[ˆ˜XÝXÙKˆZÙHHØÚÛÝ]™Y™\ˆHÙ^\Ë‰Ëˆ[žNˆ	Ó›È˜XÝXØ[›Û‹Y\ÝXÝ]™HÙ^]Ø^H›Ý]H8 %Ø[]\ÈHØÚÛÝ]Û›K‰ÈJK‚ˆÊˆOOOOHS‘“Õ‘TˆOOOOH
+‹ÂˆŠÈYˆ	Û[™›Ý™\‹\˜[™Ù\›Ý™\‹LŒËLŒIËZÎˆ	Ó[™›Ý™\‰ËYˆ	Ô˜[™ÙH›Ý™\ˆ
+ÌŒ‹“UËY\˜JIËLˆŒËLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒNLˆ
+“UÊIË[ˆ	ÒNL‰ËÚ\ˆ	Ð“UÈUÔÉËˆÞ\Îˆ	Ð“UÈUÔÉËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHNL‰ËˆØ™ˆ	Ð“UÈ›ØÙY\™IËÛŽˆ	Ó›ÉËZÛˆ	ÑUÔÈ[Ù[HÛÜšË“UË\Ý[IË[Žˆ	ÒTÓ‰Ëˆ›ÝNˆ	ÑÓÕÒNˆ\ÙHYX\œÈ\™H“UÈ[œÚYH8 %“UÈ›YK“UÈ[XÝ›ÛšXÜË“UÈÛÛ[™Ëˆ[™›Ý™\ˆÛÙØ\™HÚ[›ÝÙYH]ˆœ›ÛHŒˆ]ÝÚ]Ú\ÈÈ›Ü™Ò˜YÝX\ˆ[™]™\ž][™ÈÚ[™Ù\Ë‰Ëˆ[žNˆ	Ó\ÚHNL‰ÈJKˆŠÈYˆ	Û[™›Ý™\‹\˜[™Ù\›Ý™\‹LŒ‹LŒL‰ËZÎˆ	Ó[™›Ý™\‰ËYˆ	Ô˜[™ÙH›Ý™\ˆÈÜÜ
+›Ü™Y\˜JIËLˆŒ‹LNˆŒL‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	Ñ›Ü™Ò˜YÝX\‹Y\š]™Y	ËˆÞ\Îˆ	Ò“ˆ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÕÛÛY\[™[	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\Ý“ˆÛÛ[™ÉË[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	Ñ›Ü™ÝÛ™\œÚ\\˜H8 %LLH›YK›ÝH“UÈÙ^HÙˆŒËLŒK‰Ë[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Û[™›Ý™\‹[ŒË[LŒKLŒM‰ËZÎˆ	Ó[™›Ý™\‰ËYˆ	ÓŒÈÈÈ\ØÛÝ™\žIËLˆŒKLNˆŒM‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLIË[ˆ	ÒLLKT	ËÚ\ˆ	Ñ›Ü™Ò˜YÝX\‹Y\š]™YÈ]\ˆ“‰ËˆÞ\Îˆ	Ò“ˆ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÕÛÛY\[™[	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\Ý“ˆÛÛ[™ÉË[Žˆ	ÕÛÛY\[™[	Ëˆ[žNˆ	Ó\ÚHLLIÈJKˆŠÈYˆ	Û[™›Ý™\‹Y]›Ü]YK]™[\‹LŒL‹LŒIËZÎˆ	Ó[™›Ý™\‰ËYˆ	Ñ]›Ü]YHÈ™[\ˆÈ\ØÛÝ™\žHÜÜ	ËLˆŒL‹LNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	Ò“ˆ[Y\™Ù[˜ÞH›YIËÚ\ˆ	Ò“ˆÛX\Ù^IËÞ\Îˆ	Ò“ˆÕ“IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÑXÛÙHHÛÜˆ›ÜˆH[Y\™Ù[˜ÞH›YIËˆØ™ˆ	ÔÜXÚX[\Ý“ˆÛÛ[™ÈÛ›IËÛŽˆ	Ó›ÉËZÛˆ	ÒÕ“HÛÜšÈ8 %ÜXÚX[\ÝÜˆX[\‰Ë[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	Ó[Ù\›ˆ“ˆ\ÈHÜXÚX[\Ý›Ø‹ˆÛÛ™š\›H[Ý\ˆÛÛÛÝ™\œÈ]™Y›Ü™H[ÝHš]™HÝ]‰Ëˆ[žNˆ	Ñ[Y\™Ù[˜ÞH›YHÜ[œÈHÛÜˆÛ›IÈJKˆŠÈYˆ	Û[™›Ý™\‹YY™[™\‹LŒŒLŒIËZÎˆ	Ó[™›Ý™\‰ËYˆ	ÑY™[™\‰ËLˆŒŒLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	Ò“ˆ[Y\™Ù[˜ÞH›YIËÚ\ˆ	Ò“ˆQTÈÛX\Ù^IËÞ\Îˆ	Ò“ˆÕ“IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÑXÛÙHHÛÜˆ›ÜˆH[Y\™Ù[˜ÞH›YIËˆØ™ˆ	ÑX[\ˆÜˆYÚY[™ÜXÚX[\Ý	ËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\ˆ[ˆ˜XÝXÙIË[Žˆ	Û‹ØIËˆ›ÝNˆ	ÒYÚ˜[YH[™YÚYˆ™\šYžHÝÛ™\œÚ\™Y›Ü™HÚ[™È[ž][™Ë‰Ëˆ[žNˆ	Ñ[Y\™Ù[˜ÞH›YHÜ[œÈHÛÜˆÛ›IÈJK‚ˆÊˆOOOOHQÕPTˆOOOOH
+‹ÂˆŠÈYˆ	Ú˜YÝX\‹]X˜™KLNNMËLŒ‰ËZÎˆ	Ò˜YÝX\‰ËYˆ	ÖˆÈŽÈÈÈÎÈËU\HÈU\H
+X˜™JIËLˆNNMËLNˆŒ‹ˆÝÎˆ	Ñ“ÌÎ
+X˜™JIË[ˆ	Ñ“ÌŒIËÚ\ˆ	ÕX˜™KY\˜H˜[œÜÛ™\‰ËˆÞ\Îˆ	Ò˜YÝX\ˆ[[[Øš[^™\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆ‹ˆÝ]ˆ	ÕX˜™IËˆXÎˆ	ÕX˜™HXÛÙ\ˆ8 %›Ý[™È[ÙHÝXÚ\È]	ËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\ÝÈÙ[ˆ[Ù[HÛÜšÉË[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÑÓÕÒNˆX˜™HÙ^]Ø^KHØ[YH˜[Z[H\ÈHX\›H›Ü™›ØÝ\Ëˆ[ÝH™YYHX˜™HXÛÙ\ˆ[™Ý]\ŽÈ[ˆYÙHÜˆ\Ù\ˆXXÚ[™HÚ[›ÝÈ]‰Ëˆ[žNˆ	ÕX˜™HXÚÉÈJKˆŠÈYˆ	Ú˜YÝX\‹LŒËLŒIËZÎˆ	Ò˜YÝX\‰ËYˆ	ÖˆÈˆÈ‹U\HÈ‹TXÙIËLˆŒËLNˆŒKˆÝÎˆ	ÒLLHÈ[Y\™Ù[˜ÞH›YIË[ˆ	ÒLLKT	ËÚ\ˆ	Ò“ˆÛX\Ù^IËˆÞ\Îˆ	Ò“ˆÕ“IËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLIËˆØ™ˆ	ÔÜXÚX[\Ý“ˆÛÛ[™ÉËÛŽˆ	Ó›ÉËZÛˆ	ÒÕ“HÛÜšÈ8 %ÜXÚX[\ÝÜˆX[\‰Ë[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	Ò˜YÝX\ˆ›ÜYX˜™HY\ˆŒ‹ˆØ[YH“ˆ]›Ü›H\È[™›Ý™\ˆÙˆHØ[YHYX\œË‰Ëˆ[žNˆ	Ó\ÚHLLIÈJK‚ˆÊˆOOOOHÑS‘TÒTÈOOOOH
+‹ÂˆŠÈYˆ	ÙÙ[™\Ú\ËLŒMËLŒIËZÎˆ	ÑÙ[™\Ú\ÉËYˆ	ÑÍÌÈÎÈÎLÈÕÌÈÕŽ	ËLˆŒMËLNˆŒKˆÝÎˆ	ÒLŒˆ
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÒLŒ‹T	ËÚ\ˆ	ÒQÈÈQTÉËˆÞ\Îˆ	Ò][™ZKY˜[Z[HÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËÜˆLˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLŒ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	Ò][™ZH[™\›™X]8 %ÛÜšÈ][ˆH][™ZKÒÚXHY[K[™HØ[YHS‹XžKU’Sˆ›Ý[™XÚÈ\Y\Ë‰Ëˆ[žNˆ	Ó\ÚHLŒ‰ÈJKˆÊˆOOOOHÐPPˆ8 %™YHY™™\™[Ø\œÈÙX\š[™ÈÛ™H˜YÙHOOOOH
+‹ÂˆŠÈYˆ	ÜØXX‹NKLËNKMKLŒLŒL‰ËZÎˆ	ÔØXX‰ËYˆ	ÎKLÈÈKMIËLˆŒLNˆŒL‹ˆÝÎˆ	ÔØXXˆÈ‘M‹Y˜[Z[IËÚ\ˆ	ÔØXXˆÒSKX˜\ÙY˜[œÜÛ™\‰ËÞ\Îˆ	ÔØXXˆÒSIËˆÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÑXÛÙHHÛÜˆØÚÉËˆØ™ˆ	ÕÛÛY\[™[	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÒSH[Ù[HÛÜšÈ8 %ÜXÚX[\Ý	Ë[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÓÛˆHŒÊÈKLÈHYÛš][Ûˆ\È[ˆHÙ[™HÛÛœÛÛK›ÝHÛÛ[[‹[™HÙ^H\ÈH›ØˆÚ]H›YKˆYÙ]›ÜˆÒSHÛÜšË‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚÜˆXÛÙHHÛÜ‰ÈJKˆŠÈYˆ	ÜØXX‹NKMÞLŒKLŒIËZÎˆ	ÔØXX‰ËYˆ	ÎKMÖ	ËLˆŒKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÑÓHÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÑÓH™[X\›‰Ëˆ›ÝNˆ	ÑÓÕÒNˆHÚ]œ›Û]˜Z[›^™\ˆ[ˆHØXXˆÝZ]ˆÓH›[šËÓHÛÙØ\™KÓH™[X\›ˆ8 %›Ý[™ÈØXXˆX›Ý]HÙ^\Ë‰Ëˆ[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÜØXX‹NKLžLŒKLŒ‰ËZÎˆ	ÔØXX‰ËYˆ	ÎKL–	ËLˆŒKLNˆŒ‹ˆÝÎˆ	ÔÕPÈUMÉË[ˆ	ÔÕPT	ËÚ\ˆ	ÔÝX˜\HMŒˆÈQ‰ËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËˆØ™ˆ	ÖY\È8 %ÛÜšÈ]\ÈHÝX˜\IËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘\ÈHÝX˜\H[\™^˜IË[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÑÓÕÒNˆHÝX˜\H[\™^˜HØYÛÛˆ[ˆHØXXˆÝZ]ˆÝX˜\H›[šËÝX˜\HÛÙØ\™K‰Ëˆ[žNˆ	Ó\ÚHÕP	ÈJK‚ˆÊˆOOOOHÐUT“ˆOOOOH
+‹ÂˆŠÈYˆ	ÜØ]\›‹\Ë\Ù\šY\ËLNNM‹LŒ‰ËZÎˆ	ÔØ]\›‰ËYˆ	ÔÓÈÐÈÈÕÉËLˆNNM‹LNˆŒ‹ˆÝÎˆ	ÐŒLˆÈØ]\›‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËˆÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ó›È[[[Øš[^™\ˆÛˆ[ÜÝˆ]ZXÚËÚX\ÛÜšË‰Ë[žNˆ	Ó\ÚHÓLÍÈÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜØ]\›‹]YKZ[Û‹LŒ‹LŒL	ËZÎˆ	ÔØ]\›‰ËYˆ	ÕYHÈ[ÛˆÈ]\˜HÈÝ]ÛÚÈÈÚÞIËLˆŒ‹LNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLHÈŒLˆžH[Ù[	Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÈÈÌÉËˆÞ\Îˆ	ÑÓHÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÑÓH™[X\›‰Ëˆ›ÝNˆ	ÑÓHÙ^\È›ÝYÚÝ]]™[ˆÛˆHÛ™KY[™Ú[™YYK‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÜØ]\›‹X\Ý˜KLŒ	ËZÎˆ	ÔØ]\›‰ËYˆ	Ð\Ý˜IËLˆŒLNˆŒˆÝÎˆ	ÒLL	Ë[ˆ	ÐŒLM‹T	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	ÓÜ[ÈÓH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘	Ëˆ›ÝNˆ	ÑÓÕÒNˆHÙ\›X[‹XZ[Ü[\Ý˜K›ÝHTÈØ]\›‹ˆLL›ÝHŒLLHH™\ÝÙˆH˜[™ÙH\Ù\Ë‰Ëˆ[žNˆ	Ó\ÚHLL	ÈJK‚ˆÊˆOOOOHSSQTˆÈÓÓSÐ’SHÈSSÕUOOOOH
+‹ÂˆŠÈYˆ	Ú[[Y\‹Z‹ZËLŒËLŒL	ËZÎˆ	Ò[[Y\‰ËYˆ	ÒˆÈÉËLˆŒËLNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\È
+ÌÊÊIËˆÞ\Îˆ	ÑÓHÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÑÓH™[X\›‹›ÈÛÛ™YYY	Ëˆ›ÝNˆ	ÔÝ˜ZYÚÓH[™\›™X]ˆHH\ÈHY™™\™[[š[X[8 %SHÙ[™\˜[Z[]\žKY\š]™Y‰Ëˆ[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÛÛÛ[Øš[KLNNM‹LŒ	ËZÎˆ	ÓÛÛ[Øš[IËYˆ	Ð[\›ÈÈ[šYÝYHÈœ˜]˜YHÈÚ[ÝY]HÈ]\›Ü˜IËLˆNNM‹LNˆŒˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	ÕUÈ[]ÈÌÈžHYX\‰ËˆÞ\Îˆ	ÕUÈÈ\ÜÛØÚÉËÛÛ™Nˆ	Û‹ØHÛˆ[]	ËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	ÌL[Z[ˆ™[X\›ˆÛˆ\ÜÛØÚÉËZÛˆ	Ô™XYH[]˜[YKÜˆÌ[Z[ˆ™[X\›‰Ëˆ›ÝNˆ	ÑXYœ˜[™]™HØ\œËˆØ\œžHHŒˆ[]Ù]›ÜˆHUÈYX\œË‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	Ü[[Ý]LNNM‹LŒ‰ËZÎˆ	Ô[[Ý]	ËYˆ	Õ›ÞXYÙ\ˆÈ™[ÛˆÈœ™Y^™HÈ›ÝÛ\‰ËLˆNNM‹LNˆŒ‹ˆÝÎˆ	ÖLMMÈÈLMŒ	Ë[ˆ	ÖLMŒT	ËÚ\ˆ	Ó›Û™HÈQˆžHYX\‰ËˆÞ\Îˆ	ÔÒÒSHÛˆÚ\Y	ËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\ÈÐ‘
+ÈSˆÝ\Ú\ÙIËˆ[Žˆ	ÖQTÈ›ÜˆRÓÛˆÚ\Y	Ëˆ›ÝNˆ	ÐÚž\Û\ˆ[™\›™X]8 %H›ÞXYÙ\ˆ\ÈHØ\˜]˜[‹‰Ë[žNˆ	Ó\ÚHÖL	ÈJK‚ˆÊˆOOOOHTÕV•HÈÕV•RÒHÈÑSÈ8 %[ÜÝHÝ\ˆ[ÜIÜÈØ\œÈOOOOH
+‹ÂˆŠÈYˆ	Ú\Ý^K\›Ù[Ë]›ÛÜ\‹LNNM‹LŒ	ËZÎˆ	Ò\Ý^IËYˆ	Ô›Ù[ÈÈ›ÛÜ\ˆÈ^[ÛHÈ[ZYÛÉËLˆNNM‹LNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	Ò\Ý^H
+\Ù\šY\ÊIËÚ\ˆ	Ó›Û™HÈX\›H˜[œÜÛ™\ˆžHYX\‰ËÞ\Îˆ	Ò\Ý^H[[[Øš[^™\ˆÛˆ]\‰ËˆÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜˆÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Ó[Z]Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÝ]žHÛÙHÚ\™H›ÈÚ\\Èš]Y	Ëˆ›ÝNˆ	ÐØ][ÙÈ[X™\œÈY›[šÈ˜]\ˆ[ˆÝY\ÜÙY8 %ÚXÚÈ[Ý\ˆ›ÛÚÈ™Y›Ü™HÜ™\š[™Ë‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ú\Ý^KX\ØÙ[™\‹ZK\Ù\šY\ËLŒLŒ	ËZÎˆ	Ò\Ý^IËYˆ	Ð\ØÙ[™\ˆÈKLŽÈKLŽLÈKLÍLÈKLÍÌ	ËLˆŒLNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÑÓHÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	ÑÓH™[X\›‰Ëˆ›ÝNˆ	ÑÓÕÒNˆH\ØÙ[™\ˆ\ÈH˜Z[›^™\ˆ[™HK\Ù\šY\È\™HÛÛÜ˜YÜËˆ\™HÓHÙ^HÛÜšÈ[™\ˆ[ˆ\Ý^H˜YÙK‰Ëˆ[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	Ú\Ý^K[œ‹[œ\‹LNNM‹LŒ‰ËZÎˆ	Ò\Ý^IËYˆ	Ó”ˆÈ”TˆÈ””ˆ
+ØX›Ý™\ŠIËLˆNNM‹LNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	Ò\Ý^HÛÛ[Y\˜ÚX[	ËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜˆÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ð›ÞXÚÜÈ[™[™ØØ\HšYÜÈ8 %ÝXYHÛÛ[Y\˜ÚX[ÛÜšË\ÝX[H›È[[[Øš[^™\ˆ][‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÝ^ZÚKYÜ˜[™]š]\˜KLNNNKLŒLÉËZÎˆ	ÔÝ^ZÚIËYˆ	ÑÜ˜[™š]\˜HÈš]\˜HÈY\š[ÈÈÖ	ËLˆNNNKLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÖŒMÈÖŒN	Ë[ˆ	ÖMÉËÚ\ˆ	Ó›Û™HX\›NÈQˆ]\‰ËˆÞ\Îˆ	ÔÝ^ZÚH[[[Øš[^™\ˆÛˆ]\‰ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	ÑXÛÙHHÛÜ‰ËØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘ÛˆÚ\YÈÝ]žHÛÙHÝ\Ú\ÙIËˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÝ^ZÚK^ËY›Ü™[ž˜KLŒLŒIËZÎˆ	ÔÝ^ZÚIËYˆ	ÖÈÈ›Ü™[ž˜HÈ™[›ÉËLˆŒLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLH
+ÊHÈY]ÛÛÈ
+›Ü™[ž˜JIË[ˆ	ÐŒLLKT	ËˆÚ\ˆ	ÑÓHÚ\˜ÛH\ÈÛˆHŒÊÈÉËÞ\Îˆ	ÑÓHÌÊÈÈY]ÛÛÉËÛÛ™Nˆ	Õ˜\šY\ÉËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÛˆHÉËˆØ™ˆ	ÖY\ÈÛˆHÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆHÉËZÛˆ	ÑÓH™[X\›ˆÛˆHÉËˆ›ÝNˆ	ÑÓÕÒNˆHŒÊÈÈ\ÈÓKXZ[
+]H]›Ü›JH[™ZÙ\ÈÓHÙ^\ÎÈH›Ü™[ž˜H[™™[›È\™HY]ÛÛÜËˆÛ™H˜YÙK™YHY™™\™[›ØœË‰Ëˆ[žNˆ	Ó\ÚHÓLÍÈÛˆHÉÈJKˆŠÈYˆ	ÜÝ^ZÚKY\]X]Ü‹LŒKLŒL‰ËZÎˆ	ÔÝ^ZÚIËYˆ	Ñ\]X]Ü‰ËLˆŒKLNˆŒL‹Žˆ	ÝXÚÉËˆÝÎˆ	ÑLÌHÈ”ÓŒM	Ë[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	Óš\ÜØ[ˆUÉËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	ÖY\È8 %ÛÜšÈ]\ÈHš\ÜØ[‰ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈSˆ\ÈHš\ÜØ[ˆœ›ÛY\‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ëˆ›ÝNˆ	ÑÓÕÒNˆHš\ÜØ[ˆœ›ÛY\ˆ[ˆHÝ^ZÚHÝZ]ˆš\ÜØ[ˆ›[šËš\ÜØ[ˆÛÙØ\™Kš\ÜØ[ˆÓHS‹‰Ëˆ[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	ÙÙ[Ë\š^›K[Y]›Ë]˜XÚÙ\‹LNNMKLNNMÉËZÎˆ	ÑÙ[ÉËYˆ	Ôš^›HÈY]›ÈÈ˜XÚÙ\‰ËLˆNNMKLNˆNNMËˆÝÎˆ	ÕÖMÈ
+š^›JHÈÖŒM
+Y]›Ë˜XÚÙ\ŠIË[ˆ	ÕÖMÉËˆÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÖMÈÛˆHš^›IËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÑÓÕÒNˆHš^›H\ÈHÞ[ÝHÛÜ›ÛKHY]›È[™˜XÚÙ\ˆ\™HÝ^ZÚ\Ëˆ›Ý[™È\™H\È™X[HHÙ[ËˆH˜YÙHØ\È™]\™YY\ˆNNMÈ8 %œ›ÛHNNNHØ[YHØ\œÈ\™HÚ]œ›Û]ËÛÈÚXÚÈ[™\ˆÚ]œ›Û]›ÜˆH]\ˆÛ™K‰Ëˆ[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆÊˆOOOOHSH“ÓQSÈÈPTÑTUHÈ’PUQSRSHOOOOH
+‹ÂˆŠÈYˆ	Ø[˜KYÚ][XK\Ý[š[ËLŒM‹LŒIËZÎˆ	Ð[˜H›ÛY[ÉËYˆ	ÑÚ][XHÈÝ[š[ÈÈÛ˜[IËLˆŒM‹LNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÒTŒˆ
+[Y\™Ù[˜ÞH›YJIË[ˆ	Ñ•T	ËÚ\ˆ	ÒQH
+]YÈQTÊIËˆÞ\Îˆ	ÔÝ[[\È[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÖY\ÈÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÔÝ[[\È]›Ü›H8 %ÛÜšÈ][ˆHšX]ÐÚž\Û\ˆY[K›Ý\È[ˆ^ÝXË‰Ë[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	Ø[˜KMËLŒMLŒŒ	ËZÎˆ	Ð[˜H›ÛY[ÉËYˆ	ÍÉËLˆŒMLNˆŒŒˆÝÎˆ	ÔÒTŒ‰Ë[ˆ	Ñ•T	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÑšX][[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÉË[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	ÛX\Ù\˜]KYÚX›K[]˜[KLŒMLŒŒÉËZÎˆ	ÓX\Ù\˜]IËYˆ	ÑÚX›HÈ]X]›ÜÜHÈ]˜[IËLˆŒMLNˆŒŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÒTŒˆ
+[Y\™Ù[˜ÞH›YJIË[ˆ	Ñ•T	ËÚ\ˆ	ÔÝ[[\ËY˜[Z[H›Þ	ËˆÞ\Îˆ	ÔÝ[[\ËY\š]™Y[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒ‰ËˆØ™ˆ	ÕÛÛY\[™[	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\ÝÈÙ[ˆX[\‰Ë[Žˆ	ÖQTÉËˆ›ÝNˆ	ÑšX]Y\˜HX\Ù\˜]\ÈÚ\™HHÝÚ]Úž\Û\‹ˆÛÜžZ[™ÈHÝ[[\ÈY[H™Y›Ü™HÜš][™È]Ù™ˆ\È^ÝXË[Û›K‰Ëˆ[žNˆ	Ó\ÚHÒTŒ‰ÈJKˆŠÈYˆ	ÛX\Ù\˜]KYÜ˜[\š\Û[ËLŒLŒNIËZÎˆ	ÓX\Ù\˜]IËYˆ	ÑÜ˜[•\š\Û[ÉËLˆŒLNˆŒNKˆÝÎˆ	ÓX\Ù\˜]HÈšX]Y˜[Z[IËÚ\ˆ	ÓX\Ù\˜]H[[[Øš[^™\‰ËÞ\Îˆ	ÓX\Ù\˜]IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÑXÛÙHHÛÜˆØÚÉËˆØ™ˆ	ÑX[\ˆ[ˆ˜XÝXÙIËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\‰Ë[Žˆ	Û‹ØIËˆ›ÝNˆ	ÓÝÈ›Û[YKX[\‹Yš]™[‹ˆZÙHHØÚÛÝ]™Y™\ˆHÙ^\Ë‰Ë[žNˆ	ÑXÛÙHHÛÜ‰ÈJK‚ˆÊˆOOOOHUˆPRÑTÈ8 %[ÜÝH›Ý[™ÈÈÝ]OOOOH
+‹ÂˆŠÈYˆ	Üš]šX[‹\Œ]\Œ\ËLŒŒ‹LŒIËZÎˆ	Ôš]šX[‰ËYˆ	ÔŒUÈŒTÉËLˆŒŒ‹LNˆŒKŽˆ	ÝXÚÉËˆÝÎˆ	Ó›Û™H8 %›ÈYXÚ[šXØ[Ù^IËÚ\ˆ	Ó‘ÈØ\™[™Û™HÙ^IËÞ\Îˆ	Ôš]šX[ˆ“HÈ‘ÉËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Û‹ØIËXÎˆ	Û‹ØIËØ™ˆ	Ó›ÈÛÛ™[[Û˜[Ð‘]	ËÛŽˆ	ÓÝÛ™\ˆZ\œÈHØ\™›ÝYÚHÝXÚØÜ™Y[‰ËˆZÛˆ	Ôš]šX[ˆÙ\šXÙH8 %›ÝHØÚÜÛZ]›Ø‰Ë[Žˆ	Û‹ØIËˆ›ÝNˆ	Ó›Ý[™ÈÈÝ][™›ÈYXÚ[šXØ[Ý™\œšYKˆØÚÛÝ]ÈÛ›K[™\™H\È›ÈÙ^]Ø^HÈXÚË‰ËˆÜˆ	Ó›ÈÝ[™\™Ð‘Ü[ˆH\ÝX[XÙIË[žNˆ	Ó›ÈYXÚ[šXØ[Ù^]Ø^H8 %™Y™\ˆÈš]šX[ˆÜˆ›ØYÚYIÈJKˆŠÈYˆ	ÜÛ\Ý\‹L‹LŒŒKLŒIËZÎˆ	ÔÛ\Ý\‰ËYˆ	ÔÛ\Ý\ˆ‰ËLˆŒŒKLNˆŒKˆÝÎˆ	Ó›Û™H8 %›ÈYXÚ[šXØ[Ù^IËÚ\ˆ	ÔÛ™HÙ^HÈ›Þ›Ø‰ËÞ\Îˆ	Õ›Û›ËY˜[Z[H“IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Û‹ØIËXÎˆ	Û‹ØIËØ™ˆ	Õ›Û›ËY˜[Z[KÛÛY\[™[	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÑX[\ˆÜˆ›Û›ÈÜXÚX[\Ý	Ë[Žˆ	Û‹ØIËˆ›ÝNˆ	Õ›Û›È[™\›™X]ˆ›È›YHÈÝ]‰ËÜˆ	Ñš]™\ˆÚYK[™\ˆ\Ú	Ëˆ[žNˆ	Ó›ÈYXÚ[šXØ[Ù^]Ø^IÈJKˆŠÈYˆ	ÛXÚYXZ\‹LŒŒ‹LŒIËZÎˆ	ÓXÚY	ËYˆ	ÐZ\‰ËLˆŒŒ‹LNˆŒKˆÝÎˆ	Ó›Û™H8 %›ÈYXÚ[šXØ[Ù^IËÚ\ˆ	ÔÛ™HÙ^HÈ‘ÈØ\™	ËÞ\Îˆ	ÓXÚY“HÈ‘ÉËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Û‹ØIËXÎˆ	Û‹ØIËØ™ˆ	Ó›ÈÛÛ™[[Û˜[Ð‘]	ËÛŽˆ	ÓÝÛ™\ˆZ\œÈ›ÝYÚHÝXÚØÜ™Y[‰ËˆZÛˆ	ÓXÚYÙ\šXÙIË[Žˆ	Û‹ØIËˆ›ÝNˆ	Ó›Ý[™ÈÈÝ]ˆØÚÛÝ]Ø[ÈÛ›K‰ËÜˆ	Ó›Û™H[ˆH\ÝX[XÙIËˆ[žNˆ	Ó›ÈYXÚ[šXØ[Ù^]Ø^IÈJK‚ˆÊˆOOOOHÓÓSQTÒPSÈRPÔ“ÈOOOOH
+‹ÂˆŠÈYˆ	Ùœ™ZYÚ[™\‹\Üš[\‹LŒËLŒIËZÎˆ	Ñœ™ZYÚ[™\‰ËYˆ	ÔÜš[\‰ËLˆŒËLNˆŒKŽˆ	Ý˜[‰ËˆÝÎˆ	ÒMÈSLŒÈžHYX\‰Ë[ˆ	ÒM	ËÚ\ˆ	ÓY\˜ÙY\È”ËY˜[Z[IËˆÞ\Îˆ	ÓY\˜ÙY\È”ÌÈÛˆ]\‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	Ó›ÈÛˆ”ÌÈ8 %RTÈÛÜšÉËÛŽˆ	Ó›ÉËZÛˆ	ÑRTÈ™XY
+È\ÜÝÛÜ™Ø[ÉË[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÉËˆ›ÝNˆ	ÕHØ[YH˜[ˆ\ÈHY\˜ÙY\ËP™[žˆÜš[\ˆ[™HŒËLŒHÙÙHÜš[\‹ˆÚ]]™\ˆH˜YÙHØ^\ËÙ^H]\ÈHY\˜ÙY\Ë‰Ëˆ[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	ÙÙÙK\Üš[\‹LŒËLŒIËZÎˆ	ÑÙÙIËYˆ	ÔÜš[\‰ËLˆŒËLNˆŒKŽˆ	Ý˜[‰ËˆÝÎˆ	ÖSLŒÈÈMžHYX\‰Ë[ˆ	ÖSLŒÉËÚ\ˆ	ÓY\˜ÙY\ËY˜[Z[IËˆÞ\Îˆ	ÓY\˜ÙY\ÈTÈÈ”ÉËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHYX\‰ËXÎˆ	Ó\ÚHM	ËˆØ™ˆ	ÓY\˜ÙY\È›ØÙY\™IËÛŽˆ	Ó›ÉËZÛˆ	ÑRTÈÛÜšÉË[Žˆ	Ô\ÜÝÛÜ™œ›ÛHRTÉËˆ›ÝNˆ	ÑÓÕÒNˆHY\˜ÙY\ÈÜš[\ˆÚ]HÙÙH˜YÙKˆÚž\Û\ˆÛÛ[™È[™ÖL›[šÜÈ\™H›ÝÜ›Û™È\™K‰Ëˆ[žNˆ	Ó\ÚHM	ÈJKˆŠÈYˆ	ÜÛX\Y›ÜÛËLŒLŒNIËZÎˆ	ÔÛX\	ËYˆ	Ñ›ÜÛÉËLˆŒLNˆŒNKˆÝÎˆ	ÓY\˜ÙY\ËY˜[Z[H8 %›Ùš[H›Ý™XÛÜ™Y	ËÚ\ˆ	ÓY\˜ÙY\ËY\š]™Y[[[Øš[^™\‰ËÞ\Îˆ	ÓY\˜ÙY\ËY˜[Z[IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÑXÛÙHHÛÜˆØÚÉËˆØ™ˆ	ÕÛÛY\[™[	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\ÝÈY\˜ÙY\Ë\Ý[H›ØÙY\™IË[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÓY\˜ÙY\È[XÝ›ÛšXÜÈ[ˆH™\žHÛX[Ø\‹ˆšXÙH]\ÈHY\˜ÙY\È›Ø‹›ÝHÚ]KXØ\ˆ›Ø‹‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÙY]ÛÛËLNNNKLŒ‰ËZÎˆ	ÑY]ÛÛÉËYˆ	Ó[›ÜÈÈXš\˜HÈYØ[ž˜IËLˆNNNKLNˆŒ‹ˆÝÎˆ	ÑY]ÛÛÈ
+ÓÊIËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜˆÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ô˜\™H›ÝË]HØ[YH]›Ü›H\›œÈ\™X˜YÙY\ÈHÝ^ZÚH›Ü™[ž˜H[™™[›Ë‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ø™[^KXÛÛ[™[[LŒLŒIËZÎˆ	Ð™[^IËYˆ	ÐÛÛ[™[[È›Z[™ÈÜ\ˆÈ™[^YØIËLˆŒLNˆŒKˆÝÎˆ	ÒM‰Ë[ˆ	ÒMU	ËÚ\ˆ	ÕQËY˜[Z[NÈQTÈÛˆ]\‰ËˆÞ\Îˆ	ÕQÈ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHM‰ËˆØ™ˆ	ÔÜXÚX[\ÝQÈÛÛ[™ÉËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\ˆÜˆYÚY[™ÜXÚX[\Ý	Ë[Žˆ	ÐÛÛ\Û™[ÙXÝ\š]IËˆ›ÝNˆ	Õ•ÈÜ›Ý\[™\›™X]8 %Mˆ›YKˆ™\žHYÚ˜[YNˆ™\šYžHÝÛ™\œÚ\™Y›Ü™HÝXÚ[™È]‰Ëˆ[žNˆ	Ó\ÚHM‰ÈJK‚ˆÊˆOOOOHSÕÔÖPÓHPRÑTÈOOOOH
+‹ÂˆŠÈYˆ	Ú[™X[‹YÚ[›ÞKLNNNKLŒLÉËZÎˆ	Ò[™X[ˆ[ÝÜ˜ÞXÛIËYˆ	ÐÚYYˆÈÜ\š]ÈØÛÝ]
+™KTÛ\š\ÊIËLˆNNNKLNˆŒLËŽˆ	Û[ÝÉËˆÝÎˆ	ÉË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHH›ÜšÈØÚÉËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Ûˆ8 %\ÜÝ[YH›ÈÛÙH™XÛÜ™Ý\š]™\ÉËˆ›ÝNˆ	Õ™YHY™™\™[ÛÛ\[šY\ÈZ[šZÙ\È[™\ˆH[™X[ˆ˜[YH™]ÙY[ˆNNNH[™ŒLÈ8 %Ú[›ÞKÚ[™ÜÈ[Ý[Z[ˆ[™[ˆ›Ý[™È8 %™Y›Ü™HÛ\š\È›ÝYÚHX\œ]YH[ˆŒLH[™™\Ý\Y]›ÜˆŒMˆ\ÈØ[YHœ›ÛHÚ\™]™\‹ÛÈHØÚÜÈ\™H›ÝÛÛœÚ\Ý[]™[ˆÚ][ˆÛ™HYX\‹ˆXÛÙHÚ]\ÈÛˆHšZÙNÈÈ›ÝÜ™\ˆœ›ÛHHÜ›ÜÜË\™Y™\™[˜ÙKˆHÛ\š\ËY\˜HšZÙ\È\™HHÝ\ˆ[™X[ˆ™XÛÜ™È\™H[™\™HHY™™\™[›Øˆ[\™[K‰ËˆÜˆ	Û‹ØIË[žNˆ	Ñ›ÜšÈØÚÉÈJK‚ˆÊˆKKKHØ\È›Ý[™žH\Ý[™ÈHÙX\˜ÚYØZ[œÝ™X[Ø[ÈKKKH
+‹ÂˆŠÈYˆ	ÚÛ™KXÚ]šXËLNNM‹LŒ	ËZÎˆ	ÒÛ™IËYˆ	ÐÚ]šXÉËLˆNNM‹LNˆŒˆÝÎˆ	ÒLˆÈÌIË[ˆ	ÒL‰ËÚ\ˆ	Ó›Û™HÛˆ[ÜÝTÈØ\œÉËˆÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHYÛš][Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ó›È[[[Øš[^™\ˆÛˆ[ÜÝTË[X\šÙ]Ø\œÈÙˆ\ÙHYX\œËˆ˜\Ý›Ø‹[™\ÙH\™HÝ[]™\ž]Ú\™Kˆ[ÛÈH[ÜÝ\ÝÛ[ˆØ\ˆ[ˆ[Y\šXØH8 %ÚXÚÈÝÛ™\œÚ\‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚÜˆXÛÙHHÛÜ‰ÈJKˆŠÈYˆ	ÚÛ™KXXØÛÜ™LNNLLNNMÉËZÎˆ	ÒÛ™IËYˆ	ÐXØÛÜ™	ËLˆNNLLNˆNNMËˆÝÎˆ	ÒLˆÈÌIË[ˆ	ÒL‰ËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ë[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÝX˜\KY›Ü™\Ý\‹LNNNLŒ	ËZÎˆ	ÔÝX˜\IËYˆ	Ñ›Ü™\Ý\‰ËLˆNNNLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÑUMÉË[ˆ	ÑUMÉËÚ\ˆ	Ó›Û™HX\›NÈMŒˆÛˆ]\‰ËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\ˆÛˆ]\‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHUMÉËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\ÈÐ‘
+ÈSˆÝ\Ú\ÙIË[Žˆ	ÕÛÛY\[™[	Ëˆ›ÝNˆ	ÑX\›HÛ™\È]™H›ÈÚ\][8 %ÚXÚÈ™Y›Ü™H][Ý[™È›ÙÜ˜[[Z[™Ë‰Ë[žNˆ	Ó\ÚHUMÉÈJKˆŠÈYˆ	ÜÝX˜\KY›Ü™\Ý\‹LŒKLŒLÉËZÎˆ	ÔÝX˜\IËYˆ	Ñ›Ü™\Ý\‰ËLˆŒKLNˆŒLËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÔÕPÈUMÉË[ˆ	ÔÕPT	ËÚ\ˆ	ÍMŒˆÈQ‰ËˆÞ\Îˆ	ÔÝX˜\H[[[Øš[^™\‰ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕP	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‹ÜÙYY	Ë[Žˆ	ÕÛÛY\[™[	Ë[žNˆ	Ó\ÚHÕP	ÈJKˆŠÈYˆ	ØÚ]žKXØ[X\›ËLNNLËLŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐØ[X\›ÈÈÛXXÈš\™Xš\™	ËLˆNNLËLNˆŒ‹ˆÝÎˆ	ÐŒˆ[]
+UÊIË[ˆ	ÐŒ‹TH‹ˆŒ‹TMIËÚ\ˆ	ÕUÈ™\Ú\ÝÜˆ[]	ËˆÞ\Îˆ	ÕUÈÈTÔËRÙ^IËÛÛ™Nˆ	Û‹ØH8 %X]ÚH[]˜[YIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ó\ÚHÓLÍÈÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ô™XYH[]Ú]HUÈ[\œ›ÙØ]Ü‹[ˆÝ][™X]Ú	Ëˆ›ÝNˆ	ÌMH[]˜[Y\ËˆÝY\ÜÚ[™È\›œÈH›Ý\‹[Z[]HØÚÛÝ]XXÚžH8 %Ø\œžHHÙ]Üˆ[ˆ[\œ›ÙØ]Ü‹‰Ëˆ[žNˆ	Ó\ÚHÓLÍÈÜˆÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØÚ]žKXØ[X\›ËLŒËLŒIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÐØ[X\›È
+›ÝÛÛ
+IËLˆŒËLNˆŒKˆÝÎˆ	Û‹ØH8 %›ÈÝXÚ[Ù[YX\‰ËÚ\ˆ	Û‹ØIËÞ\Îˆ	Û‹ØIËÛÛ™Nˆ	Û‹ØIËˆÝ]ˆ	Û‹ØIËXÎˆ	Û‹ØIËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Û‹ØIËˆ›ÝNˆ	ÑÓHZ[›ÈØ[X\›È›ÜˆŒËLŒKˆYˆHÝ\ÝÛY\ˆØ^\È^H]™HÛ™K]\ÈHŒˆÜˆHŒL‰ËˆÜˆ	Û‹ØIË[žNˆ	Û‹ØIÈJKˆŠÈYˆ	Ûš\ÜØ[‹\]š[™\‹LNNM‹LŒ	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ô]š[™\‰ËLˆNNM‹LNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÑLÌIË[ˆ	ÑLÌKT	ËÚ\ˆ	Ó›Û™HX\›NÈMŒ]\‰ËˆÞ\Îˆ	ÓUÈÛˆÚ\Y	ËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLÌIËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\ÈÐ‘
+ÈSˆÝ\Ú\ÙIË[Žˆ	ÖQTÈÛˆÚ\Y	Ëˆ[žNˆ	Ó\ÚHLÌIÈJKˆŠÈYˆ	Ûš\ÜØ[‹\]š[™\‹LŒKLŒL‰ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ô]š[™\‰ËLˆŒKLNˆŒL‹Žˆ	ÜÝ]‰ËˆÝÎˆ	Ó”ÓŒMÈLÌHžHš[IË[ˆ	ÑLÍ	ËÚ\ˆ	ÒQˆ
+]YÌŠIËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	Ó›ÈÛˆ[[YÙ[Ù^IËÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚH”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ë[žNˆ	Ó\ÚH”ÓŒM	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹]][‹LŒLŒMIËZÎˆ	Óš\ÜØ[‰ËYˆ	Õ][‰ËLˆŒLNˆŒMKŽˆ	ÝXÚÉËˆÝÎˆ	ÑLÌHÈ”ÓŒMžHš[IË[ˆ	ÑLÌKT	ËÚ\ˆ	ÒQ‰ËˆÞ\Îˆ	ÓUÈIËÛÛ™Nˆ	ÔÛÛYIËÜˆˆÝ]ˆ	ÑYÙHÜˆ\Ù\ˆžHš[IËXÎˆ	Ó\ÚHLÌHÜˆ”ÓŒM	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %ÓKY\š]™Y	Ëˆ›ÝNˆ	Ð\›XYH[™[™š[š]HVMˆÙˆHØ[YHYX\œÈÚ\™H\È]›Ü›K‰Ë[žNˆ	Ó\ÚHžHÙ^]Ø^IÈJKˆŠÈYˆ	ÚÚXK\ÛÜ™[ËLŒËLŒMIËZÎˆ	ÒÚXIËYˆ	ÔÛÜ™[ÉËLˆŒËLNˆŒMKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒÒÌLÈLŒžHYX\‰Ë[ˆ	ÒÒÌLT	ËÚ\ˆ	Ó›Û™HX\›NÈQˆ]\‰ËˆÞ\Îˆ	ÒÚXH[[[Øš[^™\ˆÛˆÚ\Y	ËÛÛ™Nˆ	Õ˜\šY\ÉËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÒPMÉËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘
+ÈS‰Ë[Žˆ	ÖQTÈ8 %SˆžH’S‰Ëˆ›ÝNˆ	ÑX\›HÛÜ™[ÜÈÙ[ˆÚ\YÚ]›È[[[Øš[^™\ˆ][‰Ë[žNˆ	Ó\ÚHÒPMÉÈJKˆŠÈYˆ	Ú™Y\XÚ\›ÚÙYK^‹LNNMKLŒIËZÎˆ	Ò™Y\	ËYˆ	ÐÚ\›ÚÙYH‰ËLˆNNMKLNˆŒKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÖLMMÈÈLMNIË[ˆ	ÖLMMÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈÒÒSHœ›ÛHNNNÛˆÛÛYIËˆÞ\Îˆ	ÔÒÒSHÛˆ]\‰ËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y	ËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖLÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	ÖY\ÈÛˆÚ\Y	ËÛŽˆ	ÌˆÛÜšÚ[™ÈÙ^\ÈÛˆÒÒSHØ\œÉËZÛˆ	ÐÝ]žHÛÙHÛˆ›Û‹XÚ\ÈÐ‘
+ÈSˆÝ\Ú\ÙIËˆ[Žˆ	ÖQTÈÛˆÒÒSHØ\œÉËˆ›ÝNˆ	ÕHˆ\ÈHY™™\™[™ZXÛHœ›ÛHHŒM
+ÈÚ\›ÚÙYHÓÚXÚ\ÈšX]\]›Ü›HÒTŒ‹‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝÞ[ÝKM[›™\‹LNNLLNNMIËZÎˆ	ÕÞ[ÝIËYˆ	Í[›™\‰ËLˆNNLLNˆNNMKŽˆ	ÜÝ]‰ËˆÝÎˆ	ÕÖMÈÈÉË[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ë[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆÊˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOBˆ’S•QÑHQTˆ8 %NNHÈH[[[Øš[^™\ˆ\˜K‚ˆ\ÙH\™H[X™\˜][HÜš][ˆ\ˆXZÙH[™\˜H˜]\ˆ[ˆ\ˆ[Ù[ˆ™XØ]\ÙH]\ÈÝÈHÙ^\ÈXÝX[HÛÜšÎˆHNNÚ]œ›Û]\ÈBˆNNÚ]œ›Û]Ú]]™\ˆ˜YÙH\ÈÛˆHZ[Ø]KˆH\ÙY[˜XÝÈ\™BˆHÙ^]Ø^KÚ]\ˆ[ž][™È[XÝ›ÛšXÈ\Èš]Y
+\ÝX[H›Ý[™ÊKˆ[™]H›Øˆ\ÈÝ]XžKXÛÙHÜˆ[\™\ÜÚ[Û‹‚ˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH
+‹ÂˆŠÈYˆ	ÙÛK]š[YÙKLNNKLNNMIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ó[ÜÝÓHØ\œÈ[™XÚÜÈ
+š[YÙJIËLˆNNKLNˆNNMKˆÝÎˆ	ÐÈHÈÈL	Ë[ˆ	ÐÈIËÚ\ˆ	Ó›Û™H
+UÈ[]ÛˆÛÛYHNNŠÈ\™›Ü›X[˜ÙHØ\œÊIËˆÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜˆØÚÎÈHÛÙH\ÈÙ[ˆÝ[\YÛˆHØÚÈ˜XÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕÛËZÙ^H\˜NˆY˜[Z[H\›œÈHYÛš][Û‹KY˜[Z[HHÛÜœÈ[™[šËˆ\ÚÈÚXÚÛ™H\ÈÜÝˆÛÜ™]H[™‹X›ÙHœ›ÛHNNˆYHUÈ[]8 %]\ÈH^Ù\[Û‹›ÝH[K‰ËˆÜˆ	Û‹ØH
+™KSÐ‘RRJIË[žNˆ	ÕÙYÙH[™™XXÚÜˆXÛÙHHÛÜ‰ÈJKˆŠÈYˆ	Ù›Ü™]š[YÙKLNNKLNNMIËZÎˆ	Ñ›Ü™	ËYˆ	Ó[ÜÝ›Ü™Ø\œÈ[™XÚÜÈ
+š[YÙJIËLˆNNKLNˆNNMKˆÝÎˆ	ÒLÈLHÈMÈŒ	Ë[ˆ	ÒLÈM	ËÚ\ˆ	Ó›Û™H
+UÈ\œš]™\ÈNNMŠIËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ð[ÛÈHÛËZÙ^H\˜H8 %YÛš][Ûˆ[™ÛÜ‹Ý[šÈÙ^\ÈY™™\‹ˆ[˜ÛÛˆ[™Y\˜Ý\žHÙˆ\ÙHYX\œÈ\™HHØ[YHÙ^\Ë‰ËˆÜˆ	Û‹ØH
+™KSÐ‘RRJIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØÚž\Û\‹]š[YÙKLNNKLNNMIËZÎˆ	ÐÚž\Û\‰ËYˆ	Ó[ÜÝÚž\Û\ˆÈÙÙHÈ[[Ý]
+š[YÙJIËLˆNNKLNˆNNMKˆÝÎˆ	ÖLMLHÈLMLˆÈLMMIË[ˆ	ÖLMLHÈLML‰ËÚ\ˆ	Ó›Û™H
+ÒÒSH\œš]™\ÈNNN
+IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÓZ[š]˜[œÈÙˆ\È\˜H\™HÛÛœÝ[ØÚÛÝ]ÛÜšÈ[™]™H›Ý[™È[XÝ›ÛšXÈ[ˆHÙ^K‰ËˆÜˆ	Û‹ØH
+™KSÐ‘RRJIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJK‚ˆÊˆKKKHSPÈKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKBˆSPÈØ\È]ÈÝÛˆXZÙH[[Úž\Û\ˆ›ÝYÚ][ˆNNËÛÈ]™[Û™ÜÂˆ[™\ˆSPÈ˜]\ˆ[ˆ›ÛY[È™Y\ˆH™[˜][XZ[Ø\œÈ
+[X[˜ÙKˆ[˜ÛÜ™JH[ˆ™[˜][ØÚÜÎÈHSPËXZ[Ø\œÈ[ˆSPÉÜÈÝÛ‹ˆ
+‹Â‚ˆÊˆKKKHÓNˆH˜[Y\]\ÈHÙYYÚÚ\YKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	ØÚ]žKX]˜[[˜ÚKLŒ‹LŒLÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ð]˜[[˜ÚIËLˆŒ‹LNˆŒLËŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLLH
+ŽNHÛˆHX\›Y\Ý
+IË[ˆ	ÐŒLLKT	ËˆÚ\ˆ	ÔÌÊÈÈQˆ
+]YÌŠHÛˆ]\‰ËÞ\Îˆ	Ô\ÜÛØÚÈÈÌÊÉËÛÛ™Nˆ	Ó›È8 %]\Ý™H›ÙÜ˜[[YY	ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHŒLLHÛˆHÛÜ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[]H™[X\›ˆÛˆ\ÜÛØÚÈXÚÜÉËZÛˆ	ÓÐ‘ÜˆHÌ[Z[]H™[X\›ˆ™YH[Y\ÈÝ™\‰Ëˆ›ÝNˆ	ÕH[‹]ÛˆXÚÝ\Ú]HZYØ]KˆØ[YHÙ^H˜[Z[H\ÈHÚ[™\˜YÈÙˆ]ÈYX\ˆ8 %ÚXÚÈHYX\ˆ™Y›Ü™H[ÝH\ÜÝ[YHÚXÚ‰Ëˆ[žNˆ	Ó\ÚHŒLLHÛˆHÛÜ‰ÈJKˆŠÈYˆ	ØÚ]žK[[ÛKXØ\›ËLNNMKLŒÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ó[ÛHØ\›ÉËLˆNNMKLNˆŒËŽˆ	ØØ\‰ËˆÝÎˆ	ÐŽLHÈŽMÈ
+UÊKŒLLHœ›ÛHŒ‰Ë[ˆ	ÐŽLHÈŒLLKT	ËˆÚ\ˆ	ÕUÈ™\Ú\ÝÜˆ[][ˆÌÉËÞ\Îˆ	ÕUÈÈ\ÜÛØÚÉËÛÛ™Nˆ	Ô[]ˆ™XY[™X]Ú	ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ô™XYH[]˜[YHÚ]HUÈ\Ý\‰ËˆØ™ˆ	Ó]\ˆYX\œÈÛ›IËÛŽˆ	ÌL[Z[]H™[X\›ˆÛˆ\ÜÛØÚÉËZÛˆ	ÓX]ÚH[]ÜˆH™[X\›‰Ëˆ›ÝNˆ	ÕUÈØ\œÈ™YYHšYÚ™\Ú\ÝÜˆ[]›Ý\ÝHšYÚÝ]8 %MH˜[Y\Ë[™HÜ›Û™ÈÛ™HX]™\È[ÝHØZ][™ÈÝ]HØÚÛÝ][Y\‹‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚÜˆ\ÚHÛˆHÛÜ‰ÈJKˆŠÈYˆ	ØÚ]žKX]™[ËLŒLŒLIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ð]™[ÈÈY]ÛÛÈØ[ÜÉËLˆŒLNˆŒLKŽˆ	ØØ\‰ËˆÝÎˆ	ÑÓÍ‰Ë[ˆ	ÑÓÍ‰ËˆÚ\ˆ	ÒQÈYYØ[[ÜÈÛˆ]\‰ËÞ\Îˆ	ÑY]ÛÛÈ[[[Øš[^™\‰ËÛÛ™Nˆ	ÒQÛÛ™\ÈÛˆÛÛYIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	ÖY\ÈÚ]HY]ÛÛËXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘Ú]Sˆœ›ÛHHÛÛ	Ëˆ›ÝNˆ	ÐHY]ÛÛÈ[™\ˆH›ÝÝYKˆ]Ù\È›ÝÚ\™HHÙ^]Ø^HÚ][žHÝ\ˆÚ]œ›Û]ÙˆH\˜K[™H\ÝX[ÓHÛÛÛÝ™\˜YÙHÙ[ˆÙ\È›Ý™XXÚ]‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØÚ]žK\ÛÛšXË\Ü\šËLŒL‹LŒŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÛÛšXÈÈÜ\šÉËLˆŒL‹LNˆŒŒ‹Žˆ	ØØ\‰ËˆÝÎˆ	ÒLL	Ë[ˆ	ÐŒLNKT	ËˆÚ\ˆ	ÒQˆ
+]YÌŠIËÞ\Îˆ	ÑÓH[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›È8 %]\Ý™H›ÙÜ˜[[YY	ËˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLLÛˆHÛÜ‰ËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘LÜˆÌ[Z[]HÙXÝ\š]HØZ]\[™[™ÈÛˆÛÛ	Ëˆ›ÝNˆ	ÒÛÜ™X[‹XZ[ÛX[Ø\œÈÛˆH[Ù\›ˆÓH\Ù\ˆÙ^K‰Ëˆ[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žKX›ÛLŒMËLŒŒÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ð›ÛUˆÈ›ÛUU‰ËLˆŒMËLNˆŒŒËŽˆ	ØØ\‰ËˆÝÎˆ	ÒLL[Y\™Ù[˜ÞH›YH[ˆH›Ø‰ËÚ\ˆ	Ô›Þ[Z]IËÞ\Îˆ	ÑÓHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ð›YHÝ]ÈHÛÜˆÛ›IËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘Ú]HÓKXØ\X›HÛÛ	Ëˆ›ÝNˆ	Ô\ÚX]ÛˆÝ\ˆH›YH[ˆH›ØˆÜ[œÈHÛÜˆ[™›Ý[™È[ÙH8 %HØ\ˆÚ[›Ý[Ý™HÛˆ]‰Ëˆ[žNˆ	Ð›YH[ˆH›Ø‹Üˆ\ÚHLL	ÈJKˆŠÈYˆ	ØÚ]žK]˜Z[›^™\‹LŒŒKLŒ	ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Õ˜Z[›^™\ˆ
+ŒŒHÛŠIËLˆŒŒKLNˆŒŽˆ	ÜÝ]‰ËˆÝÎˆ	ÒLL[Y\™Ù[˜ÞH›YH[ˆH›Ø‰ËÚ\ˆ	Ô›Þ[Z]IËÞ\Îˆ	ÑÓHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ð›YHÝ]ÈHÛÜˆÛ›IËˆØ™ˆ	ÖY\ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘Ú]HÓKXØ\X›HÛÛ	Ëˆ›ÝNˆ	Ó›ÝHŒ‹LŒH˜Z[›^™\ˆ8 %Ø[YH˜[YKÛÛ\][HY™™\™[™ZXÛH[™Ù^K[™›ÈTÈ˜Z[›^™\ˆ][œ›ÛHŒLÈŒŒÛÈ]Ø\\È™X[ˆHŒ[Ûˆ˜^\È\ÈØ[YHÙ^K‰Ëˆ[žNˆ	Ð›YH[ˆH›Ø‰ÈJKˆŠÈYˆ	ØÚ]žK]\[™\‹LŒKLŒIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Õ\[™\ˆÈ™[\™HÈÛXXÈ[Û[˜IËLˆNNMËLNˆŒKŽˆ	Ý˜[‰ËˆÝÎˆ	ÐŽLHÈŽMËŒLLHœ›ÛHŒ‰Ë[ˆ	ÐŽLHÈŒLLKT	ËˆÚ\ˆ	ÕUÈ[ˆÌÉËÞ\Îˆ	ÕUÈÈ\ÜÛØÚÉËÛÛ™Nˆ	Ô[]ˆ™XY[™X]Ú	ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	Ó]\ˆYX\œÉËÛŽˆ	ÌL[Z[]H™[X\›‰ËZÛˆ	Ô[]X]ÚÜˆ™[X\›‰Ëˆ›ÝNˆ	ÕHÓHZ[š]˜[œËˆÛY[™ÈÛÜˆØÚÜÈ\™HÙ[ˆÙZ^™YÛˆ\ÙH8 %ÚXÚÈ™Y›Ü™H[ÝH][ÝHHØÚÛÝ]‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛXXËYÜ˜[™X[KLNNNKLŒIËZÎˆ	ÔÛXXÉËYˆ	ÑÜ˜[™[HÈÛÛ[Øš[H[\›ÉËLˆNNNKLNˆŒKŽˆ	ØØ\‰ËˆÝÎˆ	ÐŽLHÈŽMÉË[ˆ	ÐŽLIËˆÚ\ˆ	Ô\ÜÛØÚÈ
+›ÈÚ\[ˆHÙ^JIËÞ\Îˆ	Ô\ÜÛØÚÈRIËÛÛ™Nˆ	Û‹ØH8 %›È˜[œÜÛ™\‰ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	Ó›ÉËÛŽˆ	ÌL[Z[]H™[X\›ˆYˆH[Ù[HØ\È\Ý\˜™Y	ËZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙH8 %›È›ÙÜ˜[[Z[™È™YYY	Ëˆ›ÝNˆ	Ô\ÜÛØÚÈ™XYÈHØÚÈÞ[[™\‹›ÝHÚ\ÛÈHÛÜœ™XÝHÝ]Ù^HÚ]›È˜[œÜÛ™\ˆÝ\È]ˆH˜Z[[™È\ÜÛØÚÈÙ[œÛÜˆ\ÈH\ÝX[™X\ÛÛˆÛ™HÚ[›Ý‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛXXËYÜ˜[™\š^LNNMËLŒ	ËZÎˆ	ÔÛXXÉËYˆ	ÑÜ˜[™š^	ËLˆNNMËLNˆŒŽˆ	ØØ\‰ËˆÝÎˆ	ÐŽLHÈŽMËŒLLHœ›ÛHŒ	Ë[ˆ	ÐŽLHÈŒLLKT	ËˆÚ\ˆ	Ô\ÜÛØÚËÌÈÛˆ]\‰ËÞ\Îˆ	Ô\ÜÛØÚÈÈÌÉËÛÛ™Nˆ	Ó›ÉËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	Ó]\ˆYX\œÉËÛŽˆ	ÌL[Z[]H™[X\›‰ËZÛˆ	Ô™[X\›‹ÜˆÐ‘ÛˆH]\ˆØ\œÉËˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛXXË\Ý[™š\™KXØ]˜[Y\‹LNNMKLŒIËZÎˆ	ÔÛXXÉËYˆ	ÔÝ[™š\™HÈÚ]œ›Û]Ø]˜[Y\‰ËLˆNNMKLNˆŒKŽˆ	ØØ\‰ËˆÝÎˆ	ÐŽLHÈŽMÉË[ˆ	ÐŽLIËˆÚ\ˆ	Ô\ÜÛØÚÈ
+›ÈÚ\[ˆHÙ^JIËÞ\Îˆ	Ô\ÜÛØÚÉËÛÛ™Nˆ	Û‹ØH8 %›È˜[œÜÛ™\‰ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	Ó›ÉËÛŽˆ	ÌL[Z[]H™[X\›‰ËZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙIËˆ›ÝNˆ	ÐHZ[ˆÝ]Ù^HÝ\È\ÙKˆÛÛ[[Û‹ÚX\[™Û™HÙˆHX\ÚY\ˆ[ZÙ^\Ë[ÜÝ›ØœÈÝ[ÛˆH›ØY‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛXXËX›Û›™]š[KLNNL‹LŒIËZÎˆ	ÔÛXXÉËYˆ	Ð›Û›™]š[HÈZXÚÈTØXœ™HÈ\šÈ]™[YIËLˆNNL‹LNˆŒKŽˆ	ØØ\‰ËˆÝÎˆ	ÐŽLHÈŽMÈ
+UÊIË[ˆ	ÐŽLIËˆÚ\ˆ	ÕUÈ™\Ú\ÝÜˆ[]	ËÞ\Îˆ	ÕUÉËÛÛ™Nˆ	Ô™XY[™X]ÚH[]	ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ô™XYH[]Ú]HUÈ\Ý\‰ËˆØ™ˆ	Ó›ÉËÛŽˆ	Ó›ÉËZÛˆ	ÓX]ÚH[][™Ý]žHÛÙIËˆ›ÝNˆ	ÑÓH[\Ú^™HÙY[œÈÙˆHUÈ\˜KˆšYY[ˆ[]˜[Y\È8 %YX\Ý\™KÈ›ÝÝY\ÜË™XØ]\ÙHHÜ›Û™ÈÛ™HÝ\ÈHØÚÛÝ][Y\‹‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛXXËX^ZË]šX™KLŒKLŒL	ËZÎˆ	ÔÛXXÉËYˆ	Ð^ZÈÈšX™HÈÜœ™[ÈÛÛÝXÙHÈÍIËLˆŒKLNˆŒLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŽLHÈŒLLH\[™[™ÈÛˆYX\‰Ë[ˆ	ÐŽLHÈŒLLKT	ËˆÚ\ˆ	Ô\ÜÛØÚÈÜˆÌÊÉËÞ\Îˆ	Ô\ÜÛØÚÈÈÌÊÉËÛÛ™Nˆ	Ó›ÉËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	Ó]\ˆYX\œÉËÛŽˆ	ÌLÜˆÌ[Z[]H™[X\›‰ËZÛˆ	Ô™[X\›‹ÜˆÐ‘ÛˆH]\ˆØ\œÉËˆ›ÝNˆ	ÕHšX™H\ÈHÞ[ÝHX]š^[™\›™X]]ÙY\ÈHÓHÙ^KˆHÛÛÝXÙH[™ÍH›ÛÝÈHÛØ˜[‰Ëˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØZXÚËXÙ[\žK\™YØ[LNNMËLŒIËZÎˆ	ÐZXÚÉËYˆ	ÐÙ[\žHÈ™YØ[	ËLˆNNMËLNˆŒKŽˆ	ØØ\‰ËˆÝÎˆ	ÐŽLHÈŽMÉË[ˆ	ÐŽLIËˆÚ\ˆ	Ô\ÜÛØÚÉËÞ\Îˆ	Ô\ÜÛØÚÉËÛÛ™Nˆ	Û‹ØH8 %›È˜[œÜÛ™\‰ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÑXÛÙHHÛÜ‰ËˆØ™ˆ	Ó›ÉËÛŽˆ	ÌL[Z[]H™[X\›‰ËZÛˆ	ÐÝ]žHÛÙHÜˆXÛÙIËˆ[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØZXÚË\™[™^›Ý\Ë\˜Z[šY\‹LŒ‹LŒÉËZÎˆ	ÐZXÚÉËYˆ	Ô™[™^›Ý\ÈÈ˜Z[šY\ˆÈ\œ˜^˜IËLˆŒ‹LNˆŒËŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËˆÚ\ˆ	ÔÌÊÈÈQ9ßÍ=¶‰žËkºwµçH]ÛˆH™\˜˜[™\]Y\Ý‰ËˆÜˆ	Û‹ØH8 %ÙYHHÚ\ÜÚ\È™XÛÜ™	Ë[žNˆ	Ó[Ù[HÛÜœÈ\™H›ÙH\™Ø\™IÈJKˆŠÈYˆ	Ý\›Z[˜[]˜XÝÜ‹LNNLLŒ‰ËZÎˆ	ÒØ[X\ˆÝ]ØIËYˆ	ÓÝ]ØHÈØ\XÚ]HÈPÓÈ\›Z[˜[˜XÝÜ‰ËLˆNNLLNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	ÉË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ô™XYHÝÚ]ÚÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØH›ÜˆÙ^\ÉËÛŽˆ	Û‹ØIËZÛˆ	ÖX\™Ü\™KÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÖX\™ÛØ]È8 %HÚÜ˜XÝÜœÈ]ÚY™›H˜Z[\œÈ\›Ý[™H\ÝšX][ÛˆÙ[™Kˆ^H™]™\ˆX]™HH›Ü\KÛÈHÚÛHX\™\È\ÝX[HÙ^YY[ZÙH[™HÝÚ]Ú\ÈHZ[ˆYÛš][ÛˆÙˆHØ[YHÚ[™[ÝHÛÝ[š[™ÛˆH›ÜšÛYˆ\ÚÈHX\™Ý\\š\ÛÜˆ›ÜˆHÜ\™Hš\œÝ‰ËˆÜˆ	Ò[ˆHØX‰Ë[žNˆ	ÐØXˆÛÜ‹Ú\™HÛ™H\Èš]Y][	ÈJKˆŠÈYˆ	Ü™YY™\‹][š]LNNLLŒ‰ËZÎˆ	Õ\›[ÈÚ[™ÉËYˆ	Õ\›[ÈÚ[™ÈÈØ\œšY\ˆ™YY™\ˆ[š]	ËLˆNNLLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	Ô™YY™\ˆXØÙ\ÜÈ[™[ØÚÜÉË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó[ÜÝXØÙ\ÜÈ[™[È\™HHÝ[™\™Ø[HØÚÉËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÔÝ[™\™›[šÜÈÛÝ™\ˆ[ÜÝXØÙ\ÜÈ[™[ÉËˆ›ÝNˆ	ÕH™YœšYÙ\˜][Ûˆ[š]ÛˆH›ÜÙHÙˆH˜Z[\‹ˆ][œÈÛˆ]ÈÝÛˆ[™Ú[™H[™]ÈÝÛˆÛÛ›Û\‹[™]Ù\È›Ý]™H[ˆYÛš][ÛˆÙ^H8 %HXØÙ\ÜÈ[™[È\™HØ[K[ØÚÙYÈÙY\[ÜHÝ]ÙˆHY[[™HÛÛ›ÛËˆ]\ÈÚ]HØ[X›Ý]H›ØÚÙY™YY™\ˆˆ\ÝX[HYX[œË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÐXØÙ\ÜÈ[™[Ø[HØÚÜÉÈJK‚ˆÊˆKKKHX\™\]Z\Y[KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	Ù›ÜšÛYXÛÛ[[Û‹LNMÌLŒ‰ËZÎˆ	ÕÞ[ÝH›ÜšÛY	ËYˆ	Ñ›ÜšÛY
+Þ[ÝHÈ\Ý\ˆÈX[HÈÛ\šÈÈÜ›ÝÛˆÈš\ÜØ[ŠIËLˆNMÌLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	Ñ›ÜšÛYYÛš][Ûˆ
+ÛÛ[[ÛˆÙ]
+IË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÓX]ÚÈHœ˜[™Ù^K›ÝÈHXXÚ[™IËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐØ\œžHHœ˜[™Ù]8 %HÜÝ›ÜšÛYÙ^H\ÈHÝØÚÈ][K›ÝHXÛÙH›Ø‰Ëˆ›ÝNˆ	Ñ]™\žH›ÜšÛYÙˆHÚ]™[ˆœ˜[™[œÈHØ[YHÙ^KˆÛ™HÞ[ÝHÙ^HÝ\È]™\žHÞ[ÝHY[ˆHZ[[™Ë[™HØ[YH\ÈYHÙˆ\Ý\‹X[KÛ\šÈ[™Ü›ÝÛ‹ˆHÛX[Ù]Ùˆœ˜[™Ù^\ÈÛÝ™\œÈ[[ÜÝ[žHØ\™ZÝ\ÙHØ[[™Ý][™ÈÈÛÙH\ÈHÜ›Û™È\›ØXÚ8 %[ÝH\™HX]Ú[™ÈHœ˜[™›ÝHXXÚ[™KˆØ^HÛÈÛˆHÛ™H[™][ÝHHš\›ÝHXÛÙK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÓÜ[ˆÜ\˜]ÜˆÝ][Û‰ÈJKˆŠÈYˆ	ÙÛÛ˜Ø\XÛÛ[[Û‹LNNLŒ‰ËZÎˆ	ÐÛXˆØ\‰ËYˆ	ÑÛÛˆØ\
+ÛXˆØ\ˆÈKV‹QÓÈÈX[XZJIËLˆNNLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	ÑÛÛˆØ\YÛš][Û‰Ë[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÓX]ÚÈHœ˜[™Ù^IËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Õ™YHœ˜[™›[šÜÈÛÝ™\ˆ[[ÜÝ]™\žHØ\ÛˆH›Ü\IËˆ›ÝNˆ	ÔØ[YHYXH\È›ÜšÛYÎˆÛ™HÙ^H\ˆœ˜[™XÜ›ÜÜÈHÚÛH›Y]ˆHÛÝ\œÙKH™\ÛÜÜˆH™]\™[Y[ÛÛ[][š]H[œÈ[™™YÈÙˆØ\ÈÛˆ™YHÙ^H]\›œËˆÛÜØ\œžZ[™ÈH™YH›[šÜÈ\›X[™[H8 %HØ[ÛÛY\È[ˆÛÛœÝ[H[™]\ÈHÛË[Z[]H›Ø‹‰ËˆÜˆ	Û‹ØIË[žNˆ	ÓÜ[ˆØ\	ÈJKˆŠÈYˆ	ØÛÛ\XÝY\]Z\Y[LNMÌLŒ‰ËZÎˆ	Ð›Ø˜Ø]	ËYˆ	Ð›Ø˜Ø]ÈÝX›ÝHÈØ\ÙHÈÛÛX]ÝHÈÐ‰ËLˆNMÌLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	Ð›Ø˜Ø]ÈÝX›ÝHÈÛÛX]ÝHÈÐ‰Ë[ˆ	ÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈÙ^\YÝ\ÛˆÛÛYH™]Ù\ˆXXÚ[™\ÉËˆÞ\Îˆ	Ó›Û™KÜˆHÙ^\YÛÙIËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÓX]ÚÈHœ˜[™Ù^IËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ðœ˜[™X\Ý\ˆ›[šÜÉËˆ›ÝNˆ	ÔÚÚYÝY\œËZ[šH^Ø]˜]ÜœÈ[™ÛÛ\XÝ˜XÝÜœËˆZÙHØ][™Y\™KXXÚœ˜[™[œÈÛ™HYÛš][ÛˆÙ^HXÜ›ÜÜÈH[™H8 %ÚXÚ\È^XÝHÚH\ÙHÙ]ÝÛ[ˆÙ™ˆ›ØˆÚ]\Ë[™ÚH[ˆÝÛ™\ˆ\ÚÚ[™È[ÝHÈXZÙHÛ™H[š\]YH\ÈH™X\ÛÛ˜X›H™\]Y\Ý[ÝHØ[ˆXÝX[H[š[ˆÛÛYH™]Ù\ˆ›Ø˜Ø]È\ÙHHÙ^\YÛÙH[œÝXYÙˆHÙ^K‰ËˆÜˆ	Û‹ØIË[žNˆ	ÓÜ[ˆØX‹ÜˆHØXˆÛÜˆÚ]HÚ[\HØ[HØÚÉÈJKˆŠÈYˆ	ÛX\š[™KZYÛš][Û‹LNMÌLŒ‰ËZÎˆ	ÓY\˜Ý\žHX\š[™IËYˆ	ÓÝ]›Ø\™[™[HYÛš][Ûˆ
+Y\˜Ý\žHÈ›ÚœÛÛˆÈ]š[œYJIËLˆNMÌLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	ÓX\š[™H[HÈÝ]›Ø\™YÛš][Û‰Ë[ˆ	ÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÔÚÜÝ[™\™ÛÙHÙ\šY\È8 %™XYHÝÚ]Ú	ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHœ›ÛHHÝÚ]Ú	Ëˆ›ÝNˆ	Ò[HÝÚ]Ú\È[ˆHÚÜÝ[™\™ÛÙHÙ\šY\ËÛÈHÝÚ]Ú]Ù[ˆ\ÝX[H[È[ÝHÚ]ÈÝ]ˆH[žX\™Ú[ÝÚ]Ú\È›ÝHÙ^H[™Ø[››Ý™HÝ]ˆHØÚÙYØXš[ˆÜˆHØÚÙYÛÛœÛÛHÛˆHšYÙÙ\ˆ›Ø]\ÈÙ\\˜]H\™Ø\™HYØZ[‹Ù[ˆHÛÛ[[ÛˆØ[HØÚË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÐÛÛœÛÛHÜˆØXš[ˆ\™Ø\™K›ÝHYÛš][Û‰ÈJKˆŠÈYˆ	Ü‹Y[žKLNNLŒ‰ËZÎˆ	ÕÚ[›™X˜YÛÉËYˆ	Ô•ˆ[žH[™ÛÛ\\Y[ØÚÜÈ
+˜]Y\ˆÈšSX\šÈÈÛØ˜[[šÊIËLˆNNLNˆŒ‹Žˆ	Ù\]Z\	ËˆÝÎˆ	Ð˜]Y\ˆÈšSX\šÈÈÛØ˜[[šÉË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	ÕHÛÙH\È\ÝX[HÝ[\YÛˆHØÚÈ˜XÙHÜˆH]Ú	ËˆØ™ˆ	Û‹ØH8 %ÙYHHÚ\ÜÚ\È™XÛÜ™	ËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÙ™ˆHÝ[\YØÚÉËˆ›ÝNˆ	ÕHÛØXÚÚYHÙˆ[ˆ•‹Ú]]™\ˆ\È[™\ˆ]ˆ[žHÛÜœÈ\™H˜]Y\‹šSX\šÈÜˆÛØ˜[[šÈ[™HÛÙH\È›Ü›X[HÝ[\YšYÚÛˆHØÚËÚXÚXZÙ\È\ÈÛ™HÙˆHX\ÚY\ˆØ[ÈÛˆH\Ýˆ˜YÙØYÙH˜^\È\™Hœ™\]Y[HÒÍLH8 %HØ[YHÙ^HÜ[œÈ]™\žH˜^HÛˆHšYÈ[™[˜ÛÛY›ÜX›K]™\žH˜^HÛˆHšYÈ\šÙY™^È]ˆÝÛ™\œÈ\™HÙ[ˆÛYÈX\ˆ][™Ú[^HÈÚ[™ÙH]‰ËˆÜˆ	Û‹ØH8 %ÙYHHÚ\ÜÚ\È™XÛÜ™	Ë[žNˆ	Ô™XYHÛÙHÙ™ˆHØÚÈ˜XÙIÈJK‚ˆÊˆKKKHÓH˜[Y\]\ÈHØ][ÙÈYÚÚ\YKKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	ØÚ]žKYÝ˜[‹LNNKLNNM‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÑËTÙ\šY\È˜[ˆ
+ÌLÈÌŒÈÌÌÈÜÜ˜[ŠIËLˆNNKLNˆNNM‹Žˆ	Ý˜[‰ËˆÝÎˆ	ÐÈIË[ˆ	ÐÈIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕH[\Ú^™HÓH˜[ˆ™Y›Ü™HH^™\ÜËˆÛËZÙ^H\˜KÛÈ\ÚÈÚ]\ˆHYÛš][ÛˆÜˆHÛÜˆÙ^H\ÈHÛ™H]\ÈÜÝˆ[›Ü›[Ý\È[X™\œÈÙˆ\ÙH™XØ[YHÛÜšÈ˜[œËØ[\\ˆÛÛ™\œÚ[ÛœÈ[™Ú]H\Ù\È[™\™HÝ[ÛˆH›ØYÚ[™È[™YK‰ËˆÜˆ	Û‹ØHÛˆ[ÜÝ	Ë[žNˆ	ÕÙYÙH[™™XXÚÜˆXÛÙHHÛÜ‹ˆ›ÈÚY[‰ÈJKˆŠÈYˆ	ØÚ]žK\ÜÜ‹XØ\]˜KLŒËLŒMIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÔÔˆÈØ\]˜HÜÜ	ËLˆŒËLNˆŒMKŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLLHÈŒL‰Ë[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHˆÈÌÉËˆÞ\Îˆ	Ô\ÜÛØÚÈÈÌÉËÛÛ™Nˆ	Ñ\[™ÈÛˆHYX\‰ËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÎHÜˆÓLÍÉËˆØ™ˆ	ÖY\ÈÚ]HÓKXØ\X›HÛÛ	ËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›ˆÛˆÛÛYIËZÛˆ	ÓÐ‘
+È™[X\›‰Ëˆ›ÝNˆ	ÕÛÈÙ]Y\È[™\ˆÛ™H[™KˆHÔÔˆ\ÈH™]˜XÝX›KZ\™ÜXÚÝ\Z[ÛˆH˜Z[›^™\ˆœ˜[YNÈHØ\]˜HÜÜ\ÈH›Y][Û›H™X˜YÙHÙˆHØ]\›ˆYHÛÛÈ™[[ÛÛ\[šY\Ëˆ™Z]\ˆÚ\™\È]XÚÚ][ž][™È[ÙHÙX\š[™ÈH›ÝÝYK‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHÈÝZ]HÞ[[™\‰ÈJKˆŠÈYˆ	ØÚ]žK]›ÛLŒLKLŒNIËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Õ›Û	ËLˆŒLKLNˆŒNKŽˆ	ØØ\‰ËˆÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHˆ
+]YÌŠIËÞ\Îˆ	ÑÓH\ÜÚ]™H[žIËˆÛÛ™Nˆ	Ó›ÉË™[NˆÖÉÜ›Þ	Ë	ÓÒLŒLL‰Ë	ÉË	Í‰×WKˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÎIËˆØ™ˆ	ÖY\ÈÚ]HÓKXØ\X›HÛÛ	ËÛŽˆ	ÐYXKY›ØˆÚ]HÛÜšÚ[™È›Ø‰ËZÛˆ	ÓÐ‘
+È™[X\›‰Ëˆ›ÝNˆ	ÐH˜[™ÙKY^[™YXœšY›ÝH\™HU‹ÛÈ]\ÈHL•ˆ˜]\žH[ˆH\ÝX[XÙH[™™Z]™\ÈZÙH[žHÝ\ˆÓHÙˆ]ÈYX\‹ˆH›Û]™\XÙ\È]\ÈHY™™\™[Ø\ˆ[™\È]ÈÝÛˆ™XÛÜ™‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Õ˜[]›YH[ˆH›Ø‰ÈJKˆŠÈYˆ	ØÚ]žK\š^›KLNNNLŒ‰ËZÎˆ	ÐÚ]œ›Û]	ËYˆ	Ôš^›IËLˆNNNLNˆŒ‹Žˆ	ØØ\‰ËˆÝÎˆ	ÕÖMÈÈÉË[ˆ	ÕÖMÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖMËÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØHÛˆ[ÜÝ	ËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕH’ÐH[™^Ý[š[\È\È\ÈHÙ[Èš^›H]™[ˆ›ÜˆHÚ]œ›Û]X˜YÙYYX\œËÛÈÙX\˜ÚÙ[ÈYˆHYX\ˆXÚÙ\ˆÛÛY\È\[\KˆHÛÜ›ÛHZ[]•SSRH[ˆœ™[[ÛÚ]H›ÝÝYHÛˆ]ˆ]ZÙ\ÈHÞ[ÝHÙ^K›ÝHÓHÛ™H8 %[HÖMË›ÝH‹\Ù\šY\ËˆHÙ[ËX˜YÙYYX\œÈ\™HHÝ\ˆ™XÛÜ™\™K‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHÖMÉÈJKˆŠÈYˆ	ØÚ]žK\ÜXÝ[K\Üš[LNNKLNNLÉËZÎˆ	ÐÚ]œ›Û]	ËYˆ	ÔÜXÝ[HÈÜš[ÈÙ[ÈÝÜ›IËLˆNNKLNˆNNLËŽˆ	ØØ\‰ËˆÝÎˆ	Ò\Ý^H[™Ý^ZÚH]\›œË›ÝÓIË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕH’ÐH[™^š[\È\ÙH[™\ˆÙ[È˜[Y\È]™[ˆ›ÜˆHÚ]œ›Û]X˜YÙYYX\œËˆØ\]™H[\ÜÎˆHÜXÝ[H[™ÝÜ›H\™H\Ý^KHÜš[\ÈÝ^ZÚKˆ[™YHÙX\ˆH›ÝÝYH[™›Û™HÙˆ[HZÙ\ÈHÓHÙ^Kˆ\È\ÈHØ[YH˜\\ÈHš^›H[™]Ø]Ú\È[ÜH]™\žH[YK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛXXËYš\™Xš\™LNN‹LNNL‰ËZÎˆ	ÔÛXXÉËYˆ	Ñš\™Xš\™È˜[œÈ[H
+\™Ù[™\˜][ÛŠIËLˆNN‹LNˆNNL‹Žˆ	ØØ\‰ËˆÝÎˆ	ÐÈKŒˆ[]œ›ÛHNN‰Ë[ˆ	ÐÈHÈŒ‹T	ËˆÚ\ˆ	Ó›Û™H›ÝYÚNNNÈUÈ™\Ú\ÝÜˆ[]œ›ÛHNN‰ËˆÞ\Îˆ	Ó›Û™K[ˆUÉËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍËÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙNÈÛˆUÈ™XYH[]˜[YHš\œÝ	Ëˆ›ÝNˆ	ÓÛ™HÙˆHÛÈØ\œÈUÈ][˜ÚYÛˆ[ˆNN‹[Û™ÜÚYHHÛÜ™]H8 %ÚXÚ\ÈÚHH\™YÙ[™\˜][Ûˆ‹X›ÙH\ÈHÛ\ÜÚXÈ’HÝ]]\™™XÝH[™]Ý[Ú[›ÝÝ\ˆØ[ˆÚXÚÈH›YH›ÜˆH[]™Y›Ü™H[ÝH][ÝKˆH›Ý\YÙ[™\˜][ÛˆØ\ˆœ›ÛHNNLÈ\ÈHÝ\ˆ™XÛÜ™\™K‰ËˆÜˆ	Û‹ØH
+™KSÐ‘RRJIË[žNˆ	ÕÙYÙH[™™XXÚÈH]ÚÛ\ÜÈ\È^[œÚ]™KX]™H][Û™IÈJKˆŠÈYˆ	ÜÛXXË]˜[œÜÜÜLNNLLNNM‰ËZÎˆ	ÔÛXXÉËYˆ	Õ˜[œÈÜÜÈÚ]œ›Û][Z[˜HTˆÈÛÈÚ[ÝY]IËLˆNNLLNˆNNM‹Žˆ	Ý˜[‰ËˆÝÎˆ	ÐÈIË[ˆ	ÐÈIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕH\ÝXËX›ÙYY™\Ý\Ý\ˆˆZ[š]˜[œËˆÛÛ\ÜÚ]H›ÙH[™[ÈÝ™\ˆHÝY[ÜXÙHœ˜[YKÛÈ\™H\È›Ý[™ÈÈÙYÙHYØZ[œÝÛˆHÛÜˆÚÚ[ˆ8 %ÛÈ›ÜˆHØÚË›ÝHØ\‰ËˆÜˆ	Û‹ØHÛˆ[ÜÝ	Ë[žNˆ	ÑXÛÙHHÛÜŽÈÈ›ÝÙYÙHHÛÛ\ÜÚ]H[™[	ÈJKˆŠÈYˆ	ØZXÚË\™X]KLNN‹LNNLIËZÎˆ	ÐZXÚÉËYˆ	Ô™X]HÈÚÞZ]ÚÈÈÛÛY\œÙ]ÈÙ[\žH
+X\›JIËLˆNN‹LNˆNNLKŽˆ	ØØ\‰ËˆÝÎˆ	ÐÈIË[ˆ	ÐÈIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕÛËZÙ^H\˜KˆH™X]H\ÈH[™XZ[ÛË\ÙX]\ˆÚ]HÝXÚØÜ™Y[ˆ\Ú[ˆNNÚXÚ\ÈHÝ\š[ÜÚ]H˜]\ˆ[ˆHØÚÈ›Ø›[H8 %HØÚÜÈ\™HÜ™[˜\žHÓK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÛÛËYš\™[ž˜KLNNKLNNM‰ËZÎˆ	ÓÛÛ[Øš[IËYˆ	Ñš\™[ž˜HÈÛYYØHÈØ[Z\ÈÈÝ\ÝÛHÜZ\Ù\‰ËLˆNNKLNˆNNLËŽˆ	ØØ\‰ËˆÝÎˆ	ÐÈIË[ˆ	ÐÈIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHÛÛ[Øš[H˜[Y\]\ÈHÝ\ˆ™YH™XÛÜ™È\™HÈ›Ý™XXÚˆÛËZÙ^H\˜H›ÝYÚÝ]‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØØY[XËXÚ[X\œ›Û‹LNN‹LNN	ËZÎˆ	ÐØY[XÉËYˆ	ÐÚ[X\œ›Û‰ËLˆNN‹LNˆNNŽˆ	ØØ\‰ËˆÝÎˆ	ÐÈIË[ˆ	ÐÈIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐHÚ]œ›Û]Ø]˜[Y\ˆÚ]HÜ™X]ÛˆHÜš[K[™]Ù^\ÈZÙHÛ™KˆÚ]]™\ˆH˜YÙHØ^\ËšXÙH]\ÈH‹X›ÙK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØØY[XË^ËLŒLËLŒNIËZÎˆ	ÐØY[XÉËYˆ	ÖÉËLˆŒLËLNˆŒNKŽˆ	ØØ\‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓHˆ
+]YÌŠIËˆÞ\Îˆ	ÑÓH\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÒTLP‰Ë	ÉË	ÍPˆÚ]™[[ÝHÝ\	×WKˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÈÚ]HÓKXØ\X›HÛÛ	ËÛŽˆ	ÐYXKY›ØˆÚ]HÛÜšÚ[™È›Ø‰ËZÛˆ	ÓÐ‘
+ÈÙXÝ\š]H™[X\›‰Ëˆ›ÝNˆ	ÒX]žH]™\žH[™[™\˜[XÛØXÚÛÜšÈ8 %HÝ™]ÚY[™X\œÙH™\œÚ[ÛœÈ\™HZ[Ûˆ\È]›Ü›KÛÈHÚ[™ÛHØ[Ø[ˆ[›Û™HHØ\ˆÚXÙHH[™ÝÙˆHÛ™H[ˆHØ][ÙÈÚ]^˜HÛÜœÈ][ZÙHHØ[YHÙ^K‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Ð›YHœ›ÛHH›Ø‰ÈJKˆŠÈYˆ	ØØY[XË[Ü\K]š\Ý\KLŒKLŒ‰ËZÎˆ	ÐØY[XÉËYˆ	ÓÜ\HÈš\Ý\IËLˆŒKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓHQTÉËˆÞ\Îˆ	Õ[][H\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÐÛÛ™š\›HÛÛÛÝ™\˜YÙH8 %\ÙH\™H™]ÉËÛŽˆ	ÐYXKY›ØˆÚ]HÛÜšÚ[™È›Ø‰ËˆZÛˆ	ÑX[\ˆÛˆ[ÜÝÛÛÈÙ^IËˆ›ÝNˆ	ÕHÛX[\ˆ[][HØY[XÜÈ™[ÝÈH\š\KˆÝÙ\™YÛÜˆ[™\ËÛÈH›]L•ˆX]™\ÈH›YH[ˆH›Øˆ\ÈHÛ›HØ^H[‹‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ð›YHœ›ÛHH›Ø‰ÈJK‚ˆÊˆKKKHÚž\Û\ˆKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	ÙÙÙKZØØ\‹LNNKLNNMIËZÎˆ	ÑÙÙIËYˆ	Ð\šY\ÈÈ\ÛX]ÈÛ[šHÈ[˜\ÝHÈ^]Û˜IËLˆNNKLNˆNNLËŽˆ	ØØ\‰ËˆÝÎˆ	ÖLMLHÈLMLˆÈLMMIË[ˆ	ÖLMLHÈLML‰ËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHËXØ\ˆ˜[Z[H[™HKX›ÙH\ÛX]ÚXÚØ\ÈHÛXÙHØ\ˆÙˆ]È^H[™Ý\š]™\È[ˆ›Y][™ÛÛXÝÜˆ[™ËˆH[[Ý]™[X[\ÈHØ[YHËXØ\ˆ[™\ˆHÝ\ˆ˜YÙH[™Ú]È[ˆH[[Ý]™XÛÜ™ËˆÛËZÙ^H\˜NˆHYÛš][Ûˆ[™HÛÜˆZÙHY™™\™[›[šÜË‰ËˆÜˆ	Û‹ØH
+™KSÐ‘RRJIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØÚž\Û\‹YÜ˜[™XØ\˜]˜[‹LŒŒKLŒŒIËZÎˆ	ÐÚž\Û\‰ËYˆ	ÑÜ˜[™Ø\˜]˜[ˆ
+ŒŒHÛ›JIËLˆŒŒKLNˆŒŒKŽˆ	Ý˜[‰ËˆÝÎˆ	ÐÖL
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÖLMÌT	ËÚ\ˆ	ÍH
+]YÈQTÊIËˆÞ\Îˆ	Ô‘ˆXˆÈÙXÝ\š]HØ]]Ø^IËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐˆÈP‰×KÉÙ›Ø‰Ë	ÉË	ÉË	Ð›YKX[™\™[[ÝHXYÛˆ˜\ÙHš[\É×WKˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËˆØ™ˆ	Õ›ÝYÚHÙXÝ\š]HØ]]Ø^HÚ]HÝ\œ™[ÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÑØ]]Ø^HXØÙ\ÜÈ™\]Z\™Y	Ëˆ[Žˆ	ÖY\ÉËˆ›ÝNˆ	Ñ›ÜˆÛ™H[Ù[YX\ˆÝ[[\È[Ý™YHÜ˜[™Ø\˜]˜[ˆœ›ÛHÙÙHÈÚž\Û\ˆ™Y›Ü™H™[˜[Z[™È]›ÞXYÙ\‹ˆØ[YH˜[ˆZ]\ˆØ^K]H˜YÙHÛˆH\\ÛÜšÈXÚY\ÈÚXÚ™XÛÜ™[ÝH\™HÛÚÚ[™È][™HŒŒHÚ[›Ý™H›Ý[™[™\ˆÙÙK‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHÖL	ÈJKˆÊˆKKKH˜\[™\ÙH˜[Y\]\ÈHØ][ÙÈYÚÚ\YKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	ØXÝ\˜K[œÞLNNLLŒIËZÎˆ	ÐXÝ\˜IËYˆ	Ó”Ö	ËLˆNNLLNˆŒKŽˆ	ØØ\‰ËˆÝÎˆ	ÒLHÈL‰Ë[ˆ	ÒLIËÚ\ˆ	Ó›Û™HX\›NÈÛ™H[[[Øš[^™\ˆÛˆH]\ˆØ\œÉËˆÞ\Îˆ	Ó›Û™K[ˆÛ™H[[[Øš[^™\‰ËÛÛ™Nˆ	ÖY\ÈÚ\™HHÚ\\Èš]Y	ËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓ‹Üˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	ÒÛ™KXØ\X›HÛÛÛˆH[[[Øš[^™YYX\œÉËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘ÜˆÜXÚX[\Ý	Ëˆ›ÝNˆ	Ð[[Z[š][H[Û›ØÛÜ]YK[™XZ[[ˆØÚYÚK[™ÛÜÙ\š[Ý\È[Û™^H›ÝÈ8 %È›ÝÙYÙHÛ™H[™È›Ýš[Û™Kˆ\™H\È›È”Ö][›ÜˆŒˆ›ÝYÚŒMNÈ]Ø\[ˆHÛÝ™\˜YÙH\™H\È™X[›ÝZ\ÜÚ[™È]K‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\ÚÛˆH]\ˆØ\œÉËˆ[žNˆ	Ó\ÚHÓ‹ˆ[[Z[š][H›ÙH[™[È[Yˆ[ÝHÛÚÈ][K‰ÈJKˆŠÈYˆ	ØXÝ\˜K[œÞLŒM‹LŒŒ‰ËZÎˆ	ÐXÝ\˜IËYˆ	Ó”Ö	ËLˆŒM‹LNˆŒŒ‹Žˆ	ØØ\‰ËˆÝÎˆ	ÒÌH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒÛ™HÛX\Ù^IËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÔÛX\›Ø‰×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÒÛ™KXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\ˆÛˆ[ÜÝÛÛÉËˆ›ÝNˆ	Ó›Ý[™È[ˆÛÛ[[ÛˆÚ]Hš\œÝ”Ö]H˜[YKˆZ[[ˆÚ[ËXœšY[™Ù^[\ÜÈ8 %\™H\È[ˆ[Y\™Ù[˜ÞH›YH[ˆH›Øˆ[™HY[ˆÞ[[™\ˆ™Z[™HØ\ÛˆHš]™\ˆ[™K‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	ÐØ\Ù™ˆHš]™\ˆ[™K[ˆH›YIÈJKˆŠÈYˆ	ØXÝ\˜K\ÛLNNM‹LNNNIËZÎˆ	ÐXÝ\˜IËYˆ	ÔÓ	ËLˆNNM‹LNˆNNNKŽˆ	ÜÝ]‰ËˆÝÎˆ	Ò\Ý^H\Ù\šY\ÉË[ˆ	ÖŒÌÈMÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ð[ˆ\Ý^H›ÛÜ\ˆÚ][ˆXÝ\˜H˜YÙKˆ]ZÙ\È[ˆ\Ý^HÙ^K›ÝHÛ™HÛ™H8 %HØ[YH˜\\ÈHš^›H[™HÜXÝ[KÛˆH[Ü™H^[œÚ]™HØ\‹‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ØXÝ\˜KXYLŒKLŒ‰ËZÎˆ	ÐXÝ\˜IËYˆ	ÐQ	ËLˆŒKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒÌH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÒÌKT	ËÚ\ˆ	ÒÛ™HQTÉËˆÞ\Îˆ	ÒÛ™HÛX\[žIËÛÛ™Nˆ	Ó›ÉËˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÓ‰ËˆØ™ˆ	ÐÝ\œ™[Û™KXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛÛ™š\›HÛÝ™\˜YÙH™Y›Ü™H][Ý[™È8 %\È\È™]ÉËˆ›ÝNˆ	ÐXÝ\˜HÛˆH‹Uˆ]›Ü›KˆÛÈ™]È›ÜˆYHÈÚ]™H[ÝHH›Øˆ\[X™\ˆHÛÝ[Ý[™™Z[™È™\šYžHYØZ[œÝ[Ý\ˆÝ\Y\‹‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	ÐØ\Ù™ˆHš]™\ˆ[™K[ˆH›YIÈJKˆŠÈYˆ	ÚÛ™K\›ÛÙÝYKLŒLŒ‰ËZÎˆ	ÒÛ™IËYˆ	Ô›ÛÙÝYIËLˆŒLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓHQTÉËˆÞ\Îˆ	ÑÓH[][H\ÜÚ]™H[žIËÛÛ™Nˆ	Ó›ÉËˆÜˆLˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÑÓKXØ\X›HÛÛ›ÝHÛ™HÛ™IËÛŽˆ	ÐYXKY›ØˆÚ]HÛÜšÚ[™È›Ø‰ËZÛˆ	ÐÛÛ™š\›HÛÝ™\˜YÙIËˆ›ÝNˆ	ÐHÛ™H˜YÙHÛˆHÓH[][H]›Ü›KZ[[Û™ÜÚYHHÚ]œ›Û]›^™\ˆU‹ˆ]Ù^\ÈZÙHHÓH[™]™YYÈHÓHÛÛˆHÛ™K[Û›HÛÛÚ[›ÝÝXÚ][™]\ÈÛÜÛ›ÝÚ[™È™Y›Ü™H[ÝHš]™HÝ]‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ð›YHœ›ÛHH›Ø‰ÈJKˆŠÈYˆ	ÚÛ™KX]ËLNMÌLNNÉËZÎˆ	ÒÛ™IËYˆ	ÐUÈ™YK]ÚY[\‰ËLˆNMÌLNˆNNËŽˆ	Û[ÝÉËˆÝÎˆ	ÒLHÈÓIË[ˆ	ÒLIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹Üˆ™XYHÝÚ]Ú›ÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙH8 %HÝÚ]Ú\ÈÙ[ˆÝ[\Y	Ëˆ›ÝNˆ	Õ™YK]ÚY[\œÈÙ\™H[Yœ›ÛHHTÈX\šÙ][ˆNNÈ[™\ˆHÛÛœÙ[XÜ™YKÛÈ]™\žHÛ™H[ÝHÙYH\È]X\Ý]Û[™\ÈZ]\ˆH™\ÝÜ˜][ÛˆÜˆH˜\›HXXÚ[™H]™]™\ˆYH›Ü\KˆX[žH[Ù[È]™H›ÈYÛš][ÛˆØÚÈ][8 %HÚ[ÝÚ]Ú[™H[Ý\ˆ\ÚÈ™Y›Ü™H[ÝHš]™HÝ]‰ËˆÜˆ	Û‹ØIË[žNˆ	Ó›Ý[™ÈÈÜ[‰ÈJKˆŠÈYˆ	ÝÞ[ÝK]\˜Ù[LNNLNNNIËZÎˆ	ÕÞ[ÝIËYˆ	Õ\˜Ù[ÈÝ\›]ÈÛÜ›ÛH–	ËLˆNNLNˆNNNKŽˆ	ØØ\‰ËˆÝÎˆ	ÕÈÈÖM	Ë[ˆ	ÕÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØHÛˆ[ÜÝ	ËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕÛËZÙ^H\˜HÛˆHX\›Y\ÝˆHX\Ý\ˆ]Ù\È]™\ž][™È[™H˜[]]Ù\ÈHÛÜœÈ]›ÝH[šÈÜˆHÛÝ™X›Þˆ\ÚÈÚXÚÛ™H^HÜÝ‰ËˆÜˆ	Û‹ØHÛˆ[ÜÝ	Ë[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝÞ[ÝKXÜ™\ÜÚYKLNMÎLNNL‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÐÜ™\ÜÚYHÈÛÜ›Û˜HÈ˜[‰ËLˆNMÎLNˆNNL‹Žˆ	ØØ\‰ËˆÝÎˆ	ÕÈÈÖM	Ë[ˆ	ÕÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHÜ™\ÜÚYH\ÈH™X\‹Yš]™HÞ[ÝHX›Ý™HHØ[\žH[™Ú\™\ÈHÝÚ]HÝ\˜HÙˆ]È^KˆH˜[ˆ\ÈHZYY[™Ú[™YØX›Ý™\ˆ]™Y]\ÈH™]šXK[™]ÈYÛš][Ûˆ\È\šYY[™\ˆH\Ú™]ÙY[ˆHÙX]È8 %[ÝÈ^˜H[YK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÝX˜\K\ÝžLNNL‹LNNMÉËZÎˆ	ÔÝX˜\IËYˆ	ÔÕ–	ËLˆNNL‹LNˆNNMËŽˆ	ØØ\‰ËˆÝÎˆ	ÔÕPÈUMÉË[ˆ	ÔÕP	ËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÕPÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHÚ]YÚX\›Ë\Ý[YÛÝ\HÚ]HÚ[™ÝË]Ú][‹XK]Ú[™ÝÈÛ\ÜËˆ]Ü]ÚYHÛ\ÜÈ\Èœ˜YÚ[H[™\œ™\XÙXX›H8 %È›ÝÙYÙHÛ™KXÛÙHHØÚË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÑXÛÙHHÛÜ‹ˆÈ›ÝÝXÚHÛ\ÜË‰ÈJKˆŠÈYˆ	ÜÝX˜\K]˜Z[ÙYZÙ\‹LŒ‹LŒ‰ËZÎˆ	ÔÝX˜\IËYˆ	Õ˜Z[ÙYZÙ\ˆÈ[˜Ú\Y	ËLˆŒ‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÔÕP
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÉËÚ\ˆ	ÔÝX˜\HQTÉËÞ\Îˆ	ÔÝX˜\HÛX\Ù^IËˆÛÛ™Nˆ	Ó›ÉËÜˆ	ÉËˆ	ÉËÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÉËˆØ™ˆ	ÐÛÛ™š\›HÛÛÛÝ™\˜YÙH8 %\ÙH\™H™]ÉËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\ˆÛˆ[ÜÝÛÛÈÙ^IËˆ›ÝNˆ	ÔÝX˜\H[XÝšXÈÕUœÈZ[Ú]Þ[ÝKZÙHHÛÛ\œ˜KˆÛÈ™]È›ÜˆH›[šÈ[X™\ˆHÛÝ[Ý[™™Z[™È™\šYžH™Y›Ü™H[ÝHÜ™\‹‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ñ[Y\™Ù[˜ÞH›YH™Z[™H[™HØ\	ÈJKˆŠÈYˆ	Ú][™ZK[™^ËZ[Ûš\M‹LŒNKLŒ‰ËZÎˆ	Ò][™ZIËYˆ	Ó™^ÈÈ[Ûš\H‰ËLˆŒNKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLŒˆ
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÒLŒ‹T	ËÚ\ˆ	Ò][™ZHQTÉËˆÞ\Îˆ	Ò][™ZHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	Í‹\ÈHYÚ][Ù^HÛˆÛÛYHš[\É×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÉËˆØ™ˆ	ÐÝ\œ™[ÛÛÚ]S‹XžKU’SˆÛÝ™\˜YÙIËÛŽˆ	Ó›ÉËZÛˆ	ÔSˆ[ˆÐ‘	Ë[Žˆ	ÖY\ÉËˆ›ÝNˆ	ÕH™^È\ÈHY›ÙÙ[ˆY[XÙ[Ø\ˆÛÛ[ˆH[™[ÙˆØ[Y›Ü›šXHX\šÙ]ËÛÈYˆ[ÝH\™H[ˆØ[ˆZ\ÈØš\ÜÈ[ÝHÚ[]™[X[HÙYHÛ™KˆH[Ûš\Hˆ\ÈHÙY[ˆ[Û™ÜÚYHH[Ûš\HKÚXÚ\È]ÈÝÛˆ™XÛÜ™ˆH›\ÚÛÜˆ[™\È\™HÝÙ\™Y[™Ú[›Ý™\Ù[ÛˆHXYL•‹‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Ñ[Y\™Ù[˜ÞH›YH™Z[™H[™HØ\	ÈJKˆŠÈYˆ	Ú\Ý^KZÛXœ™KLNNM‹LŒ	ËZÎˆ	Ò\Ý^IËYˆ	ÒÛXœ™IËLˆNNM‹LNˆŒŽˆ	ÝXÚÉËˆÝÎˆ	ÐŒLˆÈŒL‰Ë[ˆ	ÐŒL‹T	ËÚ\ˆ	Ó›Û™HX\›NÈ\ÜÛØÚÈÛˆ]\‰ËˆÞ\Îˆ	Ó›Û™KÜˆ\ÜÛØÚÉËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËØ™ˆ	Ó[Z]Y	ËˆÛŽˆ	ÌL[Z[ˆ™[X\›ˆÛˆ\ÜÛØÚÉËZÛˆ	ÐÝ]žHÛÙKÜˆÌ[Z[ˆ™[X\›‰Ëˆ›ÝNˆ	ÐHÚ]œ›Û]ËLLÚ][ˆ\Ý^H˜YÙH8 %H˜YH[›š[™ÈHÝ\ˆØ^Hœ›ÛHHÜXÝ[H[™HÓˆ\ÈÛ™HZÙ\ÈHÓHÙ^K›Ý[ˆ\Ý^HÛ™K‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	Ú\Ý^K[Ø\Ú\ËLNNM‹LNNNIËZÎˆ	Ò\Ý^IËYˆ	ÓØ\Ú\ÉËLˆNNM‹LNˆNNNKŽˆ	Ý˜[‰ËˆÝÎˆ	ÒLÈLIË[ˆ	ÒLIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓ‹Üˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐHš\œÝYÙ[™\˜][ÛˆÛ™HÙ\ÜÙ^HÚ][ˆ\Ý^H˜YÙKœ›ÛHHYX\œÈHÛÈÛÛ\[šY\ÈÝØ\Y™ZXÛ\ËˆÛ™HÙ^\ËÛ™HØÚÜË‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHÓ‰ÈJKˆŠÈYˆ	Ú\Ý^K\XÚÝ\LNNKLNNMIËZÎˆ	Ò\Ý^IËYˆ	ÔXÚÝ\È[\[ÙHÈÝ[\ÈÈKSX\šÉËLˆNNKLNˆNNMKŽˆ	ÝXÚÉËˆÝÎˆ	Ò\Ý^H\Ù\šY\ÉË[ˆ	ÖŒÌÈMÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕH\Ý^KX˜YÙY™\œÚ[ÛœÈÙˆÚ]ÓH[ÛÈÛÛ\ÈHÚ]œ›Û]U‹ÜXÝ[H[™ÝÜ›KˆÙ[Z[™H\Ý^H\™Ø\™H\™K[›ZÙHHÛXœ™K‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÛZ]ÝXš\ÚKY^ËLNNËLNNM‰ËZÎˆ	ÓZ]ÝXš\ÚIËYˆ	Ñ^ÈÈ^È•ˆÈ™XÚ\ÈÈ™YXIËLˆNNËLNˆNNM‹Žˆ	Ý˜[‰ËˆÝÎˆ	ÓRUHÈRU‰Ë[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕH^È[ÛÈÛÛ\ÈHXYÛHÝ[[Z]ØYÛÛˆ[™H[[Ý]ÛÛš\ÝKˆH™XÚ\È\ÈH™X˜YÙY][™ZH^Ù[ÛÈ]Û™HZÙ\ÈH][™ZHÙ^H8 %™XYH˜YÙH[™[ˆÚXÚÈH›YK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ù]Ý[‹LNMÌLNN‰ËZÎˆ	Ñ]Ý[‰ËYˆ	ÌŒLÈLLÈŽ–ÈŒŒLÈÌŒXÚÝ\	ËLˆNMÌLNˆNNŽˆ	ØØ\‰ËˆÝÎˆ	ÑLŒÈÈLÈLIË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Ûˆ8 %\ÜÝ[YH›ÈÛÙH™XÛÜ™Ý\š]™\ÉËˆ›ÝNˆ	ÕH’ÐH[™^Û›HØ\œšY\È]Ý[ˆ›ÜˆNNH[™NN‹ÛÈ[[ÜÝ›Û™HÙˆ\ÈÚ[\X\ˆ[ˆHYX\ˆXÚÙ\‹ˆš[Y\È]ÈÝÛˆXZÙH™XØ]\ÙH]\ÈÚ]\ÈÛˆHØ\ˆ[™Ú]HÝÛ™\ˆÚ[[[ÝHÛˆHÛ™Kˆš\ÜØ[ˆ›ÜYH]Ý[ˆ˜[YH[ˆHTÈÝ™\ˆNN‹LNN[™HNN\ÈÙ\™H[š\ÜØ[‹ÛÈ[ˆX\›KYZYÚY\ÈØ\ˆØ[ˆÙX\ˆZ]\ˆ˜YÙKˆ™\ÝÜ˜][ÛˆÛÜšÎˆ[\™\ÜÚ[Ûˆ˜]\ˆ[ˆš[HÝÚ]Ú\È\™H›Ý™Z[™ÈXYK‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚÜˆXÛÙHHÛÜ‰ÈJKˆÊˆKKKH]\›ÜX[ˆ˜[Y\]\ÈHØ][ÙÈYÚÚ\YKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	Ø]YKNNLLNNLNNN	ËZÎˆ	Ð]YIËYˆ	ÎÈLÈÛÝ\HÈØXœš[Û]ÈLÈŒ	ËLˆNNLNˆNNNŽˆ	ØØ\‰ËˆÝÎˆ	Õ•ÌHÈMIË[ˆ	ÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈQÈ[[[Øš[^™\ˆ]H[ˆH[‰ËˆÞ\Îˆ	Ó›Û™K[ˆQÈ[[[Øš[^™\‰ËÛÛ™Nˆ	ÉËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØHÛˆ[ÜÝ	ËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Û‹ÜˆÝ]žHÛÙIËˆ›ÝNˆ	Ô™KPM]YK™Y›Ü™HH[X™]˜[Z[™È[™™Y›Ü™HHMˆ\Ù\ˆÙ^Kˆ\ÙHZÙHHÛ•ËY˜[Z[HYÙKXÝ]›[šË›Ý[ž][™È[ÝHÛÝ[[›ÜˆH[Ù\›ˆ]YK‰ËˆÜˆ	Û‹ØHÛˆHX\›Y\Ý	Ë[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ø]YKY]›Û‹LŒNKLŒ‰ËZÎˆ	Ð]YIËYˆ	ÙK]›ÛˆÈMˆK]›ÛˆÈNK]›ÛˆÈK]›ÛˆÕ	ËLˆŒNKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLMŒ•
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÒLMŒ•	ËÚ\ˆ	ÒQQTÈ
+SˆÈJIËˆÞ\Îˆ	ÕQÈ[[[Øš[^™\ˆÚ]ÛÛ\Û™[›ÝXÝ[Û‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐˆÈ‰×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLMŒ•	ËˆØ™ˆ	ÓTP‹ÓS‹XØ\X›HÛÛÚ]HšYÚY\\‰ËÛŽˆ	Ó›ÉËˆZÛˆ	ÐÛÛ\Û™[›ÝXÝ[ÛˆÛÜšË›ÝH]ZXÚÈÐ‘Y	Ëˆ›ÝNˆ	ÕHK]›ÛˆÕÚ\™\È]È]›Ü›HÚ]HÜœØÚH^XØ[‹ˆ›\ÚÝÙ\™YÛÜˆ[™\È]Ú[›Ý™\Ù[ÛˆH›]L•‹[™H[Y\™Ù[˜ÞHÞ[[™\ˆ\È™Z[™HØ\ÛˆHš]™\ˆ[™K‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	ÐØ\Ù™ˆHš]™\ˆ[™K[ˆ\ÚHLMŒ•	ÈJKˆŠÈYˆ	Ø›]ËZKY[XÝšXËLŒŒ‹LŒ‰ËZÎˆ	Ð“UÉËYˆ	ÚMHÈMÈÈVÈIËLˆŒŒ‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	ÒLLˆ
+[Y\™Ù[˜ÞH›YJIË[ˆ	Ð“UÌIËÚ\ˆ	Ð“UÈQTÈ
+‘ÌŠIËˆÞ\Îˆ	Ð‘Ì‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐˆÈ‹\ÈYÚ][Ù^HÝ™\ˆUÐ‰×WKˆÜˆ	ÉËˆ	ÉËÝ]ˆ	Ó\Ù\ˆÈÛË]˜XÚÉËXÎˆ	Ó\ÚHLL‰ËˆØ™ˆ	Ð™[˜ÚÛÜšÈÛˆ[ÜÝÛÛÉËÛŽˆ	Ó›ÉËZÛˆ	Ó[Ù[H™XYÛˆH™[˜Ú	Ëˆ›ÝNˆ	ÔØ[YH‘ÌˆÙ[™\˜][Ûˆ\ÈHÌŒ[™HÌKÛÈHØ[YHØ]™X]\Y\ÎˆHÝÙˆ“UÈØ\X›HˆÛÛÈÝÜ]‘SKˆÝÙ\™Y[™\ËÛÈH›YH™Z[™H[™HØ\\ÈHØ^H[ˆÛˆHXYL•‹‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHLLˆ™Z[™H[™HØ\	ÈJKˆŠÈYˆ	Ý›Û›ËY^LŒŒ‹LŒ‰ËZÎˆ	Õ›Û›ÉËYˆ	ÑVÌÈVLÈÍ™XÚ\™ÙHÈÍ™XÚ\™ÙIËLˆŒŒ‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	Ñ[Y\™Ù[˜ÞH›YH[ˆH›Ø‰Ë[ˆ	ÉËÚ\ˆ	Õ›Û›ÈQTÉËˆÞ\Îˆ	Õ›Û›ÈÙ^[\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	Ñ›Ø‹HØ\™HÙ^K[™HÛ™HÙ^I×WKˆÜˆ	ÉËˆ	ÉËÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÉËˆØ™ˆ	Õ›Û›ËXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\Ý8 %[ˆÛˆ[Ù[HÛÜšÉËˆ›ÝNˆ	ÕHVÌ\ÈZ[[ˆÚ[˜HÛˆHÙY[H]›Ü›H[™Ú\™\È]HÚ]HÝÙY\ÚXZ[Ø\œËˆ[Ùˆ[H]™HÝÙ\™Y[™\È[™HY[ˆÞ[[™\ˆ™Z[™HØ\ÛˆHš]™\ˆ[™K‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	ÐØ\Ù™ˆHš]™\ˆ[™IÈJKˆŠÈYˆ	ÝËZY^ž‹LŒKLŒ‰ËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	ÒQˆ^ž‰ËLˆŒKLNˆŒ‹Žˆ	Ý˜[‰ËˆÝÎˆ	ÒLMŒ•
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÒLMŒ•	ËÚ\ˆ	ÒQQTÈ
+QPŠIËˆÞ\Îˆ	ÕQÈQPˆ[[[Øš[^™\‰ËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	Í‹\ÈHYÚ][Ù^I×WKˆÜˆˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLMŒ•	ËˆØ™ˆ	ÓQP‹XØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛÛ\Û™[›ÝXÝ[ÛˆÛÜšÉËˆ›ÝNˆ	ÕH[XÝšXÈZXÜ›Ø\Ë[™Hš\œÝ•È˜[ˆÛÛ\™HÚ[˜ÙHH]\›Õ˜[‹ˆÛÛ\Û™[›ÝXÝ[Ûˆ\Y\È\ÈÛˆ[žH[Ù\›ˆQÈØ\‹ÛÈYÙ]H[YK‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHLMŒ•	ÈJKˆŠÈYˆ	ÙšX]LL\ÜY\‹LŒMËLŒŒ	ËZÎˆ	ÑšX]	ËYˆ	ÌLÜY\‰ËLˆŒMËLNˆŒŒŽˆ	ØØ\‰ËˆÝÎˆ	ÓPVŒ	Ë[ˆ	ÉËÚ\ˆ	ÓX^™H[[[Øš[^™\‰ËÞ\Îˆ	ÓX^™H[[[Øš[^™\‰ËˆÛÛ™Nˆ	Ñ\[™ÈÛˆHYX\‰Ëˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	ÌÐ‹X^™K\]\›ˆ›Ø‰×WKˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHPVŒ	ËˆØ™ˆ	ÓX^™KXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÓÐ‘Ú]HX^™KXØ\X›HÛÛ	Ëˆ›ÝNˆ	ÐHX^™HVMHZ[[ˆ\›ÜÚ[XHÚ]HšX][™Ú[™H[™šX]ÚY]Y][ˆ]™\ž][™ÈX›Ý]HÙ^H[™H[[[Øš[^™\ˆ\ÈX^™H8 %HšX]ÜˆÝ[[\ÈÛÛÚ[›ÝÝXÚ]ˆ\È\ÈHÚ[™ÛH™\ÝÛÝÚH[ˆHšX][™K‰ËˆÜˆ	Ñš]™\ˆÚYH[™\ˆH\Ú	Ë[žNˆ	Ó\ÚHPVŒ	ÈJKˆŠÈYˆ	Ø™[^K]\˜›Ë\‹LNN‹LŒÉËZÎˆ	Ð™[^IËYˆ	Õ\˜›ÈˆÈZYÚÈÛÛ[™[[ˆ
+Ü™]ÙJIËLˆNN‹LNˆŒËŽˆ	ØØ\‰ËˆÝÎˆ	ÉË[ˆ	ÉËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	ÉËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØHÛˆ[ÜÝ	ËÛŽˆ	Û‹ØIËZÛˆ	ÔÜXÚX[\Ý	Ëˆ›ÝNˆ	ÐÜ™]ÙKXZ[™[^\È]Ú\™HZ\ˆ›ÙH[™Z\ˆØÚÜÈÚ]H›ÛËT›ÞXÙHÚ[™\ˆÜ\š]ÙˆHØ[YHYX\œÈ8 %]™XÛÜ™\ÈHÚX›[™ÈÈ™XY[Û™ÜÚYH\ÈÛ™KˆHÛÛ[™[[ˆ\™H\ÈHNNLKLŒÈÛÝ\H[™\È›Ý[™ÈÈÈÚ]HÛÛ[™[[Õ]\œš]™\È[ˆŒ[™\ˆ›ÛÜÝØYÙ[‹ˆ[™\Z[YÛØXÚÛÜšÎˆÙYÙH›Ý[™Ë‰ËˆÜˆ	Û‹ØHÛˆ[ÜÝ	Ë[žNˆ	ÑXÛÙHHÛÜ‹ˆÈ›ÝÙYÙK‰ÈJKˆŠÈYˆ	Ù™\œ˜\šKLœ\Ì‹LNNMKLŒ‰ËZÎˆ	Ñ™\œ˜\šIËYˆ	ÍMˆÈŒLˆØØYÛY]HÈ‘ˆÈÕÍ\ÜÛÈÈ\›ÜØ[™ÝYIËLˆNNMKLNˆŒ‹Žˆ	ØØ\‰ËˆÝÎˆ	ÔÒTŒˆÛˆHX\›Y\ˆØ\œÉË[ˆ	Ñ•T	ËÚ\ˆ	ÒQ[ˆ™\œ˜\šH›ÜšY]\žIËˆÞ\Îˆ	Ñ™\œ˜\šH[[[Øš[^™\‰ËÛÛ™Nˆ	ÒQY\ÈÛˆHX\›Y\Ý	ËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHÒTŒˆÛˆHX\›Y\ˆØ\œÉËˆØ™ˆ	ÔÜXÚX[\Ý	ËÛŽˆ	Ó›ÉËZÛˆ	ÑX[\ˆÜˆ™\œ˜\šHÜXÚX[\Ý	Ëˆ›ÝNˆ	ÕHœ›ÛY[™Ú[™YŒLˆ›Ý\‹\ÙX]\œË\È[™[˜ÛY[™ÈH\›ÜØ[™ÝYKÚXÚ\ÈHš\œÝ™\œ˜\šHÚ]›Ý\ˆÛÜœËˆHMˆÙˆHNNLÈÝ[\Ù\ÈHšX]Y\š]™YÛÙHÞ\Ý[H[™H™YX\Ý\ˆÙ^NÈH\›ÜØ[™ÝYHÙ\È›ÝˆH’ÐH[™^ÝÜÈ]ŒŒH›Üˆ™\œ˜\šKÛÈH™]Ù\ÝÙˆ\ÙHÚ[›Ý\X\ˆ[ˆHYX\ˆXÚÙ\‹‰ËˆÜˆ	Û‹ØHÛˆHX\›Y\Ý	Ë[žNˆ	ÑÈ›ÝÙYÙIÈJKˆŠÈYˆ	ÛÝ\ËY[[‹LNMÍLŒ‰ËZÎˆ	ÓÝ\ÉËYˆ	Ñ[[ˆÈ[]HÈXÛ]È]\›ÜHÈ[Z\˜HÈ]šZ˜IËLˆNMÍLNˆŒ‹Žˆ	ØØ\‰ËˆÝÎˆ	ÉË[ˆ	ÉËÚ\ˆ	Ó›Û™HÛˆHÛ\ˆØ\œÎÈ[[[Øš[^™YÛˆH[Z\˜IËˆÞ\Îˆ	Ó›Û™K[ˆ[[[Øš[^™Y	ËÛÛ™Nˆ	ÉËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	ÔÜXÚX[\ÝÛˆH[Ù\›ˆØ\œÉËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\Ý	Ëˆ›ÝNˆ	ÕH’ÐH[™^ÝÜÈ]ŒH›ÜˆÝ\ËÛÈH[Z\˜H[™H]šZ˜HÚ[›Ý\X\ˆ[ˆHYX\ˆXÚÙ\‹ˆHÝ\È˜[Y\]\ÈH\Üš]™XÛÜ™Ù\È›Ý™XXÚˆšXœ™YÛ\ÜÈ›ÙY\ÈÛˆHÝY[˜XÚØ›Û™HÚ\ÜÚ\È›ÝYÚÝ]ÛÈ\™H\È›Ý[™ÈÝXÝ\˜[™Z[™HÛÜˆÚÚ[ˆÈÙYÙHYØZ[œÝˆÙY[HÝÛœÈÝ\È›ÝÈ[™H[Z\˜H[™]šZ˜H\™HHY™™\™[ÛÜ›[XÝšXØ[Hœ›ÛHHÛ\ˆØ\œË‰ËˆÜˆ	Û‹ØHÛˆHÛ\ˆØ\œÉË[žNˆ	ÑÈ›ÝÙYÙHšXœ™YÛ\ÜÉÈJKˆŠÈYˆ	Ü]YÙ[ÝLNNKLNNLIËZÎˆ	Ô]YÙ[Ý	ËYˆ	ÍHÈLHÈŒÈL	ËLˆNNKLNˆNNLKŽˆ	ØØ\‰ËˆÝÎˆ	ÉË[ˆ	ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆXÛÙHHÛÜ‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Ûˆ8 %\ÜÝ[YH›ÈÛÙH™XÛÜ™Ý\š]™\ÉËˆ›ÝNˆ	Ô]YÙ[ÝYHTÈX\šÙ][ˆNNLH[™\™H\È™Y[ˆ›È\ÈÚ[›™[Ú[˜ÙKˆÚ]]™\ˆ\ÈÛˆHØ\ˆ\ÈÚ][ÝHÛÜšÈÚ][™H]™H›ÈÙ^]Ø^H›ÜˆH[™HHØ[ˆÚ]KˆHLHØYÛÛˆ\ÈHÛ™H[ÝH\™H[ÜÝZÙ[HÈYY]‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÛ\Ý\‹LKLËMLŒNKLŒ‰ËZÎˆ	ÔÛ\Ý\‰ËYˆ	ÔÛ\Ý\ˆHÈÛ\Ý\ˆÈÈÛ\Ý\ˆ	ËLˆŒNKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	Ñ[Y\™Ù[˜ÞH›YH[ˆH›Ø‰Ë[ˆ	ÉËÚ\ˆ	Õ›Û›ËY˜[Z[HQTÉËˆÞ\Îˆ	ÔÛ\Ý\ˆÙ^[\ÜÉËÛÛ™Nˆ	Ó›ÉËˆ™[NˆÖÉÜ›Þ	Ë	ÉË	ÉË	Ñ›Ø‹\ÈHÛ™HÙ^I×WKˆÜˆ	ÉËˆ	ÉËÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	ÉËˆØ™ˆ	Õ›Û›ËXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÔÜXÚX[\Ý	Ëˆ›ÝNˆ	Õ›Û›È\™Ø\™H[™\›™X]ÛÈH›Û›ËXØ\X›HÛÛÙ]È\\ˆ[ˆ[ž][™ÈÛ\Ý\‹\ÜXÚYšXËˆHÛ\Ý\ˆ\È›È™X\ˆÚ[™ÝÈ][8 %HØ[Y\˜H™YYÈHZ\œ›Üˆ8 %ÚXÚX]\œÈYˆ[ÝHÙ\™H[›š[™ÈÈÛÚÈ›ÝYÚ]‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	ÐØ\Ù™ˆHš]™\ˆ[™IÈJKˆŠÈYˆ	ÛXÚYYÜ˜]š]KLŒKLŒ‰ËZÎˆ	ÓXÚY	ËYˆ	ÑÜ˜]š]IËLˆŒKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	Ó›Û™IË[ˆ	ÉËÚ\ˆ	ÓXÚYÙ^H›Ø‹Ù^HØ\™[™Û™HÙ^IËˆÞ\Îˆ	ÓXÚYÙ^[\ÜÉËÛÛ™Nˆ	Ó›ÉËˆÜˆ	ÉËˆ	ÉËÝ]ˆ	Û‹ØIËXÎˆ	Û‹ØIËˆØ™ˆ	Ó›ÈÝ[™\™Ð‘RRIËÛŽˆ	ÐYHÙ^Hœ›ÛHHÝXÚØÜ™Y[ˆÚ][ˆ]][XØ]YÙ^H™\Ù[	ËˆZÛˆ	ÓXÚYÙ\šXÙIËˆ›ÝNˆ	ÓZÙHHZ\‹\™H\È›ÈÞ[[™\ˆ[ž]Ú\™HÛˆHØ\‹ˆHØÚÛÝ]ÛˆÛ™HÙˆ\ÙH\ÈHL•ˆ›Ø›[HÜˆ[ˆ\›Ø›[K›ÝHØÚÈ›Ø›[K‰ËˆÜˆ	Û‹ØIË[žNˆ	Ó›ÈÞ[[™\‰ÈJK‚ˆÊˆKKKHÛÛ[Y\˜ÚX[›ÛÝË]›ÝYÚKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹ÂˆŠÈYˆ	Ùœ™ZYÚ[™\‹\ÙLŒKLŒ‰ËZÎˆ	Ñœ™ZYÚ[™\‰ËYˆ	ÌLÑÈLMÑÈLŒ”Ñ
+Ù]™\™H]JIËLˆŒKLNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	Ñœ™ZYÚ[™\ˆÈÝ\›[™ÉË[ˆ	ÌMŒÈMŒL	ËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆKˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ô™XYHÛÙHÙ™ˆHÝÚ]Ú˜XÙKÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØH›ÜˆÙ^\ÉËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙIËˆ›ÝNˆ	ÕH›ØØ][Û˜[ÛÛ™[[Û˜[Îˆ[\ËZ^\œËÝÜÈ[™Ü˜[™\ËˆØ[YHÙ^HÞ\Ý[H\ÈH™\ÝÙˆœ™ZYÚ[™\‹ˆ›Ø‹\Ú]HXÚÜËÛÈ^XÝHÝÚ]Ú[ÙˆÜš][™›ÈÛÙHÝXÚÙ\‹‰ËˆÜˆ	Õ[™\ˆH\Ú
+K\[ˆ›Ý[™ŒNLÎJIË[žNˆ	ÑÛÜˆÞ[[™\‰ÈJKˆŠÈYˆ	Ùœ™ZYÚ[™\‹X\™ÛÜÞKLNNMKLŒŒ	ËZÎˆ	Ñœ™ZYÚ[™\‰ËYˆ	Ð\™ÛÜÞHÈ“ˆ
+ØX›Ý™\ŠIËLˆNNMKLNˆŒŒŽˆ	ÝXÚÉËˆÝÎˆ	Ñœ™ZYÚ[™\ˆÈÝ\›[™ÉË[ˆ	ÌMŒÈMŒL	ËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆKˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ô™XYHÝÚ]ÚÜˆ[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØH›ÜˆÙ^\ÉËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙIËˆ›ÝNˆ	ÐÛ\ÜÈØX›Ý™\‹ÛÛ[ˆ›Ü[Y\šXØH[[HZYLŒÈ[™^ÜYÛ™ÈY\‹ˆHÚÛHØXˆ[È›ÜØ\™›Üˆ[™Ú[™HXØÙ\ÜËÚXÚ\ÈÛÜÛ›ÝÚ[™È™Y›Ü™H[ÝHÙ]HY\ˆYØZ[œÝ]‰ËˆÜˆ	Õ[™\ˆH\Ú	Ë[žNˆ	ÑÛÜˆÞ[[™\‰ÈJK‚ˆŠÈYˆ	Ø[XËX[X[˜ÙKLNNËLNNÉËZÎˆ	ÐSPÉËYˆ	Ð[X[˜ÙHÈ[˜ÛÜ™IËLˆNNËLNˆNNËˆÝÎˆ	ÔM	Ë[ˆ	ÌNMÌSIËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆKˆKÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙH8 %HØY™\œËÚ[ÝÈÝ]ÉËˆÙ\ŽˆÂˆÈÛÙTÙ\šY\Îˆ	Ð‹QKQËRR‰ËÜXÙ\ÎˆK\ÎˆKYÛš][ÛŽˆ	ÐXÝ]™H™]Z[™\‰ËXXÜÎˆÈKˆÈÛÙTÙ\šY\Îˆ	ÒÌKLL	ËÜXÙ\ÎˆK\ÎˆKYÛš][ÛŽˆ	ÐXÝ]™H™]Z[™\‰ËXXÜÎˆˆBˆKˆ[NˆÈYÛš][ÛŽˆ	ÌKMIËÛÜŽˆ	ÌKMIË[šÎˆ	ÌKMIÈKˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ô™[˜][H[™LHZ[[ˆÙ[›ÜÚH[™˜YÙYSPËˆÛÈÛÙHÙ\šY\È8 %H‹QKQËRRˆÙ\šY\È[™HÌKLLÙ\šY\È8 %ÛÈ™XYHÛÙH™Y›Ü™H[ÝHÝ]^H\™H›ÝHØ[YHPPÔË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚÜˆHÛÜˆØÚÈ8 %HØY™\œÈ[™›ÈÚY[	ÈJKˆŠÈYˆ	Ø[XËYXYÛKLNNLNN	ËZÎˆ	ÐSPÉËYˆ	ÑXYÛIËLˆNNLNˆNNŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐSPÈ
+™KPÚž\Û\ŠHÈLMLHÛˆH\ÝØ\œÉË[ˆ	ÖLMLHÛˆH\ÝØ\œÉËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆKˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÍÑØYÛÛˆ[™ÙY[‹H[˜Ù\ÝÜˆÙˆHÜ›ÜÜÛÝ™\‹ˆÚž\Û\ˆ›ÝYÚSPÈ[ˆNNËÛÈH\ÝØ\œÈ[Ý™HÛÈÚž\Û\ˆÙ^]Ø^\È
+LMLJNÈHX\›Y\ˆÛ™\È\™HÛˆSPÈÝÛˆ›Ùš[KÚXÚ\È“Õ™XÛÜ™Y\™H8 %X]Ú]žH[™‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ø[XËXÛÛ˜ÛÜ™\Ü\š]LNMÎKLNNÉËZÎˆ	ÐSPÉËYˆ	ÐÛÛ˜ÛÜ™ÈÜ\š]	ËLˆNMÎKLNˆNNËˆÝÎˆ	ÐSPÈ
+™KPÚž\Û\ŠIË[ˆ	ø %	ËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆKˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHÜ›™][™Ü™[[[ˆ]›Ü›H[™\ˆ™]È˜[Y\ËˆH›[šÈ›Ùš[H\È“Õ™XÛÜ™Y\™H8 %SPÈ\ÙY]ÈÝÛˆÙ^]Ø^H™Y›Ü™HHÚž\Û\ˆ^[Ý][™ÙH]™H›ÈØ][ÙÈ[X™\ˆÛÜ\Ý[™ËˆXÛÙHHØÚÈÜˆX]ÚH›[šÈžH[™‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ø[XË\XÙ\‹[X]YÜ‹LNMÌKLNN	ËZÎˆ	ÐSPÉËYˆ	ÔXÙ\ˆÈX]YÜˆÈÜ›™]ÈÜ™[[[ˆÈ[X˜\ÜØYÜ‰ËLˆNMÌKLNˆNNˆÝÎˆ	ÐSPÈ
+™KPÚž\Û\ŠIË[ˆ	ø %	ËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆKˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHNMÌÈSPÈ[™KˆH›[šÈ›Ùš[H\È“Õ™XÛÜ™Y8 %X]Ú]žH[™ˆ[ž][™È\ÈÛ\È\ÝX[HYHØÚÜÈÚ[™ÙY]X\ÝÛ˜ÙKÛÈXÛÙH˜]\ˆ[ˆ\ÝHYX\‹‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ8 %›ÈÚY[[™Ë[™H™[Ú[™ÝÜÈÛˆHX\›HØ\œÈÜ[ˆžH[™	ÈJKˆŠÈYˆ	Ø[XËZ™Y\]š[YÙKLNNKLNNL	ËZÎˆ	Ò™Y\	ËYˆ	ÐSPËY\˜H™Y\ÈXYÛHÈØYÛÛ™Y\‰ËLˆNNKLNˆNNLŽˆ	ÜÝ]‰ËˆÝÎˆ	ÐSPÈÈLMLHY\ˆHÚž\Û\ˆ^[Ý]	Ë[ˆ	ÖLMLIËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐÚž\Û\ˆ›ÝYÚSPÈ[ˆNNËÛÈ]\ˆØ\œÈ[Ý™HÛÈÚž\Û\ˆÙ^]Ø^\ËˆÚXÚÈHYX\ˆ™Y›Ü™HXÚÚ[™ÈH›[šË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝÞ[ÝK]š[YÙKLNNKLNNM	ËZÎˆ	ÕÞ[ÝIËYˆ	Ó[ÜÝÞ[ÝH
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÕÈÈÖMÈÖMÉË[ˆ	ÕÈÈÖMÉËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÔXÚÝ\È[™[™ÜZ\Ù\œÈÙˆ\È\˜H\™HÝ[ÛÜšÚ[™È™ZXÛ\È[™Ý[\›ˆ\\ÈÜÝZÙ^HØ[Ë‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÚÛ™K]š[YÙKLNNKLNNMIËZÎˆ	ÒÛ™IËYˆ	Ó[ÜÝÛ™HÈXÝ\˜H
+š[YÙJIËLˆNNKLNˆNNMKˆÝÎˆ	ÒLÈLHÈL‰Ë[ˆ	ÒLÈL‰ËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆ‹ˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÒYÚ]Y\˜HØ\œËˆ™\šYžHÝÛ™\œÚ\]™[ˆÛˆHÚ[\HÝ]‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ûš\ÜØ[‹Y]Ý[‹]š[YÙKLNNKLNNM	ËZÎˆ	Óš\ÜØ[‰ËYˆ	Ó[ÜÝš\ÜØ[ˆÈ]Ý[ˆ
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÑLŒÈÈLÈLHÈLÌIË[ˆ	ÑLHÈLÌIËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ñ]Ý[‹X˜YÙYØ\œÈ[ˆÈNN[ˆHTÈ[™ZÙHHØ[YH›[šÜË‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÛX^™K]š[YÙKLNNKLNNM	ËZÎˆ	ÓX^™IËYˆ	Ó[ÜÝX^™H
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÓVŒLÈÈVŒMHÈPVŒL‰Ë[ˆ	ÓVŒLÉËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÝX˜\K]š[YÙKLNNKLNNM	ËZÎˆ	ÔÝX˜\IËYˆ	Ó[ÜÝÝX˜\H
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÑUMÈÈÕP‰Ë[ˆ	ÑUMÉËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÛZ]ÝXš\ÚK]š[YÙKLNNKLNNM	ËZÎˆ	ÓZ]ÝXš\ÚIËYˆ	Ó[ÜÝZ]ÝXš\ÚH
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÓRUHÈRU‰Ë[ˆ	ÓRUIËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÑÙÙH[™[[Ý]Ø\]™H[\ÜÈÙˆ\È\˜H
+ÛÛÛÛœ]Y\ÝÝX[
+H\™HZ]ÝXš\Ú\È[™ZÙH\ÙH›[šÜË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ú\Ý^K\Ý^ZÚK]š[YÙKLNNKLNNM	ËZÎˆ	Ò\Ý^IËYˆ	Ó[ÜÝ\Ý^HÈÝ^ZÚH
+š[YÙJIËLˆNNKLNˆNNMŽˆ	ÜÝ]‰ËˆÝÎˆ	Ò\Ý^H\Ù\šY\ÈÈÖ‰Ë[ˆ	ÖŒÌÈMÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐØ][ÙÈ[X™\œÈYÙY8 %ÚXÚÈ[Ý\ˆ›ÛÚËˆÙ[ÈY]›È[™˜XÚÙ\ˆÙˆ\È\˜H\™HHØ[YHÝ^ZÚ\Ë‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÝËX]YK]š[YÙKLNNKLNNM	ËZÎˆ	Õ›ÛÜÝØYÙ[‰ËYˆ	Ó[ÜÝ•ÈÈ]YH
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÒMHÈ•ÌIË[ˆ	Õ•ÌIËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐZ\‹XÛÛÛY[™X\›HØ]\‹XÛÛÛY•ÜËˆ›Ý[™È[XÝ›ÛšXÈ8 %HMˆ\Ù\ˆ\˜HÝ\È]\‹‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ø›]Ë]š[YÙKLNNKLNNM	ËZÎˆ	Ð“UÉËYˆ	Ó[ÜÝ“UÈ
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	Ð“LHÈMN	Ë[ˆ	Ð“LIËÚ\ˆ	Ó›Û™H
+UÔÈ\œš]™\ÈZYNLÊIËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÑLÌ[™LŽ\˜Kˆ™Yœ™\Ú[™ÛHÚ[\HÛÛ\\™YÚ][ž][™È“UÈZ[Y\ˆUÔË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÛY\˜ÙY\Ë]š[YÙKLNNKLNNM	ËZÎˆ	ÓY\˜ÙY\ËP™[ž‰ËYˆ	Ó[ÜÝY\˜ÙY\ËP™[žˆ
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÖSLMHÈLÎIË[ˆ	ÖSLMIËÚ\ˆ	Ó›Û™HÛˆ[ÜÝÈX\›H[™œ˜\™YÛˆ]HØ\œÉËˆÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕÌLŒÈ[™ÌLˆ\˜Kˆ›Ý[™ÈZÙHH”ÈÛÜšÈH[Ù\›ˆY\˜ÙY\È™YYË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ý›Û›Ë\ØXX‹]š[YÙKLNNKLNNM	ËZÎˆ	Õ›Û›ÉËYˆ	Ó[ÜÝ›Û›ÈÈØXXˆ
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	Õ“ÌÍHÈTË\Ù\šY\ÉË[ˆ	Õ“ÌÍIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÜÜœØÚK]š[YÙKLNNKLNNM	ËZÎˆ	ÔÜœØÚIËYˆ	ÎLLHÈMÈLŽ
+š[YÙJIËLˆNNKLNˆNNMˆÝÎˆ	ÔÜœØÚHÈ•ËY˜[Z[HÛˆHL[™M	Ë[ˆ	Õ•ÌHÛˆH•ËY\š]™YØ\œÉËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÕHL[™MÚ\™H•ËY˜[Z[H›[šÜÎÈHLLHÙ\È›ÝˆØ][ÙÈ[X™\œÈYÙY8 %ÚXÚÈ[Ý\ˆ›ÛÚË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ú˜YÝX\‹]š[YÙKLNNKLNNM‰ËZÎˆ	Ò˜YÝX\‰ËYˆ	ÖˆÈ”È
+š[YÙK™KUX˜™JIËLˆNNKLNˆNNM‹ˆÝÎˆ	Ò˜YÝX\ˆ
+™KUX˜™JIËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	Ð™Y›Ü™H˜YÝX\ˆ[Ý™YÈX˜™KˆYˆHÙ^H\ÈH›Ý[™X˜™H›YK[ÝH\™HÛˆH]\ˆØ\ˆ8 %ÙYHHNNMËLŒˆ™XÛÜ™‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Û[™›Ý™\‹]š[YÙKLNNKLNNN	ËZÎˆ	Ó[™›Ý™\‰ËYˆ	ÑY™[™\ˆÈ\ØÛÝ™\žHÈ˜[™ÙH›Ý™\ˆÛ\ÜÚXÉËLˆNNKLNˆNNNŽˆ	ÜÝ]‰ËˆÝÎˆ	Ó[™›Ý™\ˆ
+š[YÙJIËÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐÛ\ÜÚXÈY™[™\œÈ\™H˜[XX›H[™X]š[HÝÛ[‹ˆ™\šYžHÝÛ™\œÚ\Ø\™Y[Kˆ[™›Ý™\ˆÛÛ›ÈTÈY™[™\ˆœ›ÛHNNN[[HŒŒ[Ù[ÛÈHYX\ˆØ\Y\ˆ\È™XÛÜ™\È™X[‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÙšX]X[˜K]š[YÙKLNNKLNNMIËZÎˆ	ÑšX]	ËYˆ	ÑšX]È[˜H›ÛY[ÈÈ[˜ÚXH
+š[YÙJIËLˆNNKLNˆNNMKˆÝÎˆ	Ñ•\Ù\šY\ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ü™[˜][]š[YÙKLNNKLNNÉËZÎˆ	Ô™[˜][	ËYˆ	Ð[X[˜ÙHÈ[˜ÛÜ™HÈYYÛÈÈNIËLˆNNKLNˆNNËˆÝÎˆ	Ô“‹\Ù\šY\ÉËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐZ[Ú]SPÈ[ˆÙ[›ÜÚH8 %ÛÛYHÚ\™HSPÈ\™Ø\™K‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Þ]YÛËLNNKLNNL‰ËZÎˆ	Ö]YÛÉËYˆ	ÑÕˆÈHÈMHÈIËLˆNNKLNˆNNL‹ˆÝÎˆ	ÑšX]Y˜[Z[H
+•
+IËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐHXÙ[œÙYšX]LÈ8 %šX]Y˜[Z[H›[šÜË‰ËÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	ÛY\šÝ\‹LNNKLNNIËZÎˆ	ÓY\šÝ\‰ËYˆ	ÖHÈØÛÜœ[ÉËLˆNNKLNˆNNKˆÝÎˆ	Ñ›Ü™Y˜[Z[IË[ˆ	ÒLÈM	ËÚ\ˆ	Ó›Û™IËˆÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËÜˆˆKÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[ÛˆÜˆXÛÙIËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	ÐÝ]žHÛÙHÜˆ[\™\ÜÚ[Û‰Ëˆ›ÝNˆ	ÐH›Ü™Ùˆ]\›ÜHÚY\œ˜HÛÛ›ÝYÚ[˜ÛÛ‹SY\˜Ý\žH8 %›Ü™Y˜[Z[HÙ^\Ë‰ËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ù[Ü™X[‹LNNKLNNÉËZÎˆ	ÑSÜ™X[‰ËYˆ	ÑPËLL‰ËLˆNNKLNˆNNËˆÝÎˆ	ÑSÜ™X[ˆ
+Ý\ËÔ™[˜][Y\š]™Y
+IËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‰ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[Û‹Üˆ›ÝYÚHÜXÚX[\Ý\È™]ÛÜšÉËˆ›ÝNˆ	Ô˜\™H[›ÝYÚ]HÝÛ™\ˆÛXˆ\ÈÙ[ˆH˜\Ý\ˆ›Ý]HÈHÙ^H[ˆ[žHØ][ÙËˆØ][ÙÈ[X™\œÈ[X™\˜][H›[šË‰ËˆÜˆ	Û‹ØIË[žNˆ	ÑÝ[Ú[™ÈÛÜœÈ8 %È›Ý›Ü˜ÙNÈHÜœÚ[Ûˆ˜\œÈ[™Û\ÜÈ\™H[›ØZ[˜X›IÈJKˆŠÈYˆ	ÙZZ]ÝKLNNLNNL‰ËZÎˆ	ÑZZ]ÝIËYˆ	ÐÚ\˜YHÈ›ØÚÞIËLˆNNLNˆNNL‹ˆÝÎˆ	ÕÈÈÞ[ÝKY˜[Z[IËÚ\ˆ	Ó›Û™IËÞ\Îˆ	Ó›Û™IËÛÛ™Nˆ	Û‹ØIËˆÜˆˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ò[\™\ÜÚ[Û‰ËØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[ÛˆÜˆÝ]žHÛÙIËˆÜˆ	Û‹ØIË[žNˆ	ÕÙYÙH[™™XXÚ	ÈJKˆŠÈYˆ	Ù^ÝXË]š[YÙKLNNKLNNMIËZÎˆ	Ñ™\œ˜\šIËYˆ	Ñ™\œ˜\šHÈ[X›Ü™Ú[šHÈÝ\ÈÈ\ÝÛˆÈ›ÛÈ
+š[YÙJIËLˆNNKLNˆNNMKˆÝÎˆ	Õ˜\šY\È8 %\ÝX[HH]\›ÜX[ˆ›[šËÙ[ˆšX]Üˆœš]\Ú^[[™˜[Z[IËˆÚ\ˆ	Ó›Û™HÛˆ[ÜÝ	ËÞ\Îˆ	Ó›Û™HÛˆ[ÜÝ	ËÛÛ™Nˆ	Û‹ØIËÜˆˆÝ]ˆ	ÑYÙHÝ]	ËˆXÎˆ	Ò[\™\ÜÚ[Û‹ÜˆHX\œ]YHÜXÚX[\Ý	ËˆØ™ˆ	Û‹ØIËÛŽˆ	Û‹ØIËZÛˆ	Ò[\™\ÜÚ[ÛˆÜˆHX\œ]YHÜXÚX[\Ý	Ëˆ›ÝNˆ	Õ™\žHYÚ˜[YK™\žHÝÈ›Û[YKˆZÙHHØÚÛÝ]Yˆ[ÝH\™HÛÛ™šY[ÙˆH›Û‹[X\šÚ[™È[žNÈ™Y™\ˆHÙ^\ËˆÈ›Ý^\š[Y[ÛˆHÝ\ÝÛY\ˆ™\œ˜\šK‰ËˆÜˆ	Û‹ØIË[žNˆ	Ó›Û‹[X\šÚ[™È[žHÛ›KÜˆXÛ[™IÈJK‚ˆÊˆKKKHÙX\˜ÚXÛÛ\]HÝ\œ™[[™›Y]˜[Y\]\ÈKKKKKKKKKKKKKKKKKKKKKBˆ\ÙH\™HÙ\\˜]H›ÝÜÈ]™[ˆÚ\™H[›Ý\ˆ˜YÙH[™XYHØ\œšY\ÈHØ[YBˆ]›Ü›KˆHXÚšXÚX[ˆÙX\˜Ú[™ÈžHH[X›[HÛˆH™ZXÛHÚÝ[›Ýˆ]™HÈÛ›ÝÈH™X˜YÙH™Y›Ü™HH™XÛÜ™\X\œËˆ™]Ë\]›Ü›H]Z[ÂˆÝ^H[X™\˜][HÜ\œÙH[[ÛÛ™š\›YYYØZ[œÝHXXÚ[™HÜˆÑSHØ][ÙËˆ
+‹ÂˆŠÈYˆ	ÙÛXËXØ[ž[Û‹LŒLŒL‰ËZÎˆ	ÑÓPÉËYˆ	ÐØ[ž[Û‰ËZØNˆÉÐÛÛÜ˜YÈÚ[‰×KˆLˆŒLNˆŒL‹Žˆ	ÝXÚÉËÝÎˆ	ÐŒLLIË[ˆ	ÐŒLLKT	ËÚ\ˆ	ÑÓHÚ\˜ÛH\ÉËˆÞ\Îˆ	ÔÌÊÉËÛÛ™Nˆ	ÖY\ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‰Ëˆ›ÝNˆ	ÑÓPÈÚ[ˆÙˆHš\œÝYÙ[™\˜][ÛˆÚ]œ›Û]ÛÛÜ˜YËˆ›È›Ü[Y\šXØ[ˆŒLËLŒM[Ù[‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXËXØ[ž[Û‹LŒMKLŒŒ‰ËZÎˆ	ÑÓPÉËYˆ	ÐØ[ž[Û‰ËZØNˆÉÐÛÛÜ˜YÈÚ[‰×KˆLˆŒMKLNˆŒŒ‹Žˆ	ÝXÚÉËÝÎˆ	ÐŒLNIË[ˆ	ÐŒLNKT	ËÚ\ˆ	ÑÓH‘H
+]YÌŠIËˆÞ\Îˆ	Ò[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ó›ÉËÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHLL	ËˆØ™ˆ	ÖY\ÉËÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›ˆÜˆÐ‘	Ë[žNˆ	Ó\ÚHLL	ÈJKˆŠÈYˆ	ÙÛXËXØ[ž[Û‹LŒŒËLŒ‰ËZÎˆ	ÑÓPÉËYˆ	ÐØ[ž[Û‰ËZØNˆÉÐÛÛÜ˜YÈÚ[‰×KˆLˆŒŒËLNˆŒ‹Žˆ	ÝXÚÉËÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËˆÚ\ˆ	ÑÓHQTÉËÞ\Îˆ	ÑÓH\ÜÚ]™H[žHÈÙXÝ\š]HØ]]Ø^IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÐÝ\œ™[ÓKXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÐÛÛ™š\›HÛÛÛÝ™\˜YÙH›ÜˆH^XÝYX\‰Ëˆ›ÝNˆ	Õ\™YÙ[™\˜][ÛˆXÚËˆ™\šYžHH›Øˆ[™›ÙÜ˜[[Z[™È]™Y›Ü™H][Ý[™Ë‰Ë[žNˆ	Ñ[Y\™Ù[˜ÞH›YH™Z[™H[™HØ\	ÈJKˆŠÈYˆ	ÙÛXË\Ø]˜[˜KLNNM‹LŒ‰ËZÎˆ	ÑÓPÉËYˆ	ÔØ]˜[˜IËZØNˆÉÔØ]˜[˜HØ\™ÛÉË	ÔØ]˜[˜H\ÜÙ[™Ù\‰Ë	ÐÚ]œ›Û]^™\ÜÈÚ[‰×KˆLˆNNM‹LNˆŒ‹Žˆ	Ý˜[‰ËÝÎˆ	ÐŒLˆÈŒLLHžHYX\‰Ë[ˆ	ÐŒLLKT	ËˆÚ\ˆ	Ó›Û™HÈÚ\˜ÛH\ÈžHYX\‰ËÞ\Îˆ	Ô\ÜÛØÚÈÈÌÊÉËÛÛ™Nˆ	ÖY\ÈÛˆÚ\Y™\œÚ[ÛœÉËˆÜˆLˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÉËØ™ˆ	ÖY\ÈÛˆ]\ˆYX\œÉËˆÛŽˆ	ÌÌ[Z[ˆÈ™[X\›‰ËZÛˆ	Ô™[X\›‹ÜˆÝ]žHÛÙHÛˆ›Û‹]˜[œÜÛ™\ˆ™\œÚ[ÛœÉËˆ›ÝNˆ	ÑÓPÈÚ[ˆÙˆHÚ]œ›Û]^™\ÜËˆÛÛ™š\›HHYX\ˆ[™š]Y[[[Øš[^™\ˆ™Y›Ü™HÝ][™Ë‰Ë[žNˆ	Ó\ÚHÓLÍÉÈJKˆŠÈYˆ	ÙÛXË\ÚY\œ˜KZLŒËLŒNIËZÎˆ	ÑÓPÉËYˆ	ÔÚY\œ˜H	ËZØNˆÉÔÚY\œ˜HL	Ë	ÔÚY\œ˜HÍL	×KˆLˆŒËLNˆŒNKŽˆ	ÝXÚÉËÝÎˆ	ÐŒLLH[ˆŒLNHžHYX\‰Ë[ˆ	ÐŒLLKTÈŒLNKT	ËˆÚ\ˆ	ÑÓHÚ\˜ÛH\È[ˆ‘IËÞ\Îˆ	ÔÌÊÈÈ[[[Øš[^™\ˆ‰ËÛÛ™Nˆ	Ñ\[™ÈÛˆYX\‰ËˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÓLÍÈÜˆLLÈÝZ]HÙ^]Ø^IËØ™ˆ	ÖY\ÉËˆÛŽˆ	Ô™[X\›ˆ]˜Z[X›HÛˆX[žH›YKZÙ^H™\œÚ[ÛœÉËZÛˆ	Ô™[X\›ˆÜˆÐ‘	Ëˆ›ÝNˆ	ÐÛÛ™š\›HHÙ^]Ø^H[™Ú\]HÙ[™\˜][ÛˆÜ]ÈÚ[™Ù[Ý™\œÈÈ›Ý[Ø^\ÈX]ÚHML‰ÈJKˆŠÈYˆ	ÙÛXË\ÚY\œ˜KZLŒŒLŒ‰ËZÎˆ	ÑÓPÉËYˆ	ÔÚY\œ˜H	ËZØNˆÉÔÚY\œ˜HL	Ë	ÔÚY\œ˜HÍL	×KˆLˆŒŒLNˆŒ‹Žˆ	ÝXÚÉËÝÎˆ	ÐŒLNH
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÐŒLNKT	ËˆÚ\ˆ	ÑÓHQTÉËÞ\Îˆ	ÑÓH\ÜÚ]™H[žHÈÙXÝ\š]HØ]]Ø^IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	Ó\Ù\ˆÈÚY]Ú[™\‰ËXÎˆ	Ó\ÚHLL	ËØ™ˆ	ÐÝ\œ™[ÓKXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÐÛÛ™š\›HÛÛÛÝ™\˜YÙH›ÜˆH^XÝYX\‰Ë›ÝNˆ	ÑÈ›Ý\ÜÝ[YHÚY\œ˜HMLÛÝ™\˜YÙH[˜ÛY\ÈHÙXÝ\š]HÞ\Ý[K‰ÈJKˆŠÈYˆ	ÝÞ[ÝKXÜ›ÝÛ‹\ÚYÛšXKLŒKLŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÐÜ›ÝÛˆÚYÛšXIËLˆŒKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	Ñ[Y\™Ù[˜ÞH›YIËÚ\ˆ	ÕÞ[ÝHQTÉËÞ\Îˆ	ÕÞ[ÝHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËˆØ™ˆ	ÐÝ\œ™[Þ[ÝKXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛÛ™š\›HÙYYZÙ^H[™ÛÛÛÝ™\˜YÙIËˆ›ÝNˆ	Ó™]È˜[Y\]KˆÐÈQ\[X™\ˆ[™›YH›Ùš[H[[[Û˜[H›[šÈ[[™\šYšYY‰ÈJKˆŠÈYˆ	ÝÞ[ÝKYÜ‹XÛÜ›ÛKLŒŒËLŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	ÑÔˆÛÜ›ÛIËLˆŒŒËLNˆŒ‹ˆÝÎˆ	Ñ[Y\™Ù[˜ÞH›YIËÚ\ˆ	ÕÞ[ÝHQTÉËÞ\Îˆ	ÕÞ[ÝHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËˆØ™ˆ	ÐÝ\œ™[Þ[ÝKXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛÛ™š\›HÙYYZÙ^H[™ÛÛÛÝ™\˜YÙIËˆ›ÝNˆ	Ô\™›Ü›X[˜ÙHÛÜ›ÛNÈÈ›ÝÙ[XÝHÝ[™\™ÛÜ›ÛH›ØˆžH˜[Y\]H[Û™K‰ÈJKˆŠÈYˆ	ÝÞ[ÝKXž‹]ÛÛÙ[™LŒ‰ËZÎˆ	ÕÞ[ÝIËYˆ	Ø–ˆÛÛÙ[™	ËZØNˆÉØ–ˆÛÛÙ[™U‰×KLˆŒ‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÚ\ˆ	ÕÞ[ÝHQTÉËÞ\Îˆ	ÕÞ[ÝHÛX\Ù^IËÛÛ™Nˆ	Ó›ÉËØ™ˆ	ÐÛÛ™š\›HÝ\œ™[ÛÛÛÝ™\˜YÙIËÛŽˆ	Ó›ÉËˆZÛˆ	ÑX[\ˆÛˆX[žHÛÛÈÙ^IË›ÝNˆ	Ó™]ÈUŽÈ›[šËÐÈQ[™\[X™\ˆ[[[Û˜[HYÜ[ˆ›ÜˆÛÛ™š\›X][Û‹‰ÈJKˆŠÈYˆ	Ú][™ZKZ[Ûš\NKLŒ‰ËZÎˆ	Ò][™ZIËYˆ	Ò[Ûš\HIËZØNˆÉÒSÓ’THI×KLˆŒ‹LNˆŒ‹Žˆ	ÜÝ]‰ËˆÚ\ˆ	Ò][™ZHQTÉËÞ\Îˆ	Ò][™ZHÛX\Ù^HÈYÚ][Ù^IËÛÛ™Nˆ	Ó›ÉËˆØ™ˆ	ÐÛÛ™š\›HÝ\œ™[][™ZHÛÝ™\˜YÙIËÛŽˆ	Ó›ÉËZÛˆ	ÔSˆ[™Ý\œ™[ÛÛÛÝ™\˜YÙH™\]Z\™Y	Ë[Žˆ	ÖY\ÉËˆ›ÝNˆ	Ó™]ÈUŽÈ™\šYžHX\šÙ]\ÜXÚYšXÈ›Øˆ[™[Y\™Ù[˜ÞKY[žH\™Ø\™H™Y›Ü™H][Ý[™Ë‰ÈJKˆŠÈYˆ	ÛX^™KXÞÌLŒKLŒ‰ËZÎˆ	ÓX^™IËYˆ	ÐÖMÌ	ËLˆŒKLNˆŒ‹Žˆ	ÜÝ]‰ËˆÝÎˆ	Ñ[Y\™Ù[˜ÞH›YIËÚ\ˆ	ÓX^™HQTÉËÞ\Îˆ	ÓX^™HY˜[˜ÙYÙ^[\ÜÈ[žIËÛÛ™Nˆ	Ó›ÉËˆØ™ˆ	ÐÝ\œ™[X^™KXØ\X›HÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛÛ™š\›HÛÝ™\˜YÙH›ÜˆH^XÝYX\‰Ëˆ›ÝNˆ	ÔÚ\™\È\˜Ú]XÝ\™HÚ]HÖNL]™\šYžHH›Øˆ\[X™\ˆ˜]\ˆ[ˆ\ÜÝ[Z[™È[\˜Ú[™ÙK‰ÈJKˆŠÈYˆ	Ú™Y\]ØYÛÛ™Y\‹\ËLŒLŒ‰ËZÎˆ	Ò™Y\	ËYˆ	ÕØYÛÛ™Y\ˆÉËLˆŒLNˆŒ‹Žˆ	ÜÝ]‰ËˆÚ\ˆ	ÔÝ[[\ÈQTÉËÞ\Îˆ	Ô‘ˆXˆÈÙXÝ\š]HØ]]Ø^IËÛÛ™Nˆ	Ó›ÉËˆØ™ˆ	ÐÝ\œ™[Ø]]Ø^KX]]Üš^™YÛÛ	ËÛŽˆ	Ó›ÉËZÛˆ	ÐÛÛ™š\›HÛÝ™\˜YÙH™Y›Ü™H][Ý[™ÉËˆ›ÝNˆ	Ð˜]\žKY[XÝšXÈÕH]›Ü›NÈ]\È›ÝH›ÙK[Û‹Yœ˜[YHØYÛÛ™Y\ˆÙ^HÞ\Ý[K‰ÈJKˆŠÈYˆ	Ú™Y\YÜ˜[™XÚ\›ÚÙYK[LŒŒKLŒ‰ËZÎˆ	Ò™Y\	ËYˆ	ÑÜ˜[™Ú\›ÚÙYH	ËZØNˆÉÕÓÍI×KˆLˆŒŒKLNˆŒ‹Žˆ	ÜÝ]‰ËÝÎˆ	ÐÖL
+[Y\™Ù[˜ÞH›YJIË[ˆ	ÖLMÌT	ËˆÚ\ˆ	ÍH
+]YÈQTÊIËÞ\Îˆ	Ô‘ˆXˆÈÙXÝ\š]HØ]]Ø^IËÛÛ™Nˆ	Ó›ÉËˆÝ]ˆ	ÑYÙHÝ]	ËXÎˆ	Ó\ÚHÖL	ËØ™ˆ	ÑØ]]Ø^KX]]Üš^™YÛÛ	ËÛŽˆ	Ó›ÉËˆZÛˆ	ÑØ]]Ø^HXØÙ\ÜÈ™\]Z\™Y	Ë[Žˆ	ÖY\ÉË[žNˆ	Ñ[Y\™Ù[˜ÞHÞ[[™\ˆ™Z[™Hš]™\‹Z[™HØ\	ÈJKˆŠÈYˆ	Üš]šX[‹YY‹LŒŒËLŒIËZÎˆ	Ôš]šX[‰ËYˆ	ÑQ‰ËZØNˆÉÑ[XÝšXÈ[]™\žH˜[‰Ë	Ð[X^›Ûˆ[]™\žH˜[‰×KˆLˆŒŒËLNˆŒKŽˆ	Ý˜[‰ËÝÎˆ	Ó›Û™H™XÛÜ™Y	ËÚ\ˆ	Ôš]šX[ˆÙ^[\ÜÈÜ™Y[X[ÉËˆÞ\Îˆ	Ñ›Y]Ù^[\ÜÈXØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËØ™ˆ	Ó›ÈÝ[™\™ØÚÜÛZ]›ÙÜ˜[[Z[™È]	ËÛŽˆ	Ó›ÉËˆZÛˆ	Ñ›Y]YZ[š\Ý˜]ÜˆÜˆš]šX[ˆÙ\šXÙIË›ÝNˆ	Ñ›Y]™ZXÛKˆ™\šYžH]]Üš^˜][ÛˆÚ]H›Y]Ü\˜]Üˆ™Y›Ü™H[žHXØÙ\ÜÈÛÜšË‰ÈJKˆŠÈYˆ	Ý\ÛK\Ù[ZKLŒŒËLŒ‰ËZÎˆ	Õ\ÛIËYˆ	ÔÙ[ZIËZØNˆÉÕ\ÛHÙ[ZHXÚÉ×KLˆŒŒËLNˆŒ‹Žˆ	ÝXÚÉËˆÝÎˆ	Ó›Û™IËÚ\ˆ	Õ\ÛHÙ^[\ÜÈÜ™Y[X[ÉËÞ\Îˆ	Õ\ÛHÙ^[\ÜÈÈ›Y]XØÙ\ÜÉËÛÛ™Nˆ	Ó›ÉËˆØ™ˆ	Ó›ÈÝ[™\™ØÚÜÛZ]›ÙÜ˜[[Z[™È]	ËÛŽˆ	Ó›ÉËZÛˆ	Õ\ÛHÙ\šXÙH›ÝYÚH›Y]XØÛÝ[	Ëˆ›ÝNˆ	Ñ›Y][Û›HX]žHXÚËˆ™X]HØÚÛÝ]\ÈH›Y]Ü™Y[X[ÜˆÝË]›ÛYÙHÙ\šXÙH\ÜÝYK›ÝHÛÛ™[[Û˜[Ù^H›Ø‹‰ÈJB—NÂ‚‹ÊˆKKHÙ^H›[šÈÜ›ÜÜË\™Y™\™[˜ÙH\™XÝÜžHKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKBˆÛ™H™XÛÜ™\ˆÙ^]Ø^Kˆ[ÛØ\ÈHYXÚ[šXØ[›[šË[ÛÐÚ\Bˆ˜[œÜÛ™\ˆ™\œÚ[ÛˆÙˆHØ[YH›[šÈÚ\™HÛ™H^\ÝËˆØ[YHØ]™X]\ÈBˆ™ZXÛH]Nˆ™\šYžHYØZ[œÝ[Ý\ˆØ][ÙÈ™Y›Ü™H[ÝHÜ™\ˆH›ÞÙˆ[Kˆ
+‹Â˜ÛÛœÝÑQQÐ“S’ÔÈHÂˆÊˆKKKH“Ô‘ÈSÓÓˆÈQTÕT–HKKKH
+‹ÂˆÈY‰ÚLLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLLIË[ÛÎ‰ÒLLIË[ÛÐÚ\‰ÒLLKT	ËÚ[ØN‰Ñ“ÌŒU	Ë›XN‰Ñ“ËL”	ËÝ˜]XÎ‰ÍNLLÍIËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	Ò˜YÝX\‰Ë	Ó[™›Ý™\‰×Kˆ›Ý\Î‰ÕH‹]˜XÚÈ›Ü™\Ù\ˆÙ^Kˆ[ÛÈH[Y\™Ù[˜ÞH›YH[œÚYH[ÜÝ›Ü™›Þ›ØœË‰ÈKˆÈY‰ÚL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒL‰Ë[ÛÎ‰ÒL‰Ë[ÛÐÚ\‰ÒL‹T	ËÚ[ØN‰Ñ“ÌŒU	Ë›XN‰Ñ“ËLŒK”‰ËÝ˜]XÎ‰ÍNNLLM	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žI×Kˆ›Ý\Î‰Ñ›Ü™XÝ]ˆXš]Ú\›ÝYÚŒŒLXš]Y\ˆ8 %Ø[YH›[šËY™™\™[Ú\‰ÈKˆÈY‰ÚÍIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÍIË[ÛÎ‰ÒÍIË[ÛÐÚ\‰ÒÌ‹T	ËÚ[ØN‰Ñ“ÌÎ	Ë›XN‰Ñ“ËLMK”	ËÝ˜]XÎ‰ÍNMÍLÉËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žI×Kˆ›Ý\Î‰ÓÛ\ˆ›Ü™XÝ]™KTUÈ[™X\›HUË‰ÈKˆÈY‰Ú	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò	Ë[ÛÎ‰Ò	Ë[ÛÐÚ\‰ÒT	ËÚ[ØN‰Ñ“ÌÎ	Ë›XN‰Ñ“ËLMK”	ËÝ˜]XÎ‰ÍNNÌÌÉËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	ÓY\˜Ý\žIË	ÓX^™I×Kˆ›Ý\Î‰Ñ›Ü™XÝ]UÈ\˜KˆÚ]ÈÛÜÙHÈÌˆ[™Lˆ8 %ÚXÚÈHXYÚ\H[™HÚ\™Y›Ü™H[ÝHÝ]‰ÈKˆÈY‰Ù›ÌÎ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ñ“ÌÎ
+X˜™JIË[ÛÎ‰Ñ“ÌŒIË[ÛÐÚ\‰Ñ“ÌŒU	ËÚ[ØN‰Ñ“ÌL‰Ë›XN‰Ñ“ËLLË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕX˜™IËÜXÙ\Î‹\ÎXZÙ\Î–ÉÑ›Ü™	Ë	Ò˜YÝX\‰×Kˆ›Ý\Î‰ÕX˜™Kˆ™YYÈHYXØ]YX˜™HXÛÙ\ˆ[™Ý]\ˆ8 %›Ý[ˆYÙHÜˆ\Ù\ˆXXÚ[™K‰ÈK‚ˆÊˆKKKHÓHKKKH
+‹ÂˆÈY‰ØŒLLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒLLIË[ÛÎ‰ÐŒLLIË[ÛÐÚ\‰ÐŒLLKT	ËÚ[ØN‰ÑÓLÎT•	Ë›XN‰ÑÓKLÍË”	ËÝ˜]XÎ‰ÍNLLMÉËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÐØY[XÉË	ÔÛXXÉË	ÔØ]\›‰×Kˆ›Ý\Î‰ÑÓHLXÝ]ÌÊËÐÚ\˜ÛKT\È\˜KˆHÛÜšÚÜœÙHÓH›[šÈÙˆŒ‹LŒLË‰ÈKˆÈY‰ØŒLNIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒLNIË[ÛÎ‰ÐŒLNIË[ÛÐÚ\‰ÐŒLNKT	ËÚ[ØN‰ÑÓMIË›XN‰ÑÓKM”	ËÝ˜]XÎ‰ÍNLŽLM	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÐØY[XÉ×Kˆ›Ý\Î‰ÑÓHŒM
+ÈLXÝ]Ú]H‘HÚ\‰ÈKˆÈY‰ØŒLM‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLL	Ë[ÛÎ‰ÐŒLM‰Ë[ÛÐÚ\‰ÐŒLM‹T	ËÚ[ØN‰ÑÓMIË›XN‰ÑÓKM”	ËÝ˜]XÎ‰ÍNLLM‰ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÐZXÚÉË	ÑÓPÉË	ÓÜ[	Ë	ÔØ]\›‰×Kˆ›Ý\Î‰ÒLL›Ùš[KˆÜ^™KX[XK\]Z[›Þ\˜K‰ÈKˆÈY‰ØŒL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒL‰Ë[ÛÎ‰ÐŒL‰Ë[ÛÐÚ\‰ÐŒL‹T	ËÚ[ØN‰ÑÓLÍÉË›XN‰ÑÓKLM”	ËÝ˜]XÎ‰ÍNMMIËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÔÛXXÉË	ÓÛÛ[Øš[I×Kˆ›Ý\Î‰ÑÓH‹XÝ]UËÔTÔËRÙ^H\˜Kˆ[]Ù^\È\™HŒ‹TH›ÝYÚMK‰ÈKˆÈY‰ØŒL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒL‰Ë[ÛÎ‰ÐŒL‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓLÌ‰Ë›XN‰ÑÓKLL”	ËÝ˜]XÎ‰ÌÌŒÍÌÉËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÔÛXXÉ×Kˆ›Ý\Î‰ÓÛ\ˆÓHLXÝ]ÛÜ‹Ý[šÈÙXÛÛ™\žK‰ÈK‚ˆÊˆKKKHÖSÕHÈVTÈÈÐÒSÓˆKKKH
+‹ÂˆÈY‰ÝÞM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖM	Ë[ÛÎ‰ÕÖM	Ë[ÛÐÚ\‰ÕÖMT	ËÚ[ØN‰ÕÖM	Ë›XN‰ÕÖSËLMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÔØÚ[Û‰×Kˆ›Ý\Î‰ÑÝÈÈÚ\\˜KˆHÈÚ\\ÈÝ[\Y‘ÈˆÛˆHXY‰ÈKˆÈY‰ÝÞMÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖMÉË[ÛÎ‰ÕÖMÉË[ÛÐÚ\‰ÕÖMËT	ËÚ[ØN‰ÕÖM	Ë›XN‰ÕÖSËLMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÔØÚ[Û‰×Kˆ›Ý\Î‰ÑÈÚ\\˜K›ÝYÚHŒLLŒL‹ˆØ[YHÖMÙ^]Ø^H\ÈHÝ[™›[šÜÈ8 %Û›HHÚ\Y™™\œËÛÈH›YHÝ]ÈHØ[YH[™HÜ›Û™È›ÞÝ[Ú[›ÝÝ\HØ\‹‰ÈKˆÈY‰ÝÞM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖM	Ë[ÛÎ‰ÕÖM	Ë[ÛÐÚ\‰ÕÖMT	ËÚ[ØN‰ÕÖM	Ë›XN‰ÕÖSËLMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\É×Kˆ›Ý\Î‰ÒÚ\ŒLÊËˆØ[YHÖMÙ^]Ø^KY™™\™[Ú\8 %È›ÝZ^H›Þ\È\‰ÈKˆÈY‰ÝÞMÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖMÉË[ÛÎ‰ÕÖMÉË[ÛÐÚ\‰ÕÖMËT	ËÚ[ØN‰ÕÖMÉË›XN‰ÕÖSËLŒK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÔØÚ[Û‰×Kˆ›Ý\Î‰ÕÞ[ÝHXÝ]Û\ˆÛÜ›ÛHÈØ[\žHÈXÛÛXK‰ÈKˆÈY‰ÝÞM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖM	Ë[ÛÎ‰ÕÖM	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕÖM	Ë›XN‰ÕÖSËLMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\É×K›Ý\Î‰ÓÛ\ˆ]˜XÚÈÞ[ÝK‰ÈK‚ˆÊˆKKKHÓ‘HÈPÕTHKKKH
+‹ÂˆÈY‰ÚÛ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÓ‰Ë[ÛÎ‰ÒÌÉË[ÛÐÚ\‰ÒÌËT	ËÚ[ØN‰ÒÓ‰Ë›XN‰ÒÓ‘LŒ‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÒÛ™IË	ÐXÝ\˜I×Kˆ›Ý\Î‰ÒYÚÙXÝ\š]HÛ™Kˆ[Y\™Ù[˜ÞH›YH[ˆHÛX\›ØœÈ\È\È›Ùš[K‰ÈKˆÈY‰ÚÌIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÌIË[ÛÎ‰ÒÌIË[ÛÐÚ\‰ÒÌKT	ËÚ[ØN‰ÒÓN‰Ë›XN‰ÒÓ‘LŒ”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒÛ™IË	ÐXÝ\˜I×Kˆ›Ý\Î‰ÒÛ™HXÝ]Qˆ\˜K‰ÈKˆÈY‰ÚÌIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒL‹ÒÌIË[ÛÎ‰ÒÌIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒÓÉË›XN‰ÒÓ‘LM”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÛ™IË	ÐXÝ\˜I×K›Ý\Î‰ÓÛ\ˆÛ™H‹XÝ]›Û‹]˜[œÜÛ™\‹‰ÈK‚ˆÊˆKKKH’TÔÐSˆÈS‘’S’UHKKKH
+‹ÂˆÈY‰ÛœÛŒM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ó”ÓŒM	Ë[ÛÎ‰ÑLÍ	Ë[ÛÐÚ\‰ÑLÍT	ËÚ[ØN‰Ó”ÓŒM	Ë›XN‰Ó‘KLÎ”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÓš\ÜØ[‰Ë	Ò[™š[š]I×Kˆ›Ý\Î‰Óš\ÜØ[ˆYÚÙXÝ\š]Kˆ[ÛÈH[Y\™Ù[˜ÞH›YH[ˆH[[YÙ[Ù^K‰ÈKˆÈY‰ÙLÌIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑLÌIË[ÛÎ‰ÑLÌIË[ÛÐÚ\‰ÑLÌKT	ËÚ[ØN‰Ó”ÓŒLIË›XN‰ÑULMË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓš\ÜØ[‰Ë	Ò[™š[š]I×K›Ý\Î‰Óš\ÜØ[ˆXÝ]Û\ˆ[[XHÈÙ[˜HÈœ›ÛY\‹‰ÈK‚ˆÊˆKKKHUS‘RHÈÒPHKKKH
+‹ÂˆÈY‰ÚLŒ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLŒ	Ë[ÛÎ‰ÒLŒ	Ë[ÛÐÚ\‰ÒLŒT	ËÚ[ØN‰ÒSŒM‰Ë›XN‰ÒKLŒ”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒ][™ZIË	ÒÚXI×K›Ý\Î‰ÕHÛÛ[[Ûˆ][™ZHXÝ]‰ÈKˆÈY‰ÚLŒ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLŒ‰Ë[ÛÎ‰ÒLŒ‰Ë[ÛÐÚ\‰ÒLŒ‹T	ËÚ[ØN‰ÒSŒMÔ‰Ë›XN‰ÒKLŒ‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÒ][™ZIË	ÒÚXI×K›Ý\Î‰Ò][™ZKÒÚXHYÚÙXÝ\š]H\Ù\‹‰ÈKˆÈY‰ÚÚÌL	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÒÌL	Ë[ÛÎ‰ÒÒÌL	Ë[ÛÐÚ\‰ÒÒÌLT	ËÚ[ØN‰ÒSŒM‰Ë›XN‰ÒKLN”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒÚXI×K›Ý\Î‰ÒÚXHXÝ]‰ÈK‚ˆÊˆKKKHÕSS•TÈKKKH
+‹ÂˆÈY‰ØÞL	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐÖL	Ë[ÛÎ‰ÖLM	Ë[ÛÐÚ\‰ÖLMT	ËÚ[ØN‰ÐÖL	Ë›XN‰ÐÒ‹LMK”	ËÝ˜]XÎ‰ÍŽLŒÍL‰ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐÚž\Û\‰Ë	ÑÙÙIË	Ò™Y\	Ë	Ô˜[I×Kˆ›Ý\Î‰ÕHÝ[[\ÈXÝ]ˆLMÌ\ÈHØ[YHÙ^]Ø^H[ˆH]\ˆ›Ø‹ZXYÝ[K‰ÈKˆÈY‰ÞLMŒ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖLMŒ	Ë[ÛÎ‰ÖLMŒ	Ë[ÛÐÚ\‰ÖLMŒT	ËÚ[ØN‰ÐÖLŒ‰Ë›XN‰ÐÒ‹NK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐÚž\Û\‰Ë	ÑÙÙIË	Ò™Y\	×K›Ý\Î‰ÓÛ\ˆÚž\Û\ˆXÝ]ÒÒSH\˜K‰ÈKˆÈY‰ÜÚ\Œ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÒTŒ‰Ë[ÛÎ‰Ñ•	Ë[ÛÐÚ\‰Ñ•T	ËÚ[ØN‰ÔÒTŒ‰Ë›XN‰Ñ’KLŒK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÑšX]	Ë	ÐÚž\Û\‰Ë	ÑÙÙIË	Ô˜[IË	Ð[˜H›ÛY[É×Kˆ›Ý\Î‰ÑšX]]›Ü›H\Ù\ˆ8 %›ÓX\Ý\ˆÚ]KL™[™YØYK‰ÈK‚ˆÊˆKKKH•ÈÈUQHKKKH
+‹ÂˆÈY‰ÚM‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒM‰Ë[ÛÎ‰ÒMU	Ë[ÛÐÚ\‰ÒMUT	ËÚ[ØN‰ÒM‰Ë›XN‰ÕKM‘”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕ›ÛÜÝØYÙ[‰Ë	Ð]YIË	ÔÙX]	Ë	ÔÚÛÙIË	ÔÜœØÚI×Kˆ›Ý\Î‰ÕHQÈ\Ù\‹ˆÚXÚÈTPˆœÈ›Û‹STPˆ™Y›Ü™H][Ý[™ÈH›ÙÜ˜[[Z[™Ë‰ÈKˆÈY‰ÚLMŒ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLMŒ•	Ë[ÛÎ‰ÒLMŒ•	Ë[ÛÐÚ\‰ÒLMŒ•T	ËÚ[ØN‰ÒLMŒ•	Ë›XN‰ÕQËMË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽK\ÎXZÙ\Î–ÉÕ›ÛÜÝØYÙ[‰Ë	Ð]YIË	ÔÙX]	Ë	ÔÚÛÙI×Kˆ›Ý\Î‰ÓTPˆ]›Ü›H›YKŒMJË‰ÈKˆÈY‰ÚMIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒMIË[ÛÎ‰Õ•ÌIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒMIË›XN‰Õ“ËLK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕ›ÛÜÝØYÙ[‰Ë	Ð]YI×K›Ý\Î‰ÓÛZ\‹XÛÛÛY[™X\›HØ]\‹XÛÛÛY•Ë‰ÈK‚ˆÊˆKKKH“UÈÈQTÑQTÈKKKH
+‹ÂˆÈY‰ÚNL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒNL‰Ë[ÛÎ‰ÒNL‰Ë[ÛÐÚ\‰ÒNL‹T	ËÚ[ØN‰ÒNL‰Ë›XN‰Õ“KLMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐ“UÉË	ÓZ[šIË	Ô›ÛËT›ÞXÙI×K›Ý\Î‰Ð“UÈ‹]˜XÚËÐTÈ\˜K‰ÈKˆÈY‰ÚLL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLL‰Ë[ÛÎ‰Ð“UÌIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒLL‰Ë›XN‰Õ“KLŒ”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐ“UÉË	ÓZ[šI×K›Ý\Î‰Ð“UÈ‹\Ù\šY\ÈÈ‘SKP‘È[Y\™Ù[˜ÞH›YK‰ÈKˆÈY‰ÚM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒM	Ë[ÛÎ‰ÒM	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒM	Ë›XN‰ÕQKLL”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÓY\˜ÙY\ËP™[ž‰×K›Ý\Î‰ÓY\˜ÙY\È]˜XÚËˆ”ÌËÑ”Í\ÈH\™\›ÝHÝ]‰ÈKˆÈY‰Þ[X‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖSLMKÖSLŒÉË[ÛÎ‰ÖSLŒÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÖSLMIË›XN‰ÓQKLË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓY\˜ÙY\ËP™[ž‰×K›Ý\Î‰ÓÛ\ˆY\˜ÙY\ÈYÙHÝ]‰ÈK‚ˆÊˆKKKHPV‘HÈÕPT•HÈRUÕP’TÒHKKKH
+‹ÂˆÈY‰ÛX^Œ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓPVŒ	Ë[ÛÎ‰ÓPVŒ‰Ë[ÛÐÚ\‰ÓPVŒ‹T	ËÚ[ØN‰ÓPVŒ‰Ë›XN‰ÓPV‹LM‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓX^™I×K›Ý\Î‰ÓX^™HYÚÙXÝ\š]K‰ÈKˆÈY‰Û^ŒÍ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓVŒÍ	Ë[ÛÎ‰ÓVŒÍ	Ë[ÛÐÚ\‰ÓVŒÍT	ËÚ[ØN‰ÓPVŒŒ	Ë›XN‰ÓPV‹LLK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓX^™I×K›Ý\Î‰ÓX^™HXÝ]Û\‹‰ÈKˆÈY‰ÜÝX	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÕP	Ë[ÛÎ‰ÔÕP	Ë[ÛÐÚ\‰ÔÕPT	ËÚ[ØN‰ÔÕP	Ë›XN‰ÔÕPKM‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔÝX˜\I×K›Ý\Î‰ÔÝX˜\HXÝ][™HÛX\ZÙ^H[Y\™Ù[˜ÞH›YK‰ÈKˆÈY‰Ù]MÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑUMÉË[ÛÎ‰ÑUMÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó”ÓŒLIË›XN‰ÑULMË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔÝX˜\IË	Óš\ÜØ[‰×K›Ý\Î‰ÓÛ\ˆÝX˜\HÈ]Ý[ˆ›Ùš[K‰ÈKˆÈY‰ÛZ]LIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓRULIË[ÛÎ‰ÓRULIË[ÛÐÚ\‰ÓRULKT	ËÚ[ØN‰ÓRULIË›XN‰ÓRUM‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓZ]ÝXš\ÚIË	ÐÚž\Û\‰Ë	ÑÙÙI×K›Ý\Î‰ÓZ]ÝXš\ÚHXÝ][ÛÈÛˆØ\]™HÚž\Û\ˆ[Ù[Ë‰ÈK‚ˆÊˆKKKH“Ó“ÈÈÐPPˆÈÕTˆUT“ÈKKKH
+‹ÂˆÈY‰ÚMMœ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒMM”‰Ë[ÛÎ‰ÒMM”‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒMM”‰Ë›XN‰Õ“ÓLK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕ›Û›É×K›Ý\Î‰Õ›Û›È\Ù\‹‰ÈKˆÈY‰ÞZÍ\‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖSLÌÓ‘M‰Ë[ÛÎ‰ÖSLÌ	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó‘M‰Ë›XN‰ÕSLË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕ›Û›ÉË	Ô™[˜][	Ë	ÔØXX‰×K›Ý\Î‰Ô™[˜][Õ›Û›ÈÚ\™Y\Ù\ˆ›Ùš[K‰ÈK‚ˆÊˆKKKH]]Û[Ý]™HÙ^]Ø^\ÈH\™XÝÜžHØ\ÈZ\ÜÚ[™ÈKKKH
+‹ÂˆÈY‰ÚÛ[‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÛ[ˆ
+ÓH]\Ý˜[XJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒÛ[‰Ë	ÔÛXXÉË	ÐÚ]œ›Û]	×Kˆ›Ý\Î‰ÕHÓH]\Ý˜[XH›Ùš[\È]™XXÚYHTÈÛˆHÛXXÈÕÈ[™Î[™HÚ]œ›Û]ÔËˆ›ÝHØ][ÙÜÈ[™TÈÓHÛÛÛÝ™\˜YÙH[ˆÝ]\™KÛÈ›ÈÜ›ÜÜË\™Y™\™[˜ÙH\ÈÚ]™[ŽˆYX\Ý\™HH›YH˜]\ˆ[ˆ\ÝHÚ\[™^XÝÈÛÝ\˜ÙHH›[šÈ˜]\ˆ[ˆ]™H]ÛˆHXÚË‰ÈKˆÈY‰ØŽLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŽLHÈŽMÉË[ÛÎ‰ÐŽLIË[ÛÐÚ\‰ÐŽLKT	ËÚ[ØN‰ÑÓLÎIË›XN‰ÑÓKLÌ	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÔÛXXÉË	ÐZXÚÉË	ÓÛÛ[Øš[IË	ÐØY[XÉË	ÑÓPÉË	ÔØ]\›‰×Kˆ›Ý\Î‰ÕHÓHLXÝ]›ÝYÚHUÈ[™\ÜÛØÚÈYX\œÈ8 %Ü˜[™[KØ]˜[Y\‹Ý[™š\™KÙ[\žKTØXœ™KUš[H[™H™\ÝˆÛˆUÈØ\œÈH›YH\ÈÛ›H[ˆHÙ^NˆH™\Ú\ÝÜˆ[]\ÈÈX]ÚÛË‰ÈKˆÈY‰ØŽNIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŽNIË[ÛÎ‰ÐŽNIË[ÛÐÚ\‰ÐŽNKT	ËÚ[ØN‰ÑÓLÎT•	Ë›XN‰ÑÓKLÍË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÔÛXXÉË	ÐØY[XÉ×Kˆ›Ý\Î‰ÑÓHLXÝ]˜\šX[ÙˆHÌÊÈ\˜KˆÚ]È™\žHÛÜÙHÈŒLLH8 %ÛÛ\\™HHXY[™HÚÝ[\ˆ™Y›Ü™H[ÝHÝ]‰ÈKˆÈY‰ØŒLL	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒLLÈŒLL‰Ë[ÛÎ‰ÐŒLL	Ë[ÛÐÚ\‰ÐŒLLT	ËÚ[ØN‰ÑÓMIË›XN‰ÑÓKM”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÐZXÚÉË	ÑÓPÉË	ÐØY[XÉ×Kˆ›Ý\Î‰Ó]\ˆÓHLXÝ]˜\šX[È\›Ý[™H‘HÚ[™Ù[Ý™\‹‰ÈKˆÈY‰ÝÞMIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖMHÈÖM	Ë[ÛÎ‰ÕÖMIË[ÛÐÚ\‰ÕÖMT	ËÚ[ØN‰ÕÖMIË›XN‰ÕÖSËLNIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÔØÚ[Û‰×Kˆ›Ý\Î‰ÕÞ[ÝHXÝ]˜\šX[ÈZ]\ˆÚYHÙˆHÖMËˆÚXÚÈHÚÝ[\ˆÜÚ][Û‹‰ÈKˆÈY‰ÝÞLÎ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖLÎ‰Ë[ÛÎ‰ÕÖLÎ‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕÖLÎ	Ë›XN‰ÕÖSËLN	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\É×Kˆ›Ý\Î‰ÕÞ[ÝHYÚ\ÙXÝ\š]H˜\šX[[ÜÝHÛˆÙXÛÛ™\žH[™˜[]ØÚÜË‰ÈKˆÈY‰ÚÌ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÌˆÈÌ	Ë[ÛÎ‰ÒÌ‰Ë[ÛÐÚ\‰ÒÌ‹T	ËÚ[ØN‰ÒÓŒÌIË›XN‰ÒÓ‘LL	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÛ™IË	ÐXÝ\˜I×Kˆ›Ý\Î‰ÒÛ™HÙXÛÛ™\žH[™[šÈÙ^]Ø^\Ë[™ÛÛYHÛ\ˆXÝ\˜\Ë‰ÈKˆÈY‰ÛœÛŒLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ó”ÓŒLHÈ’LIË[ÛÎ‰ÑLÌ	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó”ÓŒLIË›XN‰Ó‘KLÌ	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓš\ÜØ[‰Ë	Ò[™š[š]IË	ÔÝX˜\I×Kˆ›Ý\Î‰ÕHš\ÜØ[ˆXÝ]][ÛÈ\›œÈ\ÛˆÛ\ˆÝX˜\\Ë‰ÈKˆÈY‰ÚLM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLMÈLMˆÈLN	Ë[ÛÎ‰ÒLM	Ë[ÛÐÚ\‰ÒLMT	ËÚ[ØN‰ÒSÈÈSŒLIË›XN‰ÒKLLHÈKLM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒ][™ZIË	ÒÚXI×Kˆ›Ý\Î‰ÕHÛ\ˆ][™ZH[™ÚXHXÝ]È™Y›Ü™HLŒ[™LŒ‹‰ÈKˆÈY‰ÚÚÌL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÒÌL‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒSŒMÉË›XN‰ÒKLŒ‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒÚXI×Kˆ›Ý\Î‰ÕHÚXH\Ù\ˆ›Ùš[HÛˆÍKÙ[ÜËš\›ËÝ[™Ù\ˆ[™HUˆØ\œÈ8 %HÚXHÚYHÙˆH][™ZHLŒ‹‰ÈKˆÈY‰ÚÚXM‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÒPMˆÈÒÍÉË[ÛÎ‰ÒÒÍÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒS‰Ë›XN‰ÒKM‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒÚXI×K›Ý\Î‰ÑX\›HÚXK™KRÒÌL‰ÈKˆÈY‰ÛX^ŒLÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓPVŒLÈÈVŒÌIË[ÛÎ‰ÓVŒÌIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÓPVŒLÉË›XN‰ÓPV‹LLÉËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓX^™I×K›Ý\Î‰ÓX^™H˜\šX[Ú][™È™]ÙY[ˆVŒLÈ[™VŒÍ‰ÈKˆÈY‰ÜÝXŒIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÕPŒHÈÕPŒˆÈÕPŒÉË[ÛÎ‰ÔÕPŒIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÔÕPŒIË›XN‰ÔÕPKLIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔÝX˜\I×Kˆ›Ý\Î‰ÓÛ\ˆÝX˜\HÙ^]Ø^\ÈZXYÙˆHÕPH[Ù\›ˆØ\œÈ\ÙK‰ÈKˆÈY‰ÛZ]ÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓRUÈÈRUÈRUIË[ÛÎ‰ÓRUÉË[ÛÐÚ\‰ÓRUËT	ËÚ[ØN‰ÓRUÉË›XN‰ÓRULÉËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓZ]ÝXš\ÚIË	ÑÙÙIË	ÐÚž\Û\‰Ë	ÑXYÛIË	Ô[[Ý]	×Kˆ›Ý\Î‰ÓZ]ÝXš\ÚH˜\šX[Ë[˜ÛY[™ÈHX[[Û™TÝ\ˆØ\]™H[\ÜË‰ÈKˆÈY‰ÛZ]M‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓRUMˆÈRUMÉË[ÛÎ‰ÓRUM‰Ë[ÛÐÚ\‰ÓRUM‹T	ËÚ[ØN‰ÓRUM‰Ë›XN‰ÓRULM‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓZ]ÝXš\ÚI×Kˆ›Ý\Î‰Ó]\ˆZ]ÝXš\ÚHYÚ\ÙXÝ\š]H›Ùš[K‰ÈKˆÈY‰Ý˜L‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕLˆÈ‘MÌˆÈÖIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕLˆÈ‘MÌ‰Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔ™[˜][	Ë	Ô]YÙ[Ý	Ë	ÐÚ]›Ù[‰×Kˆ›Ý\Î‰ÕHÛÛ[[Ûˆ[Ù\›ˆœ™[˜Ú›Ùš[\Ëˆ˜\™H[ˆHTÈÝ]ÚYHÜ™^H[\ÜË]ÛÜÛ›ÝÚ[™ÈÛˆÚYÚ‰ÈKˆÈY‰ÚNÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒNÈÈ‘MÎ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒNÉË›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔ]YÙ[Ý	Ë	ÐÚ]›Ù[‰×Kˆ›Ý\Î‰ÔÐH\Ù\ˆ›Ùš[K‰ÈKˆÈY‰Ù›Í	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ñ“ÍÈ‰Ë[ÛÎ‰Ò‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ñ“Í	Ë›XN‰Ñ“ËM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žI×Kˆ›Ý\Î‰Ñ›Ü™ÙXÛÛ™\žH[™ÛÝ™X›Þ›Ùš[\ÈÙˆHUÈ\˜K‰ÈKˆÈY‰ÞLMIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖLMHÈLMÌ	Ë[ÛÎ‰ÖLMÌ	Ë[ÛÐÚ\‰ÖLMÌT	ËÚ[ØN‰ÐÖL	Ë›XN‰ÐÒ‹LMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐÚž\Û\‰Ë	ÑÙÙIË	Ò™Y\	Ë	Ô˜[I×Kˆ›Ý\Î‰ÔØ[YHÖLÙ^]Ø^H\ÈLM[ˆH]\ˆ›Ø‹ZXYÝ[KˆH›YH\È[\˜Ú[™ÙXX›NÈHXY\È›Ý‰ÈK‚ˆÊˆKKKHSÕÔÖPÓHÈÕÑT”ÔÔ•ÈKKKH
+‹ÂˆÈY‰ØØ[˜[IËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐØ[‹P[HÈ””	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐØ[‹P[IË	ÔÝÙ\œÜÜÉ×Kˆ›Ý\Î‰ÔÚYKXžK\ÚYH[™žZÙ\ˆYÛš][Û‹ˆÛÛYH[Ù[È\ÙHH‘K”Ë”Ëˆ]\ˆ[œÝXYÙˆHYXÚ[šXØ[Ù^H8 %ÛÛ™š\›HÚXÚ™Y›Ü™HHš\‰ÈKˆÈY‰ÜÛIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÛ\š\ÉË[ÛÎ‰ÖMIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÔÛ\š\ÉË	ÔÝÙ\œÜÜÉ×Kˆ›Ý\Î‰ÔÛ\š\È–”ˆÈ˜[™Ù\ˆÈÙ[™\˜[YÛš][Û‹ˆ›È[[[Øš[^™\ˆÛˆ[ÜÝ8 %Ý][™ÛË‰ÈKˆÈY‰Ú›‹X›YIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò“ˆ[Y\™Ù[˜ÞH›YIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÓ[™›Ý™\‰Ë	Ò˜YÝX\‰×Kˆ›Ý\Î‰ÕH›YHY[ˆ[ˆH[Ù\›ˆ˜YÝX\ˆÈ[™›Ý™\ˆ›Þ[Z]H›Ø‹ˆ]Ü[œÈHÛÜˆ[™›Ý[™È[ÙH8 %HØ\ˆÝ[Ú[›ÝÝ\Ú]Ý]H›ØˆZ\™YˆØ][ÙÈ[X™\ˆY›[šÈ˜]\ˆ[ˆÝY\ÜÙYÈXÛÙHHÛÜˆ[™X]Ú]‰ÈKˆÈY‰ÜØXX‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔØXXˆÈ‘M‹Y˜[Z[IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó‘M‰Ë›XN‰ÕSLË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔØXX‰×Kˆ›Ý\Î‰ÔØXXˆKLÈ[™KMKˆÛˆHŒÊÈKLÈHYÛš][ÛˆÚ]È[ˆHÙ[™HÛÛœÛÛH[™HÒSH[Ù[HÛÈHÙ^H]K‰ÈKˆÈY‰Ú\Ý^IËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò\Ý^H
+\Ù\šY\ÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒ\Ý^I×Kˆ›Ý\Î‰Ô›Ù[Ë›ÛÜ\‹^[ÛH[™HØX›Ý™\ˆXÚÜËˆØ][ÙÈ[X™\œÈY›[šÈ˜]\ˆ[ˆÝY\ÜÙY8 %ÚXÚÈ[Ý\ˆ›ÛÚË‰ÈKˆÈY‰ÙÛÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑY]ÛÛÈÓÈÈÓÍ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÑY]ÛÛÉË	ÔÝ^ZÚI×Kˆ›Ý\Î‰ÑY]ÛÛÈ[›ÜËXš\˜H[™YØ[ž˜K[™HÝ^ZÚH›Ü™[ž˜H[™™[›ÈZ[ÛˆHØ[YH]›Ü›K‰ÈKˆÈY‰ÙXØ]IËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑXØ]IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÑXØ]I×Kˆ›Ý\Î‰Ð\ÚÈ›ÜˆHÛÙHØ\™™Y›Ü™HHš\8 %Ù^HZ\š[™È™YYÈ]‰ÈKˆÈY‰Ýš][\	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Õš][\	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÕš][\	×K›Ý\Î‰Ó]\ˆ[Ù[ÈY[ˆ[[[Øš[^™\‹‰ÈKˆÈY‰ÚÝIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÕIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÕI×K›Ý\Î‰ÓÙ™‹\›ØY[Ù[ÈÙ[™\˜[H]™H›È[[[Øš[^™\ŽÈÝ™Y][Ù[ÈË‰ÈKˆÈY‰Ú[™X[‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò[™X[‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒ[™X[ˆ[ÝÜ˜ÞXÛI×Kˆ›Ý\Î‰ÔÛ\š\ËXZ[ˆ[Ù\›ˆšZÙ\È\™HÙ^[\ÜÈ8 %H›Þ[Z]H›Øˆ\ÈH›Ø‹‰ÈKˆÈY‰ÛX\Ù\˜]IËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓX\Ù\˜]HÈšX]Y˜[Z[IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÔÒTŒ‰Ë›XN‰Ñ’KLŒK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓX\Ù\˜]I×Kˆ›Ý\Î‰ÑšX]Y\˜HØ\œÈÝ™\›\X]š[HÚ]ÒTŒŽÈHÜ˜[•\š\Û[È\È]ÈÝÛˆ[™Ë‰ÈKˆÊˆKKKHš[YÙHÙ^]Ø^\ËNNHÈH[[[Øš[^™\ˆ\˜HKKKH
+‹ÂˆÈY‰Ø	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐÈHÈÈL	Ë[ÛÎ‰ÐÈIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓLÌHÈÓLÌ‰Ë›XN‰ÑÓKNHÈÓKLL	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÐØY[XÉË	ÔÛXXÉË	ÓÛÛ[Øš[I×Kˆ›Ý\Î‰Õš[YÙHÓKÛËZÙ^H\˜NˆH˜[Z[H\›œÈHYÛš][Û‹HH˜[Z[HHÛÜœÈ[™[šËˆ\ÚÈÚXÚÛ™H\ÈÜÝ™Y›Ü™H[ÝHÝ]‰ÈKˆÈY‰ØŒ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒˆ[]
+UÊIË[ÛÎ‰ÐŒ‹TH‹ˆŒ‹TMIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓLÍÉË›XN‰ÑÓKLM”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÔÛXXÉË	ÐØY[XÉË	ÐZXÚÉË	ÓÛÛ[Øš[I×Kˆ›Ý\Î‰ÑšYY[ˆ™\Ú\ÝÜˆ˜[Y\Ëˆ™XYH[]Ú]HUÈ[\œ›ÙØ]Üˆ˜]\ˆ[ˆÝY\ÜÚ[™È8 %XXÚÜ›Û™ÈžHÝ\ÈH›Ý\‹[Z[]HØÚÛÝ]‰ÈKˆÈY‰ÚL	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLÈLHÈMÈŒ	Ë[ÛÎ‰ÒLÈM	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ñ“ÌMÈ“ÌMIË›XN‰Ñ“ËMÈÈ“ËN	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žIË	ÓY\šÝ\‰×Kˆ›Ý\Î‰Õš[YÙH›Ü™[ÛÈHÛËZÙ^H\˜KˆUÈ[™HÚ\YÌˆ\œš]™H[ˆNNM‹‰ÈKˆÈY‰ÞLMLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖLMLHÈLMLˆÈLMMHÈLMMÈÈLMNIË[ÛÎ‰ÖLMLHÈLML‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÐÖLLÈÖLLÉË›XN‰ÐÒ‹LHÈÒ‹M	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐÚž\Û\‰Ë	ÑÙÙIË	Ô[[Ý]	Ë	Ò™Y\	Ë	ÑXYÛI×Kˆ›Ý\Î‰Õš[YÙHÚž\Û\‹ˆÒÒSH[™HÚ\YLMŒ\œš]™H\›Ý[™NNN‰ÈKˆÈY‰ÚL	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLÈLHÈL‰Ë[ÛÎ‰ÒLÈL‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒÓŒÌÈÓÉË›XN‰ÒÓ‘NÈÓ‘LM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÛ™IË	ÐXÝ\˜I×Kˆ›Ý\Î‰Õš[YÙHÛ™K›È[[[Øš[^™\‹ˆÛÝ™\œÈHNNM‹LŒÚ]šXËÚXÚ\ÈÝ[Û™HÙˆH[ÜÝÛÛ[[ÛˆÜÝZÙ^HØ[È\™H\Ë‰ÈKˆÈY‰ÙLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑLŒÈÈLÈLIË[ÛÎ‰ÑLIË[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó”ÓÉË›XN‰ÑULL	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓš\ÜØ[‰Ë	Ñ]Ý[‰Ë	Ò[™š[š]I×Kˆ›Ý\Î‰Õš[YÙHš\ÜØ[ˆ[™]Ý[‹ˆ›ÈÚ\›ÈÓHSˆ8 %›Ý[™ÈZÙHH[Ù\›ˆš\ÜØ[‹‰ÈKˆÈY‰Û^ŒLÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓVŒLÈÈVŒMHÈPVŒL‰Ë[ÛÎ‰ÓVŒLÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÓPVŽÈPVŒL‰Ë›XN‰ÓPV‹LÈÈPV‹M‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓX^™I×K›Ý\Î‰Õš[YÙHX^™K‰ÈKˆÈY‰ÛZ]IËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓRUHÈRU‰Ë[ÛÎ‰ÓRUIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÓRUIË›XN‰ÓRULIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓZ]ÝXš\ÚIË	ÑÙÙIË	Ô[[Ý]	×Kˆ›Ý\Î‰Õš[YÙHZ]ÝXš\ÚK[˜ÛY[™ÈHÙÙH[™[[Ý]Ø\]™H[\ÜÈÙˆH\˜K‰ÈKˆÈY‰ÜÜœØÚK]š[YÙIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÜœØÚH
+š[YÙJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔÜœØÚI×Kˆ›Ý\Î‰ÕHZ\‹XÛÛÛYLLH›YKˆHL[™M\ÙHH•ËY˜[Z[H›[šÈ[œÝXY8 %ÚXÚÈÚXÚØ\ˆ[ÝH\™HÛ‹‰ÈKˆÈY‰ÝÌIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Õ•ÌHÈMIË[ÛÎ‰Õ•ÌIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒMIË›XN‰Õ“ËLIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕ›ÛÜÝØYÙ[‰Ë	Ð]YIË	ÔÜœØÚI×Kˆ›Ý\Î‰Õš[YÙH•È[™]YK\ÈH•ËY\š]™YÜœØÚHL[™M‰ÈKˆÈY‰Ø›LIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ð“LHÈMN	Ë[ÛÎ‰Ð“LIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒMN	Ë›XN‰Ð“KM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐ“UÉ×Kˆ›Ý\Î‰Õš[YÙH“UË™Y›Ü™HUÔËˆ˜\ˆÚ[\\ˆ[ˆ[ž][™È“UÈZ[Y\ˆ]‰ÈKˆÈY‰Þ[LM]‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖSLMHÈLÎIË[ÛÎ‰ÖSLMIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒLÎIË›XN‰ÓQKLÉËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓY\˜ÙY\ËP™[ž‰×Kˆ›Ý\Î‰Õš[YÙHY\˜ÙY\ËÌLŒÈ[™ÌLˆ\˜Kˆ›È”Ë›ÈRTÈÛÜšË‰ÈKˆÈY‰Ý›ÌÍIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Õ“ÌÍHÈTË\Ù\šY\ÉË[ÛÎ‰Õ“ÌÍIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕ›Û›ÉË	ÔØXX‰×K›Ý\Î‰Õš[YÙH›Û›È[™ØXX‹‰ÈKˆÈY‰ÝÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÈÈÖM	Ë[ÛÎ‰ÕÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕÖM	Ë›XN‰ÕÖSËLMIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÑZZ]ÝI×Kˆ›Ý\Î‰Õš[YÙHÞ[ÝKˆXÚÝ\È[™[™ÜZ\Ù\œÈÙˆ\È\˜H\™HÝ[ÛÜšÚ[™ÈXÚÜË‰ÈKˆÈY‰Ù\Ù\šY\ÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ñ•\Ù\šY\ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÑšX]	Ë	Ð[˜H›ÛY[ÉË	Ö]YÛÉ×Kˆ›Ý\Î‰Õš[YÙHšX]˜[Z[K[˜ÛY[™ÈHšX][XÙ[œÙY]YÛË‰ÈKˆÈY‰Ü›‹\Ù\šY\ÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ô“‹\Ù\šY\ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔ™[˜][	×K›Ý\Î‰Ô™[˜][[X[˜ÙK[˜ÛÜ™KYYÛÈ[™NK‰ÈKˆÈY‰Ú˜YË\™]X˜™IËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò˜YÝX\ˆ
+™KUX˜™JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒ˜YÝX\‰×Kˆ›Ý\Î‰Ð™Y›Ü™H˜YÝX\ˆ[Ý™YÈX˜™KˆH›Ý[™X˜™H›YHYX[œÈ[ÝH\™HÛˆHNNMËLŒˆØ\ˆ[œÝXY‰ÈKˆÈY‰Û‹]š[YÙIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ó[™›Ý™\ˆ
+š[YÙJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓ[™›Ý™\‰×Kˆ›Ý\Î‰ÑY™[™\‹\ØÛÝ™\žH[™˜[™ÙH›Ý™\ˆÛ\ÜÚXËˆX]š[HÝÛ[ˆ8 %™\šYžHÝÛ™\œÚ\‰ÈKˆÈY‰Ú\Ý^K^	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò\Ý^H\Ù\šY\ÈÈÖˆ
+š[YÙJIË[ÛÎ‰ÖŒÌÈMÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒ\Ý^IË	ÔÝ^ZÚIË	ÑÙ[É×Kˆ›Ý\Î‰Õš[YÙH\Ý^H[™Ý^ZÚK[˜ÛY[™ÈHÝ^ZÚKXZ[Ù[ÈY]›È[™˜XÚÙ\‹‰ÈKˆÈY‰ÚLÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÒLÉË[ÛÎ‰ÒLÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰Ò	Ë›XN‰ÒLÉËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒ\›^KQ]šYÛÛ‰×K›Ý\Î‰ÕHÛÛ[[Ûˆ\›^HYÛš][Ûˆ›[šË‰ÈKˆÈY‰ÚL‰ËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÒL‰Ë[ÛÎ‰ÒL‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ò‰Ë›XN‰ÒM‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒ\›^KQ]šYÛÛ‰×K›Ý\Î‰Ò\›^HØYX˜YÈÈXØÙ\ÜÛÜžK‰ÈKˆÈY‰ÞXLŒÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÖRÍHÈPLŒÉË[ÛÎ‰ÖRÍIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÖRÍIË›XN‰ÖPSPKLM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÖX[XZI×K›Ý\Î‰ÖX[XZHYÛš][Û‹‰ÈKˆÈY‰ÚØLLÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÒÐLLÉË[ÛÎ‰ÒÐLLÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒÕÌM	Ë›XN‰ÒÐUÐKLL	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒØ]Ø\ØZÚI×K›Ý\Î‰ÒØ]Ø\ØZÚHYÛš][Û‹‰ÈKˆÈY‰ÜÞŒM	ËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÔÕVŒMÈÖŒMÈÖŒN	Ë[ÛÎ‰ÖMÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÔÖŒM	Ë›XN‰ÔÕV•KLM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÔÝ^ZÚIË	ÑÙ[ÉË	ÐÚ]œ›Û]	×Kˆ›Ý\Î‰ÔÝ^ZÚHšZÙ\È[™Ø\œË[™HÝ^ZÚKXZ[Ù[ÈY]›È[™˜XÚÙ\‹‰ÈKˆÈY‰ÚÛIËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÒLHÈÓIË[ÛÎ‰ÒLIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒÓIË›XN‰ÒÓ‘LLIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÛ™I×K›Ý\Î‰ÒÛ™H[ÝÜ˜ÞXÛH[™ÝÙ\œÜÜË‰ÈKˆÈY‰Ø›]Ë[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰Ð“Mˆ
+[ÝÜ˜ÞXÛJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ð•ÍˆÈMN	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐ“UÉ×Kˆ›Ý\Î‰Ð“UÈ[ÝÜ˜ÞXÛHYÛš][Û‹[ˆMNY˜[Z[H›Ùš[Kˆ]\ˆšZÙ\ÈÚ]Hš[™ËX[[›˜H˜\œ™[™YYHUÔÈ˜[œÜÛ™\‹›Ý\ÝH›YK‰ÈKˆÈY‰ÙXË[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰Ö‘ÈXØ]IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ö‘	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÑXØ]I×Kˆ›Ý\Î‰ÑXØ]HYÛš][Û‹ˆ[[[Øš[^™\ˆšZÙ\ÈØ[HÛÙYÙ^NÈH™YX\Ý\ˆÙ^H\ÈÚ]›ÙÜ˜[\ÈH™]ÈÛ™K‰ÈKˆÈY‰ÝšK[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰Õš][\	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÕš][\	×Kˆ›Ý\Î‰Õš][\YÛš][Û‹ˆ[Ù\›ˆšZÙ\ÈØ\œžHH˜[œÜÛ™\ˆ[ˆHXY‰ÈKˆÈY‰ÚÝK[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÒÕHÈ\Ü]˜\›˜IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÕIË	Ò\Ü]˜\›˜I×Kˆ›Ý\Î‰ÒÕH[™H\Ü]˜\›˜HšZÙ\ÈZ[[Û™ÜÚYH[K‰ÈKˆÈY‰ÜÛ[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÔÛ\š\ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÔÛ\š\ÉË	ÕšXÝÜžIË	Ò[™X[‰×Kˆ›Ý\Î‰ÔÛ\š\ÈU‹ÚYKXžK\ÚYH[™Û›ÝÛ[Øš[K\ÈHšXÝÜžH[™[™X[ˆšZÙ\Èœ›ÛHHØ[YH\™[‰ÈKˆÈY‰Øœœ[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÐØ[‹P[HÈÚÚKQÛÈÈÙXKQÛÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐØ[‹P[IË	ÔÚÚKQÛÉË	ÔÙXKQÛÉË	Ð””	×Kˆ›Ý\Î‰Ð””ÝÙ\œÜÜËˆÙXKQÛÈ[œÈH‘K”Ë”Ëˆ]\ˆÜÝ˜]\ˆ[ˆHÝ]Ù^HÛˆHØ]\‹‰ÈKˆÈY‰Ø\˜ÝXË[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰Ð\˜ÝXÈØ]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐ\˜ÝXÈØ]	Ë	Õ^›Û‰×Kˆ›Ý\Î‰Ð\˜ÝXÈØ]ÛYÈ[™ÚYKXžK\ÚY\Ë‰ÈKˆÈY‰Ý™\ÜK[[ÝÉËØ]‰ÔÝÙ\œÜÜÉËÙ^]Ø^N‰ÔXYÙÚ[ÈÈ™\ÜIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÕ™\ÜIË	ÔXYÙÚ[ÉË	Ð\š[XIË	Ó[ÝÈÝ^žšI×Kˆ›Ý\Î‰ÕHXYÙÚ[ÈÜ›Ý\ØÛÛÝ\œÈ[™šZÙ\Ëˆ[[[Øš[^™\ˆ[Ù[È™YYHÛÙYÙ^K‰ÈK‚ˆÊˆKKKH“QUÈTURTQS•KKKH
+‹ÂˆÈY‰ØŒIËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÐŒHÈLN	Ë[ÛÎ‰ÌLN	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓLIË›XN‰ÑÓKLIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	Ñ›Y]	×K›Ý\Î‰ÐÛ\ÜÚXÈÓHYÛš][ÛˆÈ\]Z\Y[‰ÈKˆÈY‰ØØ]	ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÐÐUÈTL	Ë[ÛÎ‰ÌMŽL	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒËXZÙ\Î–ÉÐØ]\œ[\‰Ë	Ñ\]Z\Y[	×K›Ý\Î‰ÒX]žH\]Z\Y[X\Ý\‹ˆÛÛ[[ÛˆÛˆ›Ø‹\Ú]HØ[Ë‰ÈKˆÈY‰Ú™	ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ò›ÚˆY\™HTLMIË[ÛÎ‰ÌMŒ	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒËXZÙ\Î–ÉÒ›ÚˆY\™IË	Ñ\]Z\Y[	×K›Ý\Î‰ÑY\™H˜XÝÜˆÈ[ÝÙ\ˆYÛš][Û‹‰ÈK‚ˆÊˆKKKH•ˆÈRSTˆÈÕÐP“HKKKH
+‹ÂˆÈY‰ØÚÍLIËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÐÒÍLIË[ÛÎ‰ÐÒÍLIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÔ•‰Ë	Õ˜Z[\‰Ë	Ñ›Y]	Ë	Ñ\]Z\Y[	×Kˆ›Ý\Î‰ÕH™X\‹][š]™\œØ[Ø[HØÚÎˆ•ˆ˜YÙØYÙHÛÜœËÙ\šXÙKX›ÙH›Þ\ËÛÛ›Þ\ËØXš[™]ËÛÛYH[]˜]ÜœËˆ›ÝÙXÝ\š]H\™Ø\™KˆØ\œžHÛË‰ÈKˆÈY‰Ü‹X˜]Y\‰ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ð˜]Y\ˆÈšSX\šÈ•ˆ[žIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÔ•‰Ë	Õ˜Z[\‰×Kˆ›Ý\Î‰ÕHÛÈÛÛ[[Ûˆ•ˆ[žKYÛÜˆœ˜[™ËˆÛÙ\È\™H\ÝX[HÝ[\YÛˆHØÚÈ˜XÙHÜˆH]ÚÈH™ZÙ^HÚ]\ÈÙ[ˆ˜\Ý\ˆ[ˆÜšYÚ[˜][™ÈHÙ^K‰ÈKˆÈY‰Ü‹YÛØ˜[[šÉËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÑÛØ˜[[šÈÈ’PÈ•‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÔ•‰Ë	Õ˜Z[\‰×Kˆ›Ý\Î‰ÑÛØ˜[[šÈ[™˜\ÝXÈ
+’PÊH[žH[™ÛÛ\\Y[ØÚÜËÛÛ[[ÛˆÛˆ]K[[Ù[ÝØX›\Ë‰ÈKˆÈY‰Ý˜Z[\‹Z]Ú	ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Õ˜Z[\ˆÛÝ\\ˆÈ]ÚØÚÜÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÕ˜Z[\‰Ë	Ñ›Y]	×Kˆ›Ý\Î‰ÓX\Ý\‹™Y\ÙKÕT•[™›^[ØÚÈÛÝ\\ˆ[™™XÙZ]™\ˆØÚÜËˆ[ÜÝHØY™\ŽÈ[ÜÝ\™Hš[Y˜\Ý\ˆ[ˆXÚÙYÛÈÛÛ™š\›HÝÛ™\œÚ\š\œÝ‰ÈK‚ˆÊˆKKKHPU–H•PÒÈKKKH
+‹ÂˆÈY‰ÝXÚËYœ‰ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ñœ™ZYÚ[™\ˆÈÝ\›[™ÉË[ÛÎ‰ÌMŒÈMŒL	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÑœ™ZYÚ[™\‰Ë	ÔÝ\›[™ÉË	ÕÙ\Ý\›ˆÝ\‰×Kˆ›Ý\Î‰ÐÛ\ÜÈYÛš][Ûˆ[™ÛÜ‹ˆ›Y]È\™HÛÛ[[Û›HÙ^YY[ZÙHXÜ›ÜÜÈHX\™8 %\ÚÈ™Y›Ü™H[ÝH™ZÙ^HÛ™HXÚË‰ÈKˆÈY‰ÝXÚË\‰ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ô]\˜š[ÈÙ[ÛÜ	Ë[ÛÎ‰ÌMˆÈM	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÔ]\˜š[	Ë	ÒÙ[ÛÜ	Ë	ÔPÐÐT‰×Kˆ›Ý\Î‰ÔPÐÐTˆYÛš][Ûˆ[™ÛÜ‹ˆX[žH[ˆHÚ[™ÛKXÛÙHYÛš][ÛˆÚ]HÙ\\˜]HÛÜˆÙ^K‰ÈKˆÈY‰ÝXÚËZ[	ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ò[\›˜][Û˜[È˜]š\Ý\‰Ë[ÛÎ‰ÌMMMÈMMNIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÒ[\›˜][Û˜[	Ë	Ó˜]š\Ý\‰Ë	ÒPÈ\É×Kˆ›Ý\Î‰Ó˜]š\Ý\ˆXÚÜÈ[™HPÈØÚÛÛ\Ù\ÈZ[Ûˆ[K‰ÈKˆÈY‰ÝXÚË[XXÚÉËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÓXXÚÈÈ›Û›ÈXÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÓXXÚÉË	Õ›Û›ÈXÚÉ×Kˆ›Ý\Î‰ÓXXÚÈ[™H›Û›ÈXÚÜÈÚ\š[™ÈH]›Ü›K‰ÈKˆÈY‰ÝXÚËZ[›ÉËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ò[›ÈÈ”ˆÈQØX›Ý™\‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒ[›ÉË	Ò\Ý^IË	ÕQ	Ë	Ñ\ÛÉ×Kˆ›Ý\Î‰ÓYY][KY]HØX›Ý™\œÎˆ[›ËH\Ý^H”ˆ˜[™ÙKQ[™\ÛËˆ”ˆÙ^]Ø^\ÈÙ[ˆ›ÛÝÈH\Ý^HØ\ˆ›Ùš[\ËÛÈÚXÚÈ›Ý‰ÈK‚ˆÊˆKKKH“Ô’ÓQ•ÈÓÓˆÐT•ÈPT’S‘HKKKH
+‹ÂˆÈY‰Ù›ÜšÛY	ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ñ›ÜšÛYYÛš][Ûˆ
+ÛÛ[[ÛˆÙ]
+IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒËXZÙ\Î–ÉÕÞ[ÝH›ÜšÛY	Ë	Ò\Ý\‰Ë	ÖX[IË	ÐÛ\šÉË	ÐÜ›ÝÛ‰Ë	Ñ\]Z\Y[	×Kˆ›Ý\Î‰Ó[ÜÝ›ÜšÛYœ˜[™ÈÚ\Û™HÜˆÛÈÝ[™\™Ù^\ÈXÜ›ÜÜÈHÚÛH[™KÛÈHÛX[Ù]ÛÝ™\œÈHØ\™ZÝ\ÙKˆÞ[ÝHMÍNLKLŒÌÌÌMÌH\ÈHÛ™H[ÝH™XXÚ›Üˆ[ÜÝ‰ÈKˆÈY‰ÙÛÛ˜Ø\	ËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÑÛÛˆØ\YÛš][Û‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒËXZÙ\Î–ÉÐÛXˆØ\‰Ë	ÑKV‹QÓÉË	ÖX[XZIË	Ñ\]Z\Y[	×Kˆ›Ý\Î‰ÐÛXˆØ\‹KV‹QÓÈ[™X[XZHXXÚ\ÙHÛ™HÙ^HXÜ›ÜÜÈH›Y]ˆ™YH›[šÜÈÛÝ™\ˆ[[ÜÝ]™\žHØ\Ø[‰ÈKˆÈY‰ÛX\š[™IËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰ÓX\š[™H[HÈÝ]›Ø\™YÛš][Û‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÓY\˜Ý\žHX\š[™IË	ÖX[XZHX\š[™IË	Ò›ÚœÛÛ‰Ë	Ñ]š[œYIË	ÓX\š[™I×Kˆ›Ý\Î‰ÓÝ]›Ø\™[™[HÝÚ]Ú\ËˆY\˜Ý\žH[™X[XZH[ˆÚÜÝ[™\™ÛÙHÙ\šY\ÎÈÛÚÈ›ÜˆHÛÙHÝ[\YÛˆHÝÚ]Ú™^™[‰ÈKˆÈY‰Ù\]Z\[Z\ØÉËØ]‰Ñ›Y]	ˆ\]Z\Y[	ËÙ^]Ø^N‰Ð›Ø˜Ø]ÈÝX›ÝHÈÛÛX]ÝHÈÐ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒËXZÙ\Î–ÉÐØ\ÙIË	ÒÛÛX]ÝIË	ÒÝX›ÝIË	Ð›Ø˜Ø]	Ë	ÒÐ‰Ë	Ñ\]Z\Y[	×Kˆ›Ý\Î‰ÕH™\ÝÙˆHX\™ˆØ\ÙKÛÛX]ÝKÝX›ÝK›Ø˜Ø]Ð‹ˆZÙHØ][™Y\™KXXÚœ˜[™\È\™Ù[HÙ^YY[ZÙKÛÈHX\Ý\ˆÙ]™X]ÈÜšYÚ[˜][™Ë‰ÈK‚ˆÊˆKKKH‘TÒQS•PSKKKBˆY™™\™[ÛÜšÈœ›ÛHHØ\‹ÛÈ]\ÈÙ\[ˆ]ÈÝÛˆØ]YÛÜžKˆÜXÙ\È[™ˆ\È\™HHX[Y˜XÝ\™\‰ÜÈX›\ÚYÜXÜÎÈØ][ÙÈÜ›ÜÜË\™Y™\™[˜Ù\È\™Bˆš[YÛ›HÚ\™H^H\™HÙ\Z[‹[™Y›[šÈ˜]\ˆ[ˆÝY\ÜÙYˆ
+‹ÂˆÈY‰ÚÝÌIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÒÕÌIË[ÛÎ‰ÌLMÍ‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÒÝÚZÜÙ]	×Kˆ›Ý\Î‰ÕH[ÜÝÛÛ[[Ûˆ™\ÚY[X[Ù^]Ø^H[ˆHÛÝ[žKˆ\ÈKM‹ˆÛX\Ù^HÞ[[™\œÈZÙHHØ[YH›[šÈ]™ZÙ^HÚ]HX\›ˆÛÛ›ÝžH[›š[™È8 %[™HÛX\Ù^H]\È™Y[ˆ›Ü˜ÙY\ÝX[HÚ[›ÝXØÙ\HÛÛY\Ø\™‰ÈKˆÈY‰ÚÝÌL	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÒÕÌLÈÕÌLIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\Î‹XZÙ\Î–ÉÒÝÚZÜÙ]	×Kˆ›Ý\Î‰ÕH‹\[ˆ™\œÚ[ÛˆÙˆHÕÌH›Ùš[KˆHÕÌH›[šÈÚ[[\ˆH‹\[ˆÞ[[™\ˆ[™\›ˆ›Ý[™È8 %ÛÝ[H[œÈ™Y›Ü™H[ÝHÝ]‰ÈKˆÈY‰ÜØÌIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÐÌIË[ÛÎ‰ÌLMIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒLXZÙ\Î–ÉÔØÚYÙI×Kˆ›Ý\Î‰ÕHÝ\ˆ[ˆÙˆ™X\›H]™\žHÝ\ÙHØ[ˆ\ÈNKŒMH[ˆ[˜Ü™[Y[ËˆÐÍ\ÈH‹\[ˆÙˆHØ[YH›Ùš[K‰ÈKˆÈY‰ÜØÍ	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÐÍ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØÚYÙI×Kˆ›Ý\Î‰ÔØÚYÙH‹\[‹ˆÛÛ[[ÛˆÛˆXY›ÛÈ[™Ûˆ[ž][™ÈÙ^YY[ZÙHÚ]HÛÛ[Y\˜ÚX[]™\‹‰ÈKˆÈY‰ÝÜIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÕÔŒÈÈÔIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÕÙZ\Ù\‰×Kˆ›Ý\Î‰ÕÙZ\Ù\‹ˆØ[YHÛÜœÜ˜]H\™[\ÈÝÚZÜÙ]Ù^K]HÙ^]Ø^H\È›Ý[\˜Ú[™ÙXX›HÚ]ÕÌH8 %ÚXÚÈHØ\™[™Ë‰ÈKˆÈY‰ÞLK\™\ÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÖLHÈL‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŽXZÙ\Î–ÉÖX[I×Kˆ›Ý\Î‰ÖX[H™\ÚY[X[ˆ\›œÈ\ÛˆÛ\ˆÝ\Ú[™ÈÝØÚÈ[™ÛˆHÝÙˆ\\Y[Þ[[™\œË‰ÈKˆÈY‰ÝÙLIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÕÒÌˆÈÙ\ÛØÚÉË[ÛÎ‰ÌLMÐ‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÕÙ\ÛØÚÉË	Ñ^\‰×Kˆ›Ý\Î‰ÕÙ\ÛØÚÈ[™H^\ˆØÚÜÙ]È]Ú\™HH›Ùš[KˆÛÛ[[ÛˆÛˆNMŒËNÈ˜XÝÝ\Ú[™Ë‰ÈKˆÈY‰Ø\ŒIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÐTŒHÈT	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒLXZÙ\Î–ÉÐ\œ›ÝÉ×Kˆ›Ý\Î‰Ð\œ›ÝËˆÚÝÜÈ\™\ÚY[X[[™YÚÛÛ[Y\˜ÚX[›Ý‰ÈKˆÈY‰ÛLIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÓLIË[ÛÎ‰ÌLL‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎKXZÙ\Î–ÉÓX\Ý\ˆØÚÉ×Kˆ›Ý\Î‰ÕHX\Ý\ˆYØÚÈÙ^]Ø^KˆX\Ý\ˆÝ[\ÈHÛÙHÛˆH˜XÚÈÙˆ[ÜÝYØÚÜÎÈÚ]HÛÙH[ÝHÜšYÚ[˜]H[œÝXYÙˆXÚÚ[™Ë‰ÈKˆÈY‰Ø[LÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÐSLÈÈSMÉË[ÛÎ‰ÌLIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÐ[Y\šXØ[ˆØÚÉ×Kˆ›Ý\Î‰Ð[Y\šXØ[ˆYØÚÜË[˜ÛY[™ÈHÚ›ÝYY\ÚXÚÛHÙ\šY\È[ÜH]ÛˆÝÜ˜YÙH[š]È[™˜Z[\œË‰ÈKˆÈY‰Û˜KXØXš[™]	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ó˜][Û˜[ÈØXš[™]	ˆXZ[›Þ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÓ˜][Û˜[	Ë	ÒYÛÛ‰Ë	ÒÓ‰Ë	ÔÝY[Ø\ÙI×Kˆ›Ý\Î‰Ñ\ÚËš[HØXš[™]XZ[›Þ[™ØÚÙ\ˆØY™\ˆØÚÜËˆ[ÜÝØ\œžHHÝ[\YÛÙH
+HËMÚ\˜XÝ\ˆ[X™\ŠH]HÛÙH›ÛÚÈ\›œÈÝ˜ZYÚ[ÈÝ]Ëˆ˜\Ý\ˆ[ˆXÚÚ[™È[[ÜÝ]™\žH[YK‰ÈK‚‚ˆÈY‰Ü˜M	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔMÈ“‹\Ù\šY\ÉË[ÛÎ‰ÌNMÌSIË[ÛÐÚ\‰ø %	ËÚ[ØN‰Ô“ŒN	Ë›XN‰Ô“‹M	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎKXZÙ\Î–ÉÐSPÉË	Ô™[˜][	×Kˆ›Ý\Î‰ÕH™[˜][XZ[SPÈØ\œÈ8 %[X[˜ÙH[™[˜ÛÜ™H8 %[™H™[˜][ÈÛÛ[Û™ÜÚYH[Kˆš]™HÚ[ÝÈØY™\œÎÈ[\™\ÜÚ[ÛœÈÙ[‰ÈK‚‚ˆÊˆKKKH]]Û[Ý]™K\™\ÜÎˆH›Ùš[\ÈH\™XÝÜžHÝ[Z\ÜÙYKKKH
+‹ÂˆÈY‰ÚÌ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÌ‰Ë[ÛÎ‰ÒÌ‰Ë[ÛÐÚ\‰ÒÌ‹T	ËÚ[ØN‰Ñ“ÌÎ	Ë›XN‰Ñ“ËLMIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žIË	ÓX^™I×Kˆ›Ý\Î‰ÕH›Ü™XÝ]ÙˆHNNLÈ[™ŒÈ8 %Ú[™Ý\‹˜[™Ù\‹^Ü™\‹\ØØ\K^Ý\œÚ[Û‹ˆÚ]ÈšYÚ™^ÈÍNÈHY™™\™[˜ÙH\ÈHÚÝ[\‹ÛÈÛÛ\\™H™Y›Ü™H[ÝHÝ]‰ÈKˆÈY‰ÚŒ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒŒˆÈÉË[ÛÎ‰ÒŒ‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ñ“ÌŒIË›XN‰Ñ“ËM‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žI×Kˆ›Ý\Î‰Ñ›Ü™ÙXÛÛ™\žK[šÈ[™ÛÝ™X›ÞÙˆHØ[YH\˜KˆÙ[ˆHY™™\™[Ý]œ›ÛHHYÛš][ÛˆÛˆHØ[YHØ\‹‰ÈKˆÈY‰ÚÍ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÍÈIË[ÛÎ‰ÒÍ	Ë[ÛÐÚ\‰ÒKT	ËÚ[ØN‰Ñ“ÌŒIË›XN‰Ñ“ËL”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎKXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰Ë	ÓY\˜Ý\žI×Kˆ›Ý\Î‰Ó]\ˆ›Ü™XÝ]UÈ˜\šX[È\›Ý[™HÚ[™Ù[Ý™\‹‰ÈKˆÈY‰ÚLNN	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLNN	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒLNN	Ë›XN‰Ñ“ËM‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÑ›Ü™	Ë	Ó[˜ÛÛ‰×Kˆ›Ý\Î‰ÕHÝ\ˆ[Ù\›ˆ›Ü™\Ù\ˆ›Ùš[H[Û™ÜÚYHLLH8 %]\›ÜX[‹XZ[›Ü™È[™ÛÛYH˜[œÚ]ˆÚXÚÈH›YK›ÝH˜YÙK‰ÈKˆÈY‰ØŒLÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒLÈÈŒLÈŒLIË[ÛÎ‰ÐŒLÉË[ÛÐÚ\‰ÐŒLËT	ËÚ[ØN‰ÑÓM	Ë›XN‰ÑÓKLÍË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÔÛXXÉË	ÔØ]\›‰×Kˆ›Ý\Î‰ÑÓHLXÝ]˜\šX[ÈZ]\ˆÚYHÙˆŒLˆ[™ŒLLKˆH™\œÚ[ÛœÈØ\œžHHÌÈÚ\‰ÈKˆÈY‰ØŒLM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŒLMÈŒLM‰Ë[ÛÎ‰ÐŒLM	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓMIË›XN‰ÑÓKLÎK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÐZXÚÉË	ÐØY[XÉ×Kˆ›Ý\Î‰Ó]HÓHYÙKXÝ]˜\šX[È™Y›Ü™HH˜[™ÙH[Ý™YÈHLL\Ù\‹‰ÈKˆÈY‰ØŽ	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐŽÈŽˆÈŽ	Ë[ÛÎ‰ÐŽ	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓLÌ‰Ë›XN‰ÑÓKL‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÐÚ]œ›Û]	Ë	ÑÓPÉË	ÔÛXXÉË	ÔØ]\›‰Ë	ÑÙ[É×Kˆ›Ý\Î‰ÕH‹XÝ]ÓH›Ùš[\Èœ›ÛHHNNÈ[™LË[˜ÛY[™ÈHØ]\›ˆË\Ù\šY\Ë‰ÈKˆÈY‰ÝÞMÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖMÈÈÖMHÈÖML	Ë[ÛÎ‰ÕÖMÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕÖMÉË›XN‰ÕÖSËL	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÔØÚ[Û‰×Kˆ›Ý\Î‰ÕÞ[ÝHYÙKXÝ]˜\šX[È\›Ý[™ÖMÈ8 %ÙXÛÛ™\žHØÚÜË˜[]Ù^\È[™ÛÛYH^Ü[X\šÙ]Ø\œË‰ÈKˆÈY‰ÝÞMÜ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖMÔˆÈÖMÐU	Ë[ÛÎ‰ÕÖMÔ‰Ë[ÛÐÚ\‰ÕÖMÐUT	ËÚ[ØN‰ÕÖMÉË›XN‰ÕÖSËLŒIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÔØÚ[Û‰×Kˆ›Ý\Î‰ÕH™]™\œÙYÖMËˆ]ÛÚÜÈZÙHHÖMÈ[ˆH[™[™Ú[›Ý\›ˆ8 %ÚXÚÈHØ\™[™ÈÜšY[][Ûˆ™Y›Ü™H[ÝHÝ]‰ÈKˆÈY‰ÚÛN‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÓN‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒÓN‰Ë›XN‰ÒÓ‘LN	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÒÛ™IË	ÐXÝ\˜I×Kˆ›Ý\Î‰ÕH™]™\œÙYÛ™H›Ùš[KˆØ[YH˜\\ÈÖMÔˆ8 %]ÙX]È[™Ù\È›Ý[™Ë‰ÈKˆÈY‰ÞLM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖLM	Ë[ÛÎ‰ÖLM	Ë[ÛÐÚ\‰ÖLMT	ËÚ[ØN‰ÐÖL	Ë›XN‰ÐÒ‹LMK”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐÚž\Û\‰Ë	ÑÙÙIË	Ò™Y\	Ë	Ô˜[I×Kˆ›Ý\Î‰ÕHÙ[žHÙ^HXYÛˆHÖLÙ^]Ø^KˆØ[YH›YH\ÈLMŒ[™LMH8 %HXY\ÈÚ]Y™™\œË[™Ú]XÚY\ÈÚ]\ˆHÚ\[ÜË‰ÈKˆÈY‰ÞLMM	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖLMMÈLMMˆÈLMN	Ë[ÛÎ‰ÖLMM	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÐÖLŒ‰Ë›XN‰ÐÒ‹M‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÐÚž\Û\‰Ë	ÑÙÙIË	Ô[[Ý]	Ë	ÑXYÛI×Kˆ›Ý\Î‰ÐÚž\Û\ˆ˜\šX[Èš[[™È[ˆ\›Ý[™LMMH[™LMMË[ÜÝHÙXÛÛ™\žH[™[šÈØÚÜË‰ÈKˆÈY‰ÚNÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒNÈÈÖŒMÈÈÖŒŒ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒNÉË›XN‰ÔÕV•KLM‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔÝ^ZÚIË	ÐÚ]œ›Û]	Ë	ÑÙ[É×Kˆ›Ý\Î‰ÕHÝ^ZÚH\Ù\ˆ›Ùš[KÚXÚ[ÛÈ\›œÈ\ÛˆHÝ^ZÚKXZ[Ú]œ›Û]Ëˆ›ÝHØ[YH\ÈHÖŒMšZÙH›[šË‰ÈKˆÈY‰ÚLLÌÜ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLLÌÔ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒLLÌÔ‰Ë›XN‰ÒKLM”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÒ][™ZIË	ÒÚXI×Kˆ›Ý\Î‰ÕHÛ\ˆ][™ZH[™ÚXH\Ù\‹™Y›Ü™HLŒˆ[™ÒÌL‹‰ÈKˆÈY‰ÚMÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒMÈÈM‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒMÈÈM‰Ë›XN‰ÓÔLM”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓÜ[	Ë	Õ˜]^[	Ë	ÔØ]\›‰Ë	ÐØY[XÉ×Kˆ›Ý\Î‰ÓÜ[›Ùš[\È]™XXÚYHTÈÛˆHØ]\›ˆ\Ý˜H[™HØY[XÈØ]\˜KˆÓHÛÛÛÝ™\˜YÙHÙ[ˆÙ\È›Ý™XXÚ[K‰ÈKˆÈY‰Û™MÌÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ó‘MÌÈÈPÌL‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó‘MÌÈÈPÌL‰Ë›XN‰Ô“‹LŒË”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔ™[˜][	Ë	ÑšX]	Ë	ÑXÚXI×Kˆ›Ý\Î‰ÕH[Ù\›ˆ™[˜][\Ù\ˆ[™HšX]›Ùš[H[Û™ÜÚYH]ˆÜ™^H[\ÜÈ[™™[[›Y]È™X\ˆH›Ü™\‹‰ÈKˆÈY‰ÙÝMIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑÕMHÈÕL	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÕMIË›XN‰Ñ’KLL‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÑšX]	Ë	Ò]™XÛÉË	Ó[˜ÚXI×Kˆ›Ý\Î‰ÑšX]YÙKXÝ]™Y›Ü™HÒTŒˆÛÚÈÝ™\‹ˆÚÝÜÈ\ÛˆÛ\ˆXØ]ËX˜\ÙY[ÝÜšÛY\Ë‰ÈKˆÈY‰ÝLIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕLHÈL‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕLIË›XN‰ÔÑPULIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÔÙX]	Ë	Õ›ÛÜÝØYÙ[‰×Kˆ›Ý\Î‰ÔÙX]›Ùš[\È[ˆH•È˜[Z[Kˆ˜\™H[ˆHTËÛÜÛ›ÝÚ[™ÈÛˆÚYÚ‰ÈKˆÈY‰Þ[LÌ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÖSLÌˆÈSLŽ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÖSLÌ‰Ë›XN‰ÓQKLM	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓY\˜ÙY\ËP™[ž‰Ë	ÔÛX\	×Kˆ›Ý\Î‰ÕHÛX\›ÜÛÈ[™HY\˜ÙY\È˜[œÈ]Ú\™H]ÈØÚÈ˜[Z[K™Y›Ü™HHM\Ù\‹‰ÈKˆÈY‰ÙÛÍIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑÓÍÈÓÍHÈÓÍ‰Ë[ÛÎ‰ÑÓÍIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÌ	Ë›XN‰ÑQKMIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÑY]ÛÛÉË	ÐÚ]œ›Û]	Ë	ÔÝ^ZÚI×Kˆ›Ý\Î‰ÕHÚY\ˆY]ÛÛÈ˜[Z[H™Z[™H]™[È[™HÝ^ZÚKX˜YÙY™\œÚ[ÛœÈÙˆHØ[YHØ\œË‰ÈKˆÈY‰ÜØ]\›‹\ÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔØ]\›ˆË\Ù\šY\ÉË[ÛÎ‰ÐŽÈË\Ù\šY\ÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÑÓLÌ‰Ë›XN‰ÑÓKL‰ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎXZÙ\Î–ÉÔØ]\›‰×Kˆ›Ý\Î‰ÕHNNLKLŒˆØ]\›ˆË\Ù\šY\È˜[ˆ]ÈÝÛˆ›Ùš[H™Y›Ü™HÓH›ÛYHœ˜[™ÛÈŒLLH[™ŒLNKˆ\ÝXÈ›ÙH[™[ËÝY[ÛÜœÈ8 %HØÚÈ\È›Ü›X[]™[ˆÚ[ˆHØ\ˆ\È›Ý‰ÈKˆÈY‰ÝÞL‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÕÖLˆÈÈÙXÛÛ™\žIË[ÛÎ‰ÕÉË[ÛÐÚ\‰ø %	ËÚ[ØN‰ÕÖM	Ë›XN‰ÕÖSËLMIËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÕÞ[ÝIË	Ó^\ÉË	ÑZZ]ÝIË	ÑÙ[É×Kˆ›Ý\Î‰ÕHÛ\ˆÞ[ÝHÙXÛÛ™\žH[™[šÈ›Ùš[\Ë[˜ÛY[™ÈHÙ[Èš^›HZ[[Û™ÜÚYHHÛÜ›ÛK‰ÈKˆÈY‰ÛœÛŒNIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ó”ÓŒNHÈLÍIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰Ó”ÓŒNIË›XN‰Ó‘KLÎ	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓš\ÜØ[‰Ë	Ò[™š[š]I×Kˆ›Ý\Î‰Óš\ÜØ[ˆ˜\šX[È\›Ý[™”ÓŒM[ÜÝHÙXÛÛ™\žHØÚÜÈ[™^Ü[X\šÙ]Ø\œË‰ÈKˆÈY‰Û^ŒÎIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓPVŒŒÈVŒÎIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÓPVŒŒ	Ë›XN‰ÓPV‹LŒ	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÓX^™IË	Ñ›Ü™	×Kˆ›Ý\Î‰ÓX^™H›Ùš[\Èœ›ÛHH›Ü™\™\œÚ\YX\œËÚ[ˆHX^™HZYÚØ\œžHH›Ü™›YH[™HÝ\ˆØ^H›Ý[™‰ÈKˆÈY‰ÚLL	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒLLÈLLT‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÒLL	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŒL\ÎXZÙ\Î–ÉÑ›Ü™	Ë	Õ›Û›ÉË	Ó[™›Ý™\‰×Kˆ›Ý\Î‰Õ˜\šX[ÈÙˆHLL[™LLH\Ù\ˆ˜[Z[Y\Èœ›ÛHH›Ü™U›Û›ËS[™›Ý™\ˆYX\œËˆYX\Ý\™HH˜XÚÈÜXÚ[™È˜]\ˆ[ˆ\Ý[™ÈH˜YÙK‰ÈKˆÈY‰ÜÚ\Œœ‰ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÒTŒ”ˆÈÕMT‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ÔÒTŒ”‰Ë›XN‰Ñ’KLM”‹”	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\ÎŽ\ÎXZÙ\Î–ÉÑšX]	Ë	Ð[˜H›ÛY[ÉË	Ó[˜ÚXIË	Ò]™XÛÉ×Kˆ›Ý\Î‰ÕH™]™\œÙYÒTŒ‹ˆ\™ÙˆH™]™\œÙY\›Ùš[H˜\È[ˆ\È\™XÝÜžK[™HØ[YH[H\Y\ÎˆÚXÚÈHÜšY[][Ûˆ™Y›Ü™HHXXÚ[™HÝXÚ\È]‰ÈKˆÈY‰Ù]‹X›YIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÑUˆ[Y\™Ù[˜ÞH›Y\È
+\ÜÛÜY
+IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ\ÛIË	Ôš]šX[‰Ë	ÓXÚY	Ë	ÔÛ\Ý\‰×Kˆ›Ý\Î‰Ó[ÜÝUœÈ]™H›ÈÞ[[™\ˆ][8 %\ÛH\ÈØ\™[™Û™Kš]šX[ˆ[™XÚY\™H›Øˆ[™Û™KˆÚ\™HH›YH^\ÝÈ]\ÈH˜[]Üˆ[Y\™Ù[˜ÞH›YH›ÜˆHÛÜ‹™]™\ˆ›ÜˆÝ\[™Ëˆ[ˆH[žH\›Ý[™]›Ý\›Ý[™HÙ^]Ø^K‰ÈK‚ˆÊˆKKKH‘TÒQS•PSÙXÛÛ™\ÜÈKKKH
+‹ÂˆÈY‰Ø˜[Ú[‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ð˜[Ú[ˆ
+ÈÈK\[ŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÐ˜[Ú[‰×Kˆ›Ý\Î‰Ð˜[Ú[ˆÚ\ÈÛÈØ^\ÎˆX[žH\™HÙ^YYÈHØÚYÙHÈÙ^]Ø^H[™ZÙH[ˆÐÌKÝ\œÈ[ˆ˜[Ú[ˆÝÛˆ›Ùš[KˆÛÚÈ]HØ\™[™È™Y›Ü™H[ÝH\ÜÝ[YH8 %H\ØÝ]Ú[ÛˆÙ\È›Ý[[ÝK‰ÈKˆÈY‰Ù[]ZÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ñ[]ZÈ
+ÕÌHÜˆÐÌJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÑ[]ZÉË	ÔØÚ]X‰×Kˆ›Ý\Î‰Ñ[]ZÈÙ\È›Ý]™HHÙ^]Ø^HÙˆ]ÈÝÛ‹ˆXXÚØÚÈ\ÈZ[ÛˆHÝÚZÜÙ]ÜˆØÚYÙHÞ[[™\ˆ[™HÝ\ÝÛY\ˆ\ÝX[HÙ\È›ÝÛ›ÝÈÚXÚˆØ\œžH›Ý‰ÈKˆÈY‰ØZ[\‹YÜ˜YIËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÐZ[\ˆÜ˜YH
+ÕÌHÛÛ™\ÊIË[ÛÎ‰ÌLMÍ‰Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÑYšX[	Ë	ÑV”ÑU	Ë	Ò[\Ûˆ˜^IË	Ðœš[šÜÉË	ÑØ]ZÝ\ÙI×Kˆ›Ý\Î‰ÐšYËX›ÞÝ\ÙHœ˜[™ÈÛˆHÕÌH›Ùš[KˆÚX\Þ[[™\œËÛÜÙHÛ\˜[˜Ù\È8 %^H™XY˜YHÛˆHXÛÙ\ˆ[™Ù[ˆXÚÈ˜\Ý\ˆ[ˆ^HXÛÙK‰ÈKˆÈY‰ÜÝÜ›KYÛÜ‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÝÜ›H	ˆØÜ™Y[ˆÛÜ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÓ\œÛÛ‰Ë	ÕÜšYÚ	Ë	ÑSPÓÉË	Ð[™\œÙ[‰×Kˆ›Ý\Î‰ÔÛX[ØY™\ˆÞ[[™\œÈ[ˆH[™HÙ]\ÝX[H›ÝÙ^YYÈHÝ\ÙKˆ[ÜÝ\™HÛÛ\ÈHÙ^YYX[ZÙHZ\ˆÚ]H[Ü\ÙH[™KÛÈ™\XÚ[™ÈH[™H\ÈÙ[ˆÚX\\ˆ[ˆÜšYÚ[˜][™Ë‰ÈKˆÈY‰Ü][Ë\ÛY\‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÛY[™È][ÈÛÜ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÐ[™\œÙ[‰Ë	Ô[IË	ÓZ[Ø\™	Ë	ÓX\š[‰×Kˆ›Ý\Î‰Ô][ÈÛY\ˆ[Ü\ÙHØÚÜËˆHÙ^]Ø^H˜\šY\ÈžHX[Y˜XÝ\™\ˆ[™YX\ŽÈYX\Ý\™HH[Ü\ÙH[™HÜ[™H™Y›Ü™HÜ™\š[™Ë™XØ]\ÙHH\™Ø\™H\ÈÚ]Ø]\ÈH›Ø‹›ÝH›[šË‰ÈKˆÈY‰ØÛ\Ý\‹[XZ[›Þ	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÐÛ\Ý\ˆXZ[›Þ
+[˜[
+IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÐÛÛ\	Ë	Ð]]Q›Ü™[˜ÙIË	ÔØ[Ø\žIË	Ñ›Ü™[˜ÙI×Kˆ›Ý\Î‰ÕHSS•ÛÛ\\Y[ØÚËÚXÚ\ÈH›Ü\HÝÛ™\ˆ[™[Ý\œÈÈÙ\šXÙKˆ›ÝHTÔÈ\œ›ÝÈØÚÈÛˆHØ[YH[™[8 %ÙYH]™XÛÜ™ˆ[ÜÝ\™HØ[HØÚÜÈ™\XÙY˜]\ˆ[ˆ™ZÙ^YY‰ÈKˆÈY‰ÙØ\˜YÙK]˜\‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÑØ\˜YÙHZ[™H	ˆÝ™\šXY	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÐÚ[X™\›Z[‰Ë	ÕØ^[™H[Û‰Ë	ÐÛÜ^IË	ÑÙ[šYI×Kˆ›Ý\Î‰ÕZ[™H[™ÚYK[ØÚÈÞ[[™\œÈÛˆÝ™\šXYÛÜœË\ÈH™[X\ÙHØÚËˆØY™\‹\ÝX[HÛÙYÛˆHYÈ˜XÙK‰ÈKˆÈY‰ÙÝ[œØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÑÝ[ˆØY™H	ˆØXš[™]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÔÝXÚËSÛ‰Ë	ÔØ\™Ù[	ˆÜ™Y[›XY‰Ë	ÓX™\IË	ÒÜ›˜YI×Kˆ›Ý\Î‰ÒÙ^HÝ™\œšYHÛˆHÝ[ˆØY™HÜˆØXš[™]ˆ‘T’Q–HÕÓ‘T”ÒTSˆÔ’US‘È™Y›Ü™H[ÝHÜ[ˆÛ™H8 %\È\ÈHØ[[ÜÝZÙ[HÈÛÛYH˜XÚÈÛˆ[ÝK[™HÛ™HÚ\™HHÝÈÙˆHQ™^ÈHØY™H\ÈÛÜHÛÈZ[]\Ë‰ÈKˆÈY‰Ùš\™\ØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Ñš\™HØY™H	ˆØÚØ›Þ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÔÙ[žTØY™IË	ÒÛ™^]Ù[	Ë	Ñš\œÝ[\	×Kˆ›Ý\Î‰ÕH]HX[\ˆÜˆØY™\ˆÙ^HÛˆHØÝ[Y[ØY™Kˆ[ÜÝØ\œžHHÛÙHÛˆHÙ^HÜˆH]ÚÈHX[Y˜XÝ\™\ˆÚ[Ý]Û™Hœ›ÛHHÛÙHÚ]›ÛÙˆÙˆ\˜Ú\ÙKÚXÚ\ÈÙ[ˆHÛ™\Ý[œÝÙ\‹‰ÈKˆÈY‰ØX\Ë\Y	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÐX\ÈYØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎKXZÙ\Î–ÉÐX\É×Kˆ›Ý\Î‰ÐX\ÈYØÚÜËœ›ÛHHœ˜\ÜÈMKÍHÙ\šY\È\ÈHÜ˜[š]ˆHYÚ\ÙXÝ\š]HÛ™\È\™HHY™™\™[›Øˆ[\™[Hœ›ÛHHœ˜\ÜÈÛ™\È8 %ÚXÚÈH›ÙH™Y›Ü™H][Ý[™Ë‰ÈKˆÈY‰Ù›Þ\ÙYØ[	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ñ›ÞÈÙYØ[ÛXÙHØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎKXZÙ\Î–ÉÑ›Þ	Ë	ÔÙYØ[	×Kˆ›Ý\Î‰ÕHœ˜XÙKX˜\ˆ[™š[[^K\›ÛÙˆØÚÜÈÛˆÛ\ˆ\˜˜[ˆ\\Y[ËˆÙYØ[Èš[HÞ[[™\œÈ\™HÝ[XYNÈ›ÞÛXÙHØÚÜÈÙ[ˆ™YYHÚÛH\ÜÙ[X›Kˆš[YÙH]™\žH]XÚÝ[[ˆÙ\šXÙK‰ÈKˆÈY‰ÞLLK\™\ÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÖLLHÈLLÈÈX[H\[‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŽXZÙ\Î–ÉÖX[I×Kˆ›Ý\Î‰Ó]\ˆX[H™\ÚY[X[›Ùš[\È\ÝLH[™L‹[˜ÛY[™ÈH‹\[ˆÞ[[™\œÈÛˆXY›ÛË‰ÈK‚‚ˆÊˆKKKH‘TÒQS•PS\™\ÜÈKKKH
+‹ÂˆÈY‰ÜØÌ‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÐÌˆÈÐÍˆÈÐÎÈÐÎIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØÚYÙI×Kˆ›Ý\Î‰ÕHØÚYÙHÙ^]Ø^H˜[Z[HZ]\ˆÚYHÙˆÐÌH[™ÐÍˆHÝ\ÙHÙ^YY[ZÙHÛˆÐÌHÚ[Ý[]™H[ˆÐÌˆÜˆÐÎHÛÛY]Ú\™H[ˆ]8 %HØ\˜YÙH[žH[™HÚYHØ]H\™HÚ\™H^H\›ˆ\‰ÈKˆÈY‰ÚÝÌ‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÒÕÌˆÈÕÍHÈÕÌMÈÕÌMˆÈÕÌMÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÒÝÚZÜÙ]	×Kˆ›Ý\Î‰ÒÝÚZÜÙ]ÙXÝ[ÛœÈÝ\ˆ[ˆÕÌKˆØ[YH\È[™ÜXÚ[™ÎÈHØ\™[™È\ÈÚ]ÝÜÈHÜ›Û™ÈÛ™H[\š[™ËˆÛÜØ\œžZ[™ÈHÛÝ\HÚ[ˆHÝ\ÙHÚ[›ÝÙ^H[ZÙHÛˆÕÌH[Û™K‰ÈKˆÈY‰ÝÜŒ‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÕÔŒˆÈÔÈÔ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÕÙZ\Ù\‰×Kˆ›Ý\Î‰ÕH™\ÝÙˆHÙZ\Ù\ˆÙXÝ[ÛœÈ™^[Û™ÔŒÈ[™ÔK‰ÈKˆÈY‰ÞM\™\ÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÖMÈMMÈMÎ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŽXZÙ\Î–ÉÖX[I×Kˆ›Ý\Î‰ÖX[HÙXÝ[ÛœÈ™^[Û™LH[™L‹[ÜÝHÛˆ\\Y[Þ[[™\œÈ[™Û\ˆš[HØÚÜË‰ÈKˆÈY‰ÜÛX\Ù^IËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÒÝÚZÜÙ]ÛX\Ù^IË[ÛÎ‰ÌLMÍˆ
+ÕÌH›YJIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÒÝÚZÜÙ]	Ë	ÕÙZ\Ù\‰Ë	Ð˜[Ú[‰×Kˆ›Ý\Î‰ÕZÙ\ÈHÕÌH›YH]Ù\È“Õ[ˆZÙHÛ™Kˆ™ZÙ^Z[™È\ÈHX\›ˆÛÛ\ÈHÝ\œ™[ÛÜšÚ[™ÈÙ^KÚ^HÙXÛÛ™Ë›È\Ø\ÜÙ[X›KˆÛÈ[™ÜÈÈÛ›ÝÎˆHÛX\Ù^H]\È™Y[ˆ›Ü˜ÙYÜˆ[\YÙ[ˆÚ[›ÝXØÙ\HÛÛY\Ø\™[™\™H\È›ÈØ^HÈ™ZÙ^H]Ú]Ý]HÙ^H][™XYHÛÜšÜÈ8 %›ÈÛÜšÚ[™ÈÙ^HYX[œÈH™]ÈÞ[[™\‹‰ÈKˆÈY‰ÜÙXÝ\™ZÙ^IËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔØÚYÙHÙXÝ\™RÙ^IË[ÛÎ‰ÌLMH
+ÐÌH›YJIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒLXZÙ\Î–ÉÔØÚYÙI×Kˆ›Ý\Î‰ÔØÚYÙH[œÝÙ\ˆÈÛX\Ù^KÛˆHÐÌH›YKˆ™ZÙ^\ÈÚ]H™\Ù]Ù^H[™H™]ÈÙ^K›ÈÛÛˆØ[YH[Z]][ÛŽˆ[ÝH™YYHÛÜšÚ[™ÈÙ^HÈÈ]‰ÈKˆÈY‰ÜÛX\[ØÚÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÛX\ØÚÈÙ^HÝ™\œšYIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÐ]YÝ\Ý	Ë	ÖX[IË	ÔØÚYÙIË	ÒÝÚZÜÙ]	Ë	Ó]™[	Ë	Õ[˜[ÜI×Kˆ›Ý\Î‰ÕHÝ™\œšYHÞ[[™\ˆ\È[[ÜÝ[Ø^\ÈHZ[ˆÕÌHÜˆÐÌH[™\ÈHX\ÞH\ˆH›Øˆ\È\ÝX[HH[XÝ›ÛšXÈÚYNˆHXY˜]\žKH˜Z[Y[ÝÜ‹Üˆ[ˆÝÛ™\ˆØÚÙYÝ]Ùˆ[ˆXØÛÝ[ˆÛÛYH[Ù[È]™H›ÈÞ[[™\ˆ][8 %ÚXÚÈ™Y›Ü™H[ÝHš]™Kˆ[™HÛX\ØÚÈ\ÈYYÈ[ˆXØÛÝ[ÛÈÝÛ™\œÚ\X]\œÈ[Ü™H\™H[ˆÛˆHYXÚ[šXØ[ØÚÎˆÙ]][ˆÜš][™Ë‰ÈKˆÈY‰ÝØ\™YXš]	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÕØ\™YÈš]ÈÚÙ[]Û‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐ[\]YIË	Ó[Ü\ÙIË	Ñ\›š]\™I×Kˆ›Ý\Î‰Ò[\š[ÜˆÛÜœÈ[™\›š]\™H[ˆ™K]Ø\ˆÝ\Ù\Ëˆ›È[œÈ8 %HØ\™]HHÙ^H\ÈÈÛX\‹ÚXÚ\ÈÚHHÚÙ[]ÛˆÙ]Ü[œÈ[ÜÝÙˆ[KˆÛÛ\È›[šÜÈ[ÝHš[HÈš]˜]\ˆ[ˆÝ]ÛˆHXXÚ[™KˆÝÈÙXÝ\š]HžH\ÚYÛŽÈØ^HÛÈ™Y›Ü™HHÝ\ÝÛY\ˆ^\È›ÜˆH™ZÙ^H]^\È›Ý[™Ë‰ÈKˆÈY‰Üš]˜XÞKX™YX˜]	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ôš]˜XÞHÈ™YX˜]
+›ÈÙ^JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒÝÚZÜÙ]	Ë	ÔØÚYÙIË	ÕÙZ\Ù\‰Ë	ÑYšX[	×Kˆ›Ý\Î‰Õ\™H\È›ÈÙ^KˆH[Y\™Ù[˜ÞH™[X\ÙH\ÈH[‹H›]›YHÜˆHÛÝ[ˆHÝ]ÚYHÛ›Ø‹[™HÚÛHØ[\È\ÝX[HHÚ[ÜˆHÛÛ™\ÙYØÚË›ÝHØÚÛÝ]ˆÛÈZ[]\È[™›È\ËˆÚ\™ÙHHš\›ÝH™ZÙ^K‰ÈKˆÈY‰ÛX\Ý\‹\YY˜[Z[IËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÓX\Ý\ˆYØÚÈ˜[Z[H
+M‹SLMÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎKXZÙ\Î–ÉÓX\Ý\ˆØÚÉ×Kˆ›Ý\Î‰ÕHX\Ý\ˆÙ^]Ø^\È™^[Û™LH8 %[Z[˜]YYØÚÜË›ËˆÈ[™›ËˆH›ÙY\Ë[™HÙ^YYX[ZÙHÙ\šY\Ëˆ[ÜÝØ\œžHHÛÙHÝ[\YÛˆH˜XÚÈÙˆH›ÙNÈÚ]][ÝHÜšYÚ[˜]H[œÝXYÙˆXÚÚ[™ËÚXÚÛˆH\ÝYYØÚÈ\ÈHY™™\™[˜ÙH™]ÙY[ˆH›Øˆ[™[ˆY\››ÛÛ‹‰ÈKˆÈY‰Ü™\ËZYÚÙXÉËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ô™\ÚY[X[YÚÙXÝ\š]IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\Î‹XZÙ\Î–ÉÓYYXÛÉË	Ó][USØÚÉË	ÐX›ÞIË	ÔØÚYÙI×Kˆ›Ý\Î‰Ô‘TÕ’PÕQÛˆHÝ\ÙKˆYYXÛÈX^[K][USØÚÈÜ›Û\ËX›ÞH[™ØÚYÙHš[]\ÈXY›ÛÈ[^\Ý[ˆ™\ÚY[X[š[K[™^H\™HHØ[YHX[\‹[Û›HÚ]X][Ûˆ\ÈZ\ˆÛÛ[Y\˜ÚX[™\œÚ[ÛœËˆYˆHÝ\ÝÛY\ˆØ[ÈÙ^\ÈÛÜYYH[œÝÙ\ˆ\ÈHX[\ˆÚÈÛÈHØ\™›ÝHÛÝ[\‹‰ÈKˆÈY‰Ù˜[ÛÛ‹Y^\‰ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰Ñ˜[ÛÛˆÈ^\ˆÈ][‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÑ˜[ÛÛ‰Ë	Ñ^\‰Ë	Õ][‰×Kˆ›Ý\Î‰ÔÙXÛÛ™]Y\ˆ™\ÚY[X[œ˜[™Ëˆ][ˆ\ÈHÝÚZÜÙ][™H[™ZÙ\ÈHÕÌNÈ˜[ÛÛˆ™\ÚY[X[›ÛÝÜÈHØÚYÙHÎÈ^\ˆ\È]ÈÝÛ‹ˆÛÛ™š\›HH›YH˜]\ˆ[ˆHœ˜[™]K‰ÈKˆÈY‰ÝÚ[™ÝË\Ø\Ú	ËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÕÚ[™ÝËØ\Ú	ˆÛY[™ÈÛÜÙ]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÐ[™\œÙ[‰Ë	Ô[IË	ÓZ[Ø\™	Ë	Õ]	×Kˆ›Ý\Î‰ÒÙ^YYÚ[™ÝÈØ\ÚØÚÜË™[]Ú\È[™ÛÜÙ]ÛÜˆØÚÜËˆ[žHØY™\ˆÞ[[™\œË\ÝX[H™\XÙY˜]\ˆ[ˆÙ\šXÙY[™\ÝX[HÚX\\ˆÈ™\XÙKˆ›ÝHÙ^YYÚ[™ÝÈØÚÜÈ\™HHÛÙH›Ø›[HÛˆH™Y›ÛÛHYÜ™\ÜÈÚ[™ÝÈ8 %›YÈ]˜]\ˆ[ˆš][™ÈÛ™K‰ÈKˆÈY‰ÜÛÛYØ]IËØ]‰Ô™\ÚY[X[	ËÙ^]Ø^N‰ÔÛÛØ]H	ˆÙ[‹XÛÜÚ[™È]Ú	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\Î‹XZÙ\Î–ÉÓXYÛ˜KS]Ú	Ë	Ñ	‘	Ë	Ó˜][ÛÚYIË	ÓX\Ý\ˆØÚÉ×Kˆ›Ý\Î‰ÔÛÛ˜\œšY\ˆ\™Ø\™H\ÈÛÝ™\›™YžHÛÙK›Ý™Y™\™[˜ÙNˆÙ[‹XÛÜÚ[™ËÙ[‹[]Ú[™Ë]ÚZYÚ[™]]\Ý›Ý™HY™X]X›Hœ›ÛHÝ]ÚYHH˜\œšY\‹ˆÚ]]™\ˆHÝ\ÝÛY\ˆ\ÚÜÈ›Ü‹H[œÝ[\ÈÈÝ[\ÜËˆ[ˆØ[Y›Ü›šXHH˜\œšY\ˆ[\ÈÚ][ˆHZ[[™ÈÝ[™\™ÈÛÙH8 %ÚXÚÈHÝ\œ™[ØØ[™\]Z\™[Y[™Y›Ü™H[ÝHÚ[™ÙHHØ]K‰ÈK‚ˆÊˆKKKHÓÓSQTÒPSKKKBˆ]XÚÙˆ\È\È™\ÝšXÝYÜˆ][YˆYØ[ÈÙ\šXÙK]H›[šÜÈ\™BˆÛÛÛ›HÈ]]Üš^™YX[\œÈ[™\XØ][Ûˆ™YYÈ]]Üš^˜][Û‹ˆÚ\™HBˆ™XÛÜ™Ø^\È™\ÝšXÝY]\ÈH›Ø‹›ÝH›ÛÝ›ÝKˆ
+‹ÂˆÈY‰Ø™\Ý\ÙšXÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ð™\ÝLˆ
+HÈLˆÈLÈÈM
+IË[ÛÎ‰ÌPLPLIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎË\ÎŒLXZÙ\Î–ÉÐ™\Ý	Ë	Ñ˜[ÛÛ‰Ë	Ð\œ›ÝÉË	ÔÝ[›^I×Kˆ›Ý\Î‰ÔÛX[›Ü›X][\˜Ú[™ÙXX›HÛÜ™Kˆ\ÈNH[ˆŒLH[ˆ[˜Ü™[Y[ËˆÜˆÈ[‹ˆÛÈÚX\ˆ[™\ÎˆHÜ\˜][™ÈÙ^H\›œÈHØÚËHÛÛ›ÛÙ^H[ÈHÛÜ™H[™\ÈÝ]Y™™\™[Kˆ˜[ÛÛˆ[™\œ›ÝÈÑ’PÈ›ÛÝÈHØ[YHšYÝ\™KN›Ü›X]‰ÈKˆÈY‰ÜØÚYÙKY]™\™\Ý	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÔØÚYÙH]™\™\ÝÈš[]\ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØÚYÙI×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆ]™\™\ÝYÈ[ˆ[™\˜Ý]ÚXÚÈ[ŽÈš[]\ÈYÈHš[™Ù\‹\[ˆÚYX˜\ˆÝ]ÛˆH›]ÙˆH›YKˆ™Z]\ˆ\XØ]\ÈÛˆHÝ[™\™XXÚ[™K[™›[šÜÈÛÛYHœ›ÛH[ˆ]]Üš^™YX[\ˆYØZ[œÝH[™\Ù\ˆÛˆš[KˆY[YžH][™][ÝHHX[\ˆ›Ý]H˜]\ˆ[ˆ›ÛZ\Ú[™ÈHÙ^K‰ÈKˆÈY‰ÛYYXÛÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÓYYXÛÈÜšYÚ[˜[ÈšX^X[ÈLÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\Î‹XZÙ\Î–ÉÓYYXÛÉ×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[™][YˆÝ]È\™H[™ÛYYšYÚÜˆÙ[™K[™šX^X[YÈ›Ü™KØY[]˜][Û‹ÛÈHÙ^H\ÈH\\ÈH›Ý][Ûˆ\ÈHÜÚ][Û‹ˆ™YYÈHYYXÛËXØ\X›HXXÚ[™H[™X[\ˆ]]Üš^˜][Û‹ˆLÈYÈHÛY\‹‰ÈKˆÈY‰ÜØ\™Ù[	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÔØ\™Ù[HÈˆÈHÈ“	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØ\™Ù[	×Kˆ›Ý\Î‰ÔØ\™Ù[‹\[‹ˆHÛË[]\ˆÙ^]Ø^H\ÈÝ[\YÛˆH›ÝÈÙˆHÜšYÚ[˜[8 %™XY]™Y›Ü™HÜ™\š[™Ë‰ÈKˆÈY‰ØÛÜ˜š[‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐÛÜ˜š[ˆ\ÜÝÚ[ˆNPLHÈHÈ	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÐÛÜ˜š[ˆ\ÜÝÚ[‰×Kˆ›Ý\Î‰ÐÛÜ˜š[ˆ\ÜÝÚ[ˆ‹\[‹[™H\˜[ZY™\ÝšXÝYÞ\Ý[HX›Ý™H]ˆNPLH\ÈHÛÛ[[ÛˆÜ[ˆÙ^]Ø^K‰ÈKˆÈY‰ÞX[KXÛÛ[IËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÖX[H\Ù\šY\ÈÈ\˜KXÙ[šXÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÖX[I×Kˆ›Ý\Î‰ÖX[HÛÛ[Y\˜ÚX[ˆH\˜KXÙ[šXÈØ\™[™È\ÈÚ]XZÙ\È\ÙH[œX\Ø[ÈXÚÎÈHXÛÙYÙ^H™X]ÈH[œÚ[ÛˆÜ™[˜Ú\™K‰ÈKˆÈY‰Û][ØÚÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ó][USØÚÈ
+Û\ÜÚXÈÈ[\˜XÝ]™HÈUJÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓ][USØÚÉ×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[\HÞ\Ý[HÚ][\ØÛÜ[™È[‹Z[‹\[‹ˆÝ]ÛˆH[\HXXÚ[™K›ÝHÝ[™\™\XØ]Ü‹ˆUJÈYÈ[ˆ[HÜš[™È[™\ÈX[\‹[Û›HYØZ[œÝHØ\™‰ÈKˆÈY‰ØX›ÞIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐX›ÞHÈ›ÝXÌˆ
+\ØÈ]Z[™\ŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐX›ÞIË	Ð\ÜØHX›ÞI×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆ›Ý][™È\ØÜË›È[œÈ[™›ÈÜš[™ÜËÛÈÝ[™\™XÚÜÈ[™H\ÝX[XÛÙ[™ÈÈ›Ý[™Ëˆ™YYÈ[ˆX›ÞK\ÜXÚYšXÈXXÚ[™H[™]]Üš^˜][Û‹ˆÛÛ[[ÛˆÛˆ][]K[XÛÛH[™X\š[™HØXš[™]Ë‰ÈKˆÈY‰Ø\ÜØIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐTÔÐHÚ[ˆÈØX˜HXZÜÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÐTÔÐIË	ÒØX˜IË	Ò[ÛÉ×Kˆ›Ý\Î‰Ô‘TÕ’PÕQYÚ\ÙXÝ\š]HÚ]HÙXÛÛ™ÚYX˜\ˆ˜XÚÈ[Û™ÜÚYHH›Ü›X[Ý]ËˆX[\‹[Û›H›[šÜË‰ÈKˆÈY‰Ý\ÜËX\œ›ÝÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÕTÔÈ\œ›ÝÈØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕTÔÉ×Kˆ›Ý\Î‰ÑÈ“ÕÑT•’PÑKˆH\œ›ÝÈØÚÈÛˆHÛ\Ý\ˆ›ÞÜˆ\\Y[XZ[›Þ[™[™[Û™ÜÈÈHÜÝ[Ù\šXÙK›ÝH›Ü\Kˆ[˜[ÛÛ\\Y[ØÚÜÈ\™H[Ý\œÎÈHX\Ý\ˆ[™[\ÈHÜÝ[[œÜXÝÜˆX]\‹ˆÙ[™HÝ\ÝÛY\ˆÈZ\ˆÜÝÙ™šXÙK‰ÈKˆÈY‰Ù[]˜]Ü‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ñ[]˜]ÜˆÈš\™HÙ\šXÙH
+‘SËRÌKŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑ[]˜]Ü‰Ë	Ñš\™HÙ\šXÙI×Kˆ›Ý\Î‰Ñ‘SËRÌH\ÈHÝ[™\™^™Yš\™K\Ù\šXÙHÙ^H™\]Z\™YžHÛÙH[ˆ[ÜÝ\š\ÙXÝ[ÛœÎÈˆ[™HÒÍLH˜[Z[HÛÝ™\ˆHÝÙˆÛÛ›ÛØXš[™]ËˆØ[H\È™\ÝšXÝY[ˆÛÛYHÝ]\È8 %ÚXÚÈ[Ý\œÈ™Y›Ü™HÝØÚÚ[™È[K‰ÈKˆÈY‰Ù\Ü^KXØ\ÙIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ñ\Ü^HØ\ÙHÈÚÝØØ\ÙH	ˆ™[™[™ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÒ[[›Ú\ÉË	ÐÛÛ\	Ë	ÐÚXØYÛÉË	Õ™[™[™É×Kˆ›Ý\Î‰Ô™]Z[ÚÝØØ\ÙK™[™[™È[™Ü[XXÚ[™HX[\ˆ[™ØY™\ˆØÚÜËˆ[[ÜÝ[Ø^\ÈÛÙYÛˆHYÈ˜XÙNÈHÛÙH›ÛÚÈ[™HÛÙHXXÚ[™Hš[š\Ú\ÙH[ˆZ[]\Ë‰ÈK‚ˆÊˆKKKHÓÓSQTÒPSÙXÛÛ™\ÜÈKKKH
+‹ÂˆÈY‰ØY[\Ë\š]IËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐY[\Èš]HÝÜ™Yœ›Û	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎŒLXZÙ\Î–ÉÐY[\Èš]IË	ÔÝÜ™Yœ›Û	×Kˆ›Ý\Î‰Ð[[Z[[HÝÜ™Yœ›ÛˆTÌNLXY›ÛLLÍÌLXY]ÚˆHÞ[[™\ˆ\È\ÝX[HHÝ[™\™[Ü\ÙHÜˆš[H[ˆÚ]]™\ˆÙ^]Ø^HHZ[[™È[œËÛÈHÙ^]Ø^H\È›ÝH›Ø›[H8 %HØ[KH˜XÚÜÙ][™HÌKÌÌˆœÈKLKÎÞ[[™\ˆ[™Ý\™KˆYX\Ý\™H™Y›Ü™H[ÝHš]™K‰ÈKˆÈY‰Üš[KXÞ[	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ôš[HÞ[[™\ˆÈ^]]šXÙIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÕ›Ûˆ\š[‰Ë	Ñ]^	Ë	Ô™XÚ\Ú[Û‰Ë	Ò˜XÚÜÛÛ‰×Kˆ›Ý\Î‰ÕHÞ[[™\ˆ[ˆH[šXÈ˜\ˆÜˆHš[H]ÚÛˆÚ]]™\ˆÙ^]Ø^HHZ[[™È\Ù\Ëˆœš[™ÈHšYÚZ[YXÙNˆ›Ûˆ\š[‹Y[\Èš]H[™]^\™H›Ý[\˜Ú[™ÙXX›K[™HÜ›Û™ÈÛ™H\›œÈHš]™K[Z[]H›Øˆ[ÈH™]\›ˆš\‰ÈKˆÈY‰ÜÚ[\^	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÒØX˜HÚ[\^
+Ù^HÝ™\œšYJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÒØX˜IË	ÔÚ[\^	Ë	Õ[šXØ[‰×Kˆ›Ý\Î‰ÓYXÚ[šXØ[\Ú]ÛˆØÚÜËˆ\™H\È›ÈÛÙHÈ™XÛÝ™\ˆ8 %HÛÛXš[˜][Ûˆ]™\È[ˆHYXÚ[š\ÛKˆHÙ^HÝ™\œšYHÞ[[™\ˆ\ÈHØ^H[‹[™ÛˆX[žH[Ù[È]\ÈHÝ[™\™[Ü\ÙHÞ[[™\ˆ[ˆHZ[[™ÈÙ^]Ø^K‰ÈKˆÈY‰ÛX\šÜÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÓX\šÜÈTÐIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÓX\šÜÈTÐI×Kˆ›Ý\Î‰ÓX\šÜÈ[Ü\ÙHØÚÜËÛÛ[[ÛˆÛˆ\\Y[[žH[™YÚÛÛ[Y\˜ÚX[[ˆH›ÜX\Ý‰ÈKˆÈY‰ÞX[KZÙ^[X\šÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÖX[HÙ^[X\šÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÖX[I×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆX[H][YÞ\Ý[HÚ]HÚYX˜\‹ˆX[\‹[Û›H›[šÜÈYØZ[œÝH[™\Ù\ˆÛˆš[K‰ÈKˆÈY‰ÜØ\™Ù[\ÚYÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÔØ\™Ù[ÚYÛ˜]\™HÈYÜ™YHÈÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØ\™Ù[	×Kˆ›Ý\Î‰Ô‘TÕ’PÕQØ\™Ù[X›Ý™HHÜ[ˆKÓˆÙ^]Ø^\ËˆÚYÛ˜]\™H[™ÈYHÚYX˜\ˆ[™\™HX[\‹[Û›K‰ÈKˆÈY‰ÚÛ›Þ›Þ	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÒÛ›Þ›ÞÈš\™H\\Y[	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒÛ›Þ	Ë	Ñš\™H\\Y[	×Kˆ›Ý\Î‰ÑÈ“ÕÑT•’PÑKˆHÛ›Þ›ÞÛˆHÛÛ[Y\˜ÚX[Z[[™È\ÈÙ^YYÈHØØ[š\™H\\Y[X\Ý\‹[™]Ù^H\È\ÜÝYYÈH\\Y[›ÝÈH˜YKˆYˆHÝ\ÝÛY\ˆØ[ÈÛ™HÜ[™YÜˆ™ZÙ^YY]ÛÙ\È›ÝYÚHš\™H\\Y[]]]Üš^™Y]ˆ[ÝHX^H™H\ÚÙYÈ[Ý[H›ÞÈ[ÝH\™H›ÝHÛ™HÚÈÙ^\È]‰ÈKˆÈY‰ÛØÚÙ\‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÓØÚÙ\ˆØÚÜÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÓX\Ý\ˆØÚÉË	ÒYÛÛ‰Ë	Ô[˜ÛÉË	Ð[Y\šXØ[ˆØÚÙ\‰×Kˆ›Ý\Î‰ÐZ[Z[ˆØÚÙ\ˆØÚÜËÞ[H[™ØÚÛÛˆX\Ý\ˆMLˆ[™MLÈ\™HHÛÛ[[ÛˆÛ™\È[™Ø\œžHHÝ[\YÛÙNÈHÛÙH›ÛÚÈ[™HÛÙHXXÚ[™H™X]XÚÚ[™ÈHÚÛH˜[šÈÙˆ[K‰ÈKˆÈY‰Ý™[™[™Ë]	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Õ™[™[™ÈZ[™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÑXYÛIË	ÒØX˜IË	Õ™[™[™ÉË	Ð[]\Ù[Y[	×Kˆ›Ý\Î‰ÕH[™Ù\ˆZ[™HÛˆ™[™[™Ë[]\Ù[Y[[™Ø\‹]Ø\Ú\]Z\Y[ˆ\ÝX[HX[\‹Ù[ˆÙ^YY[ZÙHXÜ›ÜÜÈ[ˆÜ\˜]Üˆ›Ý]H8 %ÚXÚ\ÈÚHHÜ\˜]Ü‹›ÝHØØ][Û‹\ÈHÛ™HÚÈ]]Üš^™\ÈÛÜšÈÛˆ]‰ÈKˆÈY‰ÜØY™KY\ÜÚ]	ËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÔØY™H\ÜÚ]
+X[Ù^JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑYX›Û	Ë	Ó[ÜÛ\‰Ë	Ò[Z[Û‰Ë	Ð˜[šÉ×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[™HYØ[X]\ˆ™Y›Ü™H]\ÈHØÚÜÛZ]Û™KˆÛÈØÚÜËÝX\™[™™[\‹[™š[[™ÈÛ™H\ÈÛ™H›ÜˆH[œÝ]][Ûˆ[™\ˆ]ÈÝÛˆ›ØÙY\™HÚ]ØÝ[Y[][Û‹ˆ™]™\ˆÛˆHØ[ËZ[ˆ™\]Y\Ý‰ÈKˆÈY‰ØÛ\IËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ñ[XÝ›ÛYXÚ[šXØ[
+ÓTHÈÈPÞ[[™\ŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐTÔÐIË	ÓYYXÛÉË	ÐX›ÞIË	Ó][USØÚÉ×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆHYXÚ[šXØ[Ù^HÚ]HÚ\[™[ˆ]Y]˜Z[ˆXØÙ\ÜÈ\ÈÜ˜[Y[™™]›ÚÙY[ˆÛÙØ\™KÛÈHÜÝÙ^H\ÈH]X˜\ÙHÚ[™ÙK›ÝH™ZÙ^H8 %ÚXÚ\ÈH[œÝÙ\ˆHÝ\ÝÛY\ˆ\ÝX[HØ[ÈÈX\‹ˆ™YYÈHX[\ˆ[™HÞ\Ý[HÝÛ™\‹‰ÈKˆÈY‰ØÛÛ\[Ù™šXÙIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐÛÛ\ÈÛ[\\ÈÙ™šXÙHØ[IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÐÛÛ\	Ë	ÓÛ[\\ÉË	Õ[X™\›[™IË	ÐÚXØYÛÉ×Kˆ›Ý\Î‰ÓÙ™šXÙH\›š]\™KØ\Ù]ÛÜšË[™H™[[Ý˜X›KXÛÜ™HØ[HØÚÜÈ[ˆZ[Z[ˆØXš[™]žKˆ[[ÜÝ[Ø^\ÈÛÙK\Ý[\YÛˆHYÈÜˆHÝ\Ú[™ÎÈHÛÙHÙ\šY\È[È[ÝHHÚÛHÞ\Ý[H]Û˜ÙK‰ÈK‚ˆÊˆKKKHÓÓSQTÒPS\™\ÜÈKKKH
+‹ÂˆÈY‰ÜØÚYÙK[	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÔØÚYÙH\Ù\šY\È[Ü\ÙHÈÛ\ÜÚXÈÉË[ÛÎ‰ÌLMIË[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØÚYÙI×Kˆ›Ý\Î‰ÕHØÚYÙHÛÛ[Y\˜ÚX[[Ü\ÙH[™KˆHÞ[[™\ˆ\È\ÝX[HHZ[ˆÛ\ÜÚXÈÈÛˆ[ˆÐÌH›YKÛÈHÙ^Z[™È\ÈX\ÞNÈHÛÜšÈ\ÈH[Ü\ÙH›ÙKHØ[H[™H[˜Ý[Û‹ˆÙ]H[˜Ý[ÛˆšYÚ™Y›Ü™H[ÝHÜ™\ˆ8 %[ˆÙ™šXÙHØÚÈ[™HÝÜ™\›ÛÛHØÚÈÛÚÈY[XØ[œ›ÛHHÛÜœšYÜ‹‰ÈKˆÈY‰ÛšXÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ó\™ÙH›Ü›X]PÈ
+ØÚYÙHÈÛÜ˜š[ˆÈØ\™Ù[
+IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÔØÚYÙIË	ÐÛÜ˜š[ˆ\ÜÝÚ[‰Ë	ÔØ\™Ù[	Ë	ÖX[I×Kˆ›Ý\Î‰Ñ[\Ú^™H[\˜Ú[™ÙXX›HÛÜ™KHÝ\ˆPÈ›Ü›X][Û™ÜÚYH™\ÝÛX[Y›Ü›X]ˆØ[YHYXH8 %HÛÛ›ÛÙ^H[ÈHÛÜ™H8 %]HÛÜ™\È\™H›Ý[\˜Ú[™ÙXX›H™]ÙY[ˆ›Ü›X]ÈÜˆ\ÝX[H™]ÙY[ˆXZÙ\œËˆY[YžHH›Ü›X]™Y›Ü™HÜ™\š[™ÈÛÜ™\Ë™XØ]\ÙHHšYÝ\™KNÚ[›ÝÛÈ[ˆH[\Ú^™HÝ\Ú[™Ë‰ÈKˆÈY‰Ø[\›K[ØÚÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ð[\›HØÚÈš[ÙÞHÈ\Ù\šY\ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‹\ÎŒLXZÙ\Î–ÉÐ[\›HØÚÉË	Ó˜\ÛÉ×Kˆ›Ý\Î‰Ô\Ú]ÛˆXØÙ\ÜÈØÚÜÈÚ]HÙ^HÝ™\œšYKˆZÙHÚ[\^HÛÙ\È]™H[ˆHØÚË][›ZÙHÚ[\^\ÙH\™H[XÝ›ÛšXÈ[™ÛH\Ù\ˆ]X˜\ÙH8 %HÜÝ›ÙÜ˜[[Z[™ÈÛÙH\ÈH˜XÝÜžK\™\Ù]ÛÛ™\œØ][Û‹[™H™\Ù]Ú\\È]™\žH\Ù\‹ˆHÝ™\œšYHÞ[[™\ˆ\È\ÝX[HHÝ[™\™[Ü\ÙH[ˆHZ[[™ÈÙ^]Ø^K‰ÈKˆÈY‰ÚÝ[[ØÚÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÒÝ[ØÚÜÈ
+Ûš]HÈØY›ÚÈÈš[™ÐØ\™ÈØ[ÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓÛš]IË	ÔØY›ÚÉË	Õš[™ÐØ\™	Ë	ÔØ[ÉË	ÙÜ›XZØX˜I×Kˆ›Ý\Î‰ÐØ\™[™[Øš[HÞ\Ý[\ÈÚ]HYXÚ[šXØ[Ý™\œšYKˆHÝ™\œšYH\ÈH›Ü\H[Y\™Ù[˜ÞHÙ^H[™\ÈÛÛ›ÛYžHH›Ü\K›ÝHÝY\Ý8 %ÛÜšÈÛˆ\ÙHÛÙ\È›ÝYÚÝ[X[˜YÙ[Y[[™Z\ˆÞ\Ý[H™[™Ü‹ˆ[˜ÛÙ\œÈ[™X\Ý\ˆØ\™È\™HH›Ü\HÞ\Ý[K›ÝÛÛY][™È[ÝHØ\œžK‰ÈKˆÈY‰ÜÙ[‹\ÝÜ˜YÙIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÔÙ[‹\ÝÜ˜YÙH
+\ØÈYØÚÈÈÝ™\›ØÚÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓX\Ý\ˆØÚÉË	ÐX\ÉË	Õš[X^	Ë	ÔÝÜ˜YÙI×Kˆ›Ý\Î‰Ñ\ØÈYØÚÜÈ[™Þ[[™\ˆØÚÜÈÛˆ›Û]\ÛÜœË\ÈH˜XÚ[]HÝ™\›ØÚËˆ‘T’Q–HÒUHPÒSUK›ÝH\œÛÛˆ]HÛÜŽˆ[š]ÈÙ]Ý™\›ØÚÙY›Üˆ›Û‹\^[Y[[™H[˜[\È›Ý[Ø^\ÈHÛ™H[]YÈ[žKˆ\ØÈYØÚÜÈ\™H\ÝX[Hš[YÜˆÝ]˜]\ˆ[ˆXÚÙY‰ÈKˆÈY‰ØØ\ÚY˜]Ù\‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐØ\Ú˜]Ù\ˆÈÔÈÈ™YÚ\Ý\‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÐTÉË	ÓSQ‰Ë	ÔÝ\‰Ë	ÔÚ\œ	Ë	ÐØ\Ú[É×Kˆ›Ý\Î‰Õ[[™™YÚ\Ý\ˆØÚÜË\ÝX[HHÛX[ØY™\ˆÞ[[™\ˆÚ]HÛÙHÝ[\YÛˆHYÈÜˆH˜]Ù\ˆ˜XÙKˆ[ÜÝ\™HÙ^YY[ZÙHXÜ›ÜÜÈH[Ù[[™KÚXÚ\ÈH˜XÝÛÜ[[™ÈHÝ\ÝÛY\ˆÚÈ[šÜÈH[\ÈÙXÝ\™K‰ÈKˆÈY‰ØÛÚ[‹[][™žIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐÛÚ[‹[Ü][™žH	ˆ™[™[™È›Ý]IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÑÜ™Y[Ø[	Ë	ÑTÑ	Ë	ÔÜYY]YY[‰Ë	ÓX^]YÉ×Kˆ›Ý\Î‰ÐÛÚ[ˆ›Þ\ËY]\ˆØ\Ù\È[™ÛYHØÚÜÈ[ˆ][™›ÛX]È[™\\Y[][™žH›ÛÛ\Ëˆ›Ý]KZÙ^YYXÜ›ÜÜÈ[ˆÜ\˜]Ü‹ÛÈH›Ý]HÜ\˜]Üˆ]]Üš^™\ÈHÛÜšÈ8 %›ÝHZ[[™Ë[™›ÝH[˜[Ý[™[™È\™K‰ÈKˆÈY‰Ý][]K[][šIËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Õ][]H	ˆ][šXÚ\[ØXš[™]ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÕ˜Y™šXÉË	ÕØ]\‰Ë	ÔÝ™Y]YÚ	Ë	Ó][šXÚ\[	×Kˆ›Ý\Î‰Õ˜Y™šXÈÚYÛ˜[ØXš[™]ËØ]\ˆY]\ˆ]ËÝ™Y]YÚ˜\Ù\È[™\œšYØ][ÛˆÛÛ›Û\œËˆX[žH\™HHÝ[™\™ÌˆÙ^HÜˆHÒÍLH˜[Z[HØÚÈ[™\™H˜\™[HØÚÙY][8 %]^H\™HX›XÈ[™œ˜\ÝXÝ\™KÛÈH]]Üš]H]ÝÛœÈ[H\ÈHÛ™HÚÈ\ÚÜÈ›ÜˆHÛÜšË‰ÈKˆÈY‰Ý[XÛÛK\Y	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Õ[XÛÛHY\Ý[	ˆ][]H[˜ÛÜÝ\™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ[XÛÛIË	ÐØX›IË	ÑšX™\‰×Kˆ›Ý\Î‰ÕHÜ™Y[ˆY\Ý[È[™ØXš[™]È[ˆX\Ù[Y[ËˆØ\œšY\ˆ›Ü\HÛˆHÝ[™\™Ù^HXÜ›ÜÜÈHÚÛH™]ÛÜšÈ8 %HØ\œšY\ˆ\ÈHÝ\ÝÛY\‹[Ø^\ËˆYˆHÛY[ÝÛ™\ˆ\ÚÜÈ[ÝHÈÜ[ˆHÛ™HÛˆZ\ˆ]Û‹H[œÝÙ\ˆ\ÈHØ\œšY\‹‰ÈKˆÈY‰ÙY[Y\Ü[œÙ\‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÑY[\Ü[œÙ\ˆ	ˆ›Ü™XÛÝ\	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÑÚ[˜\˜ÛÉË	ÕØ^[™IË	Ð™[›™]	Ë	ÕÚÚZ[I×Kˆ›Ý\Î‰Ñ\Ü[œÙ\ˆÛÜœË›Þž›HØXš[™]È[™H[šÈ[Ûš]Ü‹ˆ\ÝÜšXØ[HÙ^YY[ZÙHžHX[Y˜XÝ\™\‹ÚXÚ\È^XÝHÚHÚÚ[[Y\œÈÙ\™HH›Ø›[H[™ÚHX[žHÚ]\È]™HÚ[˜ÙH™Y[ˆ™ZÙ^YYÈ[š\]YHÞ[[™\œËˆÚ]HÝÛ™\ˆÜˆHY[Ü\˜]Üˆ]]Üš^™\Ë[™^XÝÈ™H\ÚÙY›ÜˆÜ™Y[X[Ë‰ÈKˆÈY‰ÜØY™K[ØÚÉËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÔØY™HØÚÜÈ
+É‘ÈÈQØ\™ÈØX˜HX\ÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØ\™Ù[	ˆÜ™Y[›XY‰Ë	ÓQØ\™	Ë	ÒØX˜HX\ÉË	ÔØY™I×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[™[ÜÝH›ÝHÙ^H][8 %X[[XÝ›ÛšXÈÙ^\YÜˆHÙ^K[ØÚÚ[™ÈX[\ÈHÙXÛÛ™\žKˆØX˜HX\ÈLH[™LL\™HÛÝ™\››Y[\ÜXÈÛÛZ[™\œÈ[™\™HZ\ˆÝÛˆÜ™Y[X[YÛÜ›ˆØY™HÛÜšÈ\ÈHÙ\\˜]H˜YH[œÚYHH˜YNˆÛ›ÝÈÚXÚÚYHÙˆ][™H[ÝH\™HÛˆ™Y›Ü™H][Ý[™Ë‰ÈKˆÈY‰Ø]K[ØÚÉËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÐUH	ˆØ\Ú[™[™ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑYX›Û	Ë	ÓÔ‰Ë	Õš]Û‰Ë	Ò[ÜÝ[™É×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆÛÈÛÛ\\Y[ÈÚ]ÛÈ™\žHY™™\™[[œÝÙ\œÎˆHÜ›Þ\ÈÙ\šXÙHXØÙ\ÜËHØY™H™[ÝÈ\ÈØY™HÛÜšÈ[™\ˆHÝÛ™\ˆ›ØÙY\™HÚ]ØÝ[Y[][Ûˆ[™\ÝX[HHÚ]™\ÜËˆ™]™\ˆÛˆHØ[ËZ[ˆ™\]Y\Ý[™™]™\ˆÚ]Ý]HÝÛš[™È[œÝ]][ÛˆÜˆTÓÈ[ˆHÛÜ‰ÈKˆÈY‰Ù][[Û‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ñ][[Ûˆ\™Ø\™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑ›ÛÙ\ˆY[IË	ÔÛÝ]\›ˆÝY[	Ë	ÕÚ[ÉË	Ñ][[Û‰×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[™HÜXÚX[Kˆ˜Z[ËÛÝ\Ý\Ù\ËÙXÝ\™HÜÜ][Ø\™Ëˆ[›Ü›[Ý\È\˜XÙ[šXÈÙ^\Ë[ÙÝ[Þ[[™\œË[™\™Ø\™H˜]Y›Üˆ[X™\˜]HX\ÙKˆÛÜšÈ\ÈÛÛ˜XÝY›ÝYÚH˜XÚ[]H[™]ÈÙXÝ\š]H[YÜ˜]Ü‹Ú]˜XÚÙÜ›Ý[™ÚXÚÜËˆ›ÝHØ[ËZ[ˆ›Øˆ[™›ÝH›ØˆÈX\›ˆÛ‹‰ÈKˆÈY‰ÚÙ^KXØXš[™]	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÒÙ^HÛÛ›ÛØXš[™]ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÕ[ÙYIË	Ó[ÜœÙHØ]ÚX[œÉË	ÒÉË	Ó[™	×Kˆ›Ý\Î‰ÕHØXš[™]HZ[[™ÈÙ^\È]™H[‹ÚXÚ\ÈHÚ[™ÛHYÚ\Ý]˜[YH\™Ù][ˆ[ÜÝ˜XÚ[]Y\ËˆÛÜÚ[[™ÈÝ]ÛˆHÝ\™^NˆHÛÛÙX\Ý\ˆÞ\Ý[H™Z[™HÚX\ØXš[™]ØÚÈ\È›ÝHÛÛÙX\Ý\ˆÞ\Ý[K‰ÈKˆÈY‰ØÛÛœÝXÝ[Û‹ZÙ^Z[™ÉËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐÛÛœÝXÝ[ÛˆÙ^Z[™È
+ÜÝX˜[Èœ™XZØ]Ø^JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐ™\Ý	Ë	ÔØÚYÙIË	ÔØ\™Ù[	Ë	ÐÛÜ˜š[ˆ\ÜÝÚ[‰×Kˆ›Ý\Î‰Ó›ÝHÙ^]Ø^H8 %HXÚš\]YH]]ÈHZ[[™È™HÙ^YY›Üˆ˜Y\È\š[™ÈÛÛœÝXÝ[Ûˆ[™[™YÝ™\ˆÚ]Ý]H™ZÙ^KˆÜÝX˜[›ÜÈH˜[™X\š[™È[ÈHÚ[X™\ˆ]HÝÛ™\ˆÙ^H\ÜXÙ\È\›X[™[NÈœ™XZØ]Ø^HÙ^\ÈÛ˜\Ù™ˆ]HÜ›ÛÝ™KˆZ]\ˆØ^HHÛÛœÝXÝ[ÛˆÙ^HÝÜÈÛÜšÚ[™ÈHš\œÝ[YHHÝÛ™\ˆÙ^H\È\ÙYÚXÚ\ÈHÚÛHÚ[ˆÛÛ™š\›HÚXÚÞ\Ý[HØ\ÈÜXÚYšYY™Y›Ü™HH[™Ý™\‹™XØ]\ÙHÚ[™È]Ü›Û™ÈYX[œÈ™ZÙ^Z[™ÈHZ[[™Ë‰ÈKˆÈY‰Øš[ØÚËY]˜IËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÐšSØÚÈÈU•HÈÓHÈZÛÛ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÓÝ\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐšSØÚÉË	ÑU•IË	ÑÓIË	ÒZÛÛ‰×Kˆ›Ý\Î‰Ô‘TÕ’PÕQYÚÙXÝ\š]H™^[Û™H\ÝX[TÈ˜[Y\ËˆšSØÚÈ[œÈÛÈ›ÝÜÈÙˆÚYX˜\ˆ[œÈÛˆHK\Ú\YÙ^NÈU•H[™ÓH\™H]\›ÜX[ˆXYÛ™]XÈ[™[\HÞ\Ý[\Ëˆ˜\™H[ˆHTËX[\‹[Û›H]™\ž]Ú\™K[™›ÝÛÛY][™ÈÈ][\È\XØ]HÛˆÝ[™\™\]Z\Y[‰ÈKˆÈY‰ÜÙ\™\‹XØXš[™]	ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰ÔÙ\™\ˆ˜XÚÈ	ˆ\]Z\Y[ØXš[™]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î\ÎXZÙ\Î–ÉÔÛÝ]ÛÉË	ÐÛÛ\	Ë	ÐTÉË	ÐÚ]ÝÛÜ	×Kˆ›Ý\Î‰Ô˜XÚÈÛÜœËØ[[˜ÛÜÝ\™\È[™\]Z\Y[[™[Ëˆ[[ÜÝ[š]™\œØ[HÙ^YY[ZÙHœ›ÛHH˜XÝÜžH8 %ÌÌËŒŒˆ[™Ú[Z[\ˆ\™H˜[[Ý\È›Üˆ]8 %ÛÈH]H›ÛÛHX^H™H›È[Ü™HØÚÙY[ˆ]ÈØXš[™]Ø][ÙÝYKˆÛÜ˜Z\Ú[™ÈÛˆHÝ\™^K‰ÈKˆÈY‰Ü›Û\YÛÜ‰ËØ]‰ÐÛÛ[Y\˜ÚX[	ËÙ^]Ø^N‰Ô›Û]\	ˆÝ™\šXYÛÛ[Y\˜ÚX[ÛÜ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\ÎK\ÎXZÙ\Î–ÉÓÝ™\šXYÛÜ‰Ë	ÐÛÛÚÜÛÛ‰Ë	Ò˜[\ÉË	ÕØ^[™H[Û‰×Kˆ›Ý\Î‰ÔÛYH›ÛËÚZ[ˆÙY\\œÈ[™Þ[[™\ˆØÚÜÈÛˆØ\™ZÝ\ÙH[™ÝÜ˜YÙH›Û]\ËˆHÞ[[™\ˆ\ÈÙ[ˆHÝ[™\™[Ü\ÙHÜˆš[H[ˆHZ[[™ÈÙ^]Ø^NÈH\™Ø\™H\›Ý[™]\ÈÚ]˜\šY\ËˆÚXÚÈHÛÜˆ\È›Ý[™\ˆÜš[™È[œÚ[Ûˆ™Y›Ü™H[ÝHÝ\ZÚ[™È[™ÜÈÙ™ˆ]‰ÈK‚ˆÊˆKKKHUSUKSÓÔÕT‘HS‘ÑËPS‘QS‘ÈKKKBˆH›ÝÜÈ]\™H›ÝHØ\‹›ÝHÝ\ÙHÛÜˆ[™›ÝÛÛ[Y\˜ÚX[ÛÜ‚ˆ\™Ø\™NˆYØÚÜË[˜ÛÜÝ\™\Ë\›š]\™KÛÛ›Þ\È[™HÛÚ[‹[ÜÛÜ›‚ˆØ][ÙÈ[X™\œÈ\™HY›[šÈÚ\™]™\ˆ\™H\È›Ý[™ÈÈÚ]NÈÛˆ[ÜÝÙ‚ˆ\ÙHH\ÙY[˜XÝ\ÈÚ\™HHÛÙH\ÈÝ[\Y›ÝÚ]H›[šÈ\ÂˆØ[Yˆ
+‹ÂˆÈY‰Ø˜\œ™[]][]IËØ]‰Õ][]IËÙ^]Ø^N‰Ð˜\œ™[È˜^[Û™]
+][]JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ð˜\œ™[	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒYÚšY[	Ë	ÓXÑØ\™	Ë	Õ][]IË	Ó][šXÚ\[	×Kˆ›Ý\Î‰ÐHÛÝÈ˜\œ™[Ù^HÛˆHÜš[™È]Ú›ÝH[›™YÞ[[™\‹ˆØ\ÈY]\œË\šÚ[™ÈY]\œËÝ\˜ˆ›Þ\È[™ÛÚ[ˆ›Þ\Ëˆ\™H\È›Ý[™ÈÈXÚÈ[ˆH\ÝX[Ù[œÙH[™›Ý[™ÈÈ[\™\ÜÚ[Ûˆ8 %[ÝHX]ÚH˜\œ™[X[Y]\ˆ[™H\ÛÈØ\œžHHÙ]˜]\ˆ[ˆ[›š[™ÈÈÜšYÚ[˜]HÛ™K‰ÈKˆÈY‰ÙØ\ÛY]\‹[ØÚÉËØ]‰Õ][]IËÙ^]Ø^N‰ÑØ\È	ˆØ]\ˆY]\ˆ˜\œ™[ØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ð˜\œ™[	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ][]IË	Ó][šXÚ\[	×Kˆ›Ý\Î‰ÑÈ“ÕÑT•’PÑHÚ]Ý]H][]KˆHØÚÙYØ\ÈY]\ˆ\ÈØÚÙY™XØ]\ÙHH][]HØÚÙY]\ÝX[H›Üˆ›Û‹\^[Y[ÜˆHØY™]HÛÛ™][Û‹[™Ý][™È]Ù™ˆ\ÈZ\ˆØ[[™ÛÛY][Y\ÈHÜš[Z[˜[X]\‹ˆHÛ™\Ý[œÝÙ\ˆÛˆÚ]H\ÈH][]HÛ™H[X™\‹‰ÈKˆÈY‰ÚY˜[	ËØ]‰Õ][]IËÙ^]Ø^N‰Ñš\™HY˜[	ˆÝ[™\IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ô[YÛÛˆÈÜXÚX[	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓ][šXÚ\[	Ë	Ñš\™I×Kˆ›Ý\Î‰ÑÈ“ÕÑT•’PÑKˆY˜[Ø\ËØÚÚ[™ÈY˜[È[™Ý[™\H˜[™\È™[Û™ÈÈHØ]\ˆ\ÝšXÝ[™Hš\™H\\Y[ˆÜ[š[™ÈÛ™H\ÈHÛÙHš[Û][Ûˆ[™[ˆH›ÝYÚ\š\ÙXÝ[ÛˆHÚ]X›HÙ™™[œÙKˆ™Y™\ˆ]ÈH\ÝšXÝ‰ÈKˆÈY‰Ü[K\ÛØÚÙ]	ËØ]‰Õ][]IËÙ^]Ø^N‰Ô[ZXYÈ[HÛØÚÙ]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó›ÝHÙ^H8 %HÛØÚÙ]	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ][]IË	Ó][šXÚ\[	Ë	Ñ[XÝšXØ[	×Kˆ›Ý\Î‰ÔY[Ý[˜[œÙ›Ü›Y\œËY]\ˆY\Ý[Ë\œšYØ][Ûˆ˜][È[™˜Y™šXÈØXš[™]ÈÙ[ˆ\ÙHHš]™K\ÚYYXY˜]\ˆ[ˆHØÚËˆ]\ÈHÜ™[˜Ú›ÝHÙ^K[™›È[[Ý[ÙˆXÚÚ[™È[ËˆÛˆH]™H[XÝšXØ[[˜ÛÜÝ\™H][ÛÈÝ^\ÈÚ]ˆ]\ÈH][]K›Ý[ÝK‰ÈKˆÈY‰Ù]‹XÚ\™Ù\‰ËØ]‰Õ][]IËÙ^]Ø^N‰ÑUˆÚ\™Ú[™ÈÝ][Ûˆ	ˆY\Ý[	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\È8 %Ù[ˆHØ[HÜˆX[\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐÚ\™ÙTÚ[	Ë	Õ\ÛIË	ÑU™ÛÉË	Ð›[šÉ×Kˆ›Ý\Î‰ÕHÙ\šXÙHÛÜˆÛˆHX›XÈÚ\™Ù\‹[™HØX›H™][[ÛˆØÚÈÛˆÛÛYKˆ™]ÛÜšÈ›Ü\KÛÈHØ[X›Ý]Û™H\È™X\›H[Ø^\ÈHÚ]HÝÛ™\ˆ™YY[™ÈH[˜ÛÜÝ\™HÜ[™Y›ÜˆHÛÛ˜XÝÜ‹ˆ[ÜÝ\ÙH[ˆÜ™[˜\žHØ[HÜˆX[\ˆØÚÈ˜]\ˆ[ˆ[ž][™È^ÝXË‰ÈKˆÈY‰Ú\œšYØ][Û‹X›Þ	ËØ]‰Õ][]IËÙ^]Ø^N‰Ò\œšYØ][Ûˆ	ˆ˜XÚÙ›ÝÈ[˜ÛÜÝ\™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\ÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓ][šXÚ\[	Ë	Ó[™ØØ\I×Kˆ›Ý\Î‰Ð˜XÚÙ›ÝÈØYÙ\Ë˜[™H›Þ\È[™ÛÛ›Û\ˆØXš[™]ÈÛˆÛÛ[Y\˜ÚX[[™ØØ\H[™ØÚÛÛÜ›Ý[™Ëˆ\ÝX[HHÚX\YØÚÈÜˆHØ[HØÚËÙ[ˆHÚÛH\ÝšXÝÙ^YY[ZÙH8 %\ÚÈHÜ›Ý[™ÈÝ\\š\ÛÜˆ™Y›Ü™H[ÝH™ZÙ^HÛ™HÝ]ÙˆHÙ]‰ÈK‚ˆÊˆKKKHYØÚÜÈH\™XÝÜžHY›Ý™XXÚKKKH
+‹ÂˆÈY‰ÝÚ[ÛÛ‹X›Ú[›˜[‰ËØ]‰Õ][]IËÙ^]Ø^N‰ÕÚ[ÛÛˆ›Ú[›˜[ˆœ˜\ÜÈYØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕÚ[ÛÛˆ›Ú[›˜[‰Ë	Õ][]IË	Ó][šXÚ\[	×Kˆ›Ý\Î‰ÕHœ˜\ÜÈYØÚÈ][]Y\ËÜÈ[™][šXÚ\[]Y\È^HžHH[]XYH[ˆÚ[ÈÚ[˜ÙHNŒˆ[[ÜÝ[Ø^\ÈÜ™\™YÙ^YY[ZÙHÜˆ[ˆHX\Ý\ˆÞ\Ý[HXÜ›ÜÜÈ[ˆ[\™HYÙ[˜ÞKÛÈH]Y\Ý[Ûˆ\È™]™\ˆÚ]Ù\È\ÈÙ^Hˆ]ÚÜÙHÞ\Ý[H\È\È‹‰ÈKˆÈY‰ÜÙË\YØÚÉËØ]‰Õ][]IËÙ^]Ø^N‰ÔØ\™Ù[	ˆÜ™Y[›XYˆYØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØ\™Ù[	ˆÜ™Y[›XY‰Ë	ÑÛÝ™\››Y[	×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[ˆ˜XÝXÙKˆHMLH[™ÌÈÙ\šY\È\™HÛÝ™\››Y[[™Y™[œÙH\™Ø\™HÚ]ÛÛ›ÛYÙ^]Ø^\Ëˆ›ÝÛÛY][™È[ÝHÜšYÚ[˜]NÈHYÙ[˜ÞH\È]ÈÝÛˆÚ[›™[‰ÈKˆÈY‰ØÛÛœÝ[Y\‹\Y	ËØ]‰Õ][]IËÙ^]Ø^N‰ÐÛÛœÝ[Y\ˆYØÚÈ
+œš[šÜÈÈÝ[›^HÈÜ]Z\™HÈ[X[ŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐœš[šÜÉË	ÔÝ[›^IË	ÔÜ]Z\™IË	Ò[X[‰×Kˆ›Ý\Î‰ÐšYËX›ÞYØÚÜÈ™[ÝÈHX\Ý\ˆ[™[Y\šXØ[ˆY\œËˆÚ[ÝÈÙ^Z[™ËÛÜÙHÛ\˜[˜Ù\È[™Ù[ˆHÛÙHÝ[\YÛˆH˜XÚÈÙˆH›ÙKˆšXÙHHš\Û™\ÝNˆHØÚÈÛÜÝZYÚÛ\œÈ[™HÝ\ÝÛY\ˆÛ›ÝÜÈ]ÛÈHÝ]Ù^H\Èœ™\]Y[HHÛÜœÙHX[›Üˆ[H[ˆH™]ÈØÚË‰ÈKˆÈY‰ØšZÙK[ØÚÉËØ]‰Õ][]IËÙ^]Ø^N‰ÐšZÙH	ˆØX›HØÚÈ
+Üž\Ûš]HÈÛ‘ÝX\™ÈX\ÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ›]ÈX[\ˆÈ[\IËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒÜž\Ûš]IË	ÓÛ‘ÝX\™	Ë	ÐX\ÉË	ÒÙ[œÚ[™ÝÛ‰×Kˆ›Ý\Î‰ÕK[ØÚÜË›Û[™ÈØÚÜÈ[™ØX›HØÚÜËˆ[ÜÝØ\œžHHÙ^HÛÙHÛˆHÙ^H[™H™YÚ\Ý˜][Ûˆ›ÙÜ˜[H]Ú[XZ[H™\XÙ[Y[ÚXÚ\ÈÚX\\ˆ[™˜\Ý\ˆ[ˆ[ž][™È[ÝHØ[ˆÈÛˆÚ]H8 %Ø^HÛËˆ‘T’Q–HÕÓ‘T”ÒTˆHšZÙHØÚÙYÈHX›XÈ˜XÚÈ\ÈHÛ\ÜÚXÈYØÙ[˜\š[ËÛÈ\\ÛÜšÈÜˆ›Ý[™Ë‰ÈKˆÈY‰ÛYYXÛË\Y	ËØ]‰Õ][]IËÙ^]Ø^N‰ÓYYXÛÈ	ˆ™\ÝYØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ð[™ÛYÈÑ’PÉËÜXÙ\Î‹\Î‰ÉËXZÙ\Î–ÉÓYYXÛÉË	Ð™\Ý	Ë	ÐX›ÞI×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆYÚ\ÙXÝ\š]HYØÚÜÈØ\œžZ[™ÈHØ[YHÞ[[™\ˆ\ÈHÛÜˆ\™Ø\™H8 %HYYXÛÈYØÚÈ\ÈHYYXÛÈÞ[[™\ˆ[ˆHÚXÚÛK[™H™\ÝYØÚÈZÙ\ÈHZ[[™ÈÑ’PÈÛÜ™KˆYˆHZ[[™È\ÈÛˆHÞ\Ý[KHYØÚÈ\ÈÛˆHÞ\Ý[HÛË‰ÈK‚ˆÊˆKKKH\›š]\™KØ\Ù]ÛÜšÈ[™Ù™šXÙHKKKH
+‹ÂˆÈY‰ØXÙK]X[\‰ËØ]‰Õ][]IËÙ^]Ø^N‰ÐXÙHÈÚXØYÛÈX[\‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕX[\‰ËÜXÙ\ÎË\Î‰ÉËXZÙ\Î–ÉÐÚXØYÛÈØÚÉË	ÐXÙIË	Õ™[™[™ÉË	Ð[]\Ù[Y[	×Kˆ›Ý\Î‰ÔÙ]™[ˆ[œÈ[ˆHÚ\˜ÛH\›Ý[™HÛÝÈÜÝˆ™[™[™Ë[]\Ù[Y[˜\ˆÛÛÛ\œËÝ[ˆØXš[™]È[™Û\ˆÛÚ[ˆ\]Z\Y[ˆHX[\ˆXÚÈÜ[œÈ[ÜÝÙˆ[H[ˆÙXÛÛ™ËÚXÚ\ÈHÚÛH™X\ÛÛˆ›Ý[™È˜[XX›HÚÝ[™H™Z[™Û™H8 %ÛÜ[[™ÈHÝ\ÝÛY\ˆÚÈ\ÈX›Ý]ÈÝÜ™HØ\Ú™Z[™Û™K‰ÈKˆÈY‰Ùš[KXØXš[™]	ËØ]‰Õ][]IËÙ^]Ø^N‰ÓÙ™šXÙHš[HØXš[™]
+ÓˆÈÝY[Ø\ÙHÈ\›X[ˆZ[\ŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒÓ‰Ë	ÔÝY[Ø\ÙIË	Ò\›X[ˆZ[\‰Ë	Ð[™\œÛÛˆXÚÙ^IË	ÑÛØ˜[	×Kˆ›Ý\Î‰ÕHÚ[™ÛH[ÜÝÛÛ[[ÛˆÙ™šXÙHØ[[™HX\ÚY\ÝˆHÛÙH\È™X\›H[Ø^\ÈÝ[\YÛˆHYÈ˜XÙHÜˆHØÚÈ›ÙK[™HX[Y˜XÝ\™\ˆÚ[Ù[HÙ^HžHÛÙKˆ[H˜]Ù\ˆX›Ý™H[™™XYH˜XÚÈÙˆHÞ[[™\ˆ™Y›Ü™H[ÝHÙ]\ÈXÚÈ[ž][™Ë‰ÈKˆÈY‰Ù›ÜY\Ü	ËØ]‰Õ][]IËÙ^]Ø^N‰Ñ›ÜÈTÔÈ[[›Ú\ÈØXš[™]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑ›Ü	Ë	ÑTÔ	Ë	Ò[[›Ú\ÉË	Õ[X™\›[™I×Kˆ›Ý\Î‰ÕHÝ\ˆØ\Ù]ÛÜšÈÞ[[™\ˆ˜[Z[Y\È™^[Û™˜][Û˜[[™ÛÛ\ˆØ[YHÝÜžNˆ™XYHÛÙHÙ™ˆHØÚËˆTÔ[™[X™\›[™H›Ý\ÙH™[[Ý˜X›HÛÜ™\ËÛÈH™ZÙ^H\ÈHÛÜ™HÝØ\˜]\ˆ[ˆH™\[‹‰ÈKˆÈY‰Ù\ÚË\X[›ÉËØ]‰Õ][]IËÙ^]Ø^N‰Ñ\ÚËX[›È	ˆ[\]YH\›š]\™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ðš]ÈØ\™YÈ›]	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑ\›š]\™IË	Ð[\]YI×Kˆ›Ý\Î‰Ô›Û]Ü\ÚÜËX[›È˜[›Ø\™ËÙXÜ™]\žH˜]Ù\œÈ[™ÝX[Y\ˆ[šÜËˆ[ÜÝHØ\™YÛÈHš]Ù^HÜˆH›[šÈš[YÈš]Ù\È]ˆÛˆH˜[XX›HYXÙHÈ›Ý›Ü˜ÙH[ž][™È8 %HØÚÈ\ÈÛÜ\ÜÈ[ˆH™[™Y\ˆ\›Ý[™][™HÜ]\ØÝ]Ú[Ûˆ\ÈH^[œÚ]™H\‰ÈK‚ˆÊˆKKKHXÚËÛÛ›Þ[™Ø\™ÛÈKKKH
+‹ÂˆÈY‰ÝÛÛ›Þ]XÚÉËØ]‰Õ][]IËÙ^]Ø^N‰ÕXÚÈÛÛ›Þ
+[HÈÙX]\ˆÝX\™ÈÛ˜XXÚÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\ˆÈX[\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑ[IË	ÕÙX]\ˆÝX\™	Ë	ÒÛ˜XXÚÉË	ÕUÔÉË	ÑYH™YI×Kˆ›Ý\Î‰ÐÜ›ÜÜÛÝ™\ˆ›Þ\ËÚYH›Þ\È[™›ØœÚ]HÚ\ÝËˆHÝXYH˜YHØ[™XØ]\ÙHHÙ^H]™\ÈÛˆHš[™È]\ÝÙ[Z\ÜÚ[™ÈÚ]HXÚÈÙ^\ËˆÛÙ\È\™H\ÝX[HÝ[\YÛˆH]ÚÜˆHØÚÈ˜XÙK[™[ÜÝœ˜[™ÈÙ[žHÛÙKˆÛ˜XXÚÈ›ØœÚ]H›Þ\ÈÛÛ[[Û›H[ˆHÚÛHÜ™]ÈÙ^YY[ZÙK‰ÈKˆÈY‰Ü›ÛÙ‹\˜XÚÉËØ]‰Õ][]IËÙ^]Ø^N‰Ô›ÛÙˆ˜XÚÈ	ˆØ\™ÛÈ›Þ
+[HÈXZÚ[XJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ[IË	ÖXZÚ[XIË	Ôš[›ËT˜XÚÉ×Kˆ›Ý\Î‰Õ[HÛ™KRÙ^H[™XZÚ[XHÒÔÈÛÜ™\È\™H[X™\™Y[™ÛÛžHÛÙKÛÈHÜÝÙ^H\ÈH\ÈÜ™\ˆ˜]\ˆ[ˆHXÛÙKˆH[X™\ˆ\ÈÛˆHÙ^H[™Ý[\YÛˆHÛÜ™H˜XÙKˆHÚÛH˜XÚË›Þ[™šZÙHØ\œšY\ˆÙ]\È\ÝX[HÛ™HÛÙK‰ÈKˆÈY‰ÝÚY[[ØÚÉËØ]‰Õ][]IËÙ^]Ø^N‰ÕÚY[ØÚÈ	ˆYÈÙ^H
+XÑØ\™
+IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó›ÝHÙ^H8 %HÛØÚÙ]]\›‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓXÑØ\™	Ë	ÑÛÜš[IË	Õ™ZXÛI×Kˆ›Ý\Î‰ÕHÙ^YYYÈ][™HÜ\™K]\™HØÚËˆ›ÝHØÚÈ[ˆH[›™YÙ[œÙNˆHÜ[™YÛØÚÙ][ˆH[X™\™Y]\›‹ˆH[X™\ˆ\ÈÛˆHÙ^KˆÚ]Ý]]\È\ÈHÚY[\ÚÜ^˜XÝ[Ûˆ›Ø‹›ÝHØÚÜÛZ]Û™K[™Ø^Z[™ÈÛÈÛˆHÛ™HØ]™\È]™\ž[Û™HHš\‰ÈKˆÈY‰ÙØ\ËXØ\	ËØ]‰Õ][]IËÙ^]Ø^N‰ÓØÚÚ[™ÈY[Ø\	ˆY[ÛÜ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔÝ[	Ë	Õ™ZXÛIË	Ñ›Y]	×Kˆ›Ý\Î‰ÐY\›X\šÙ]ØÚÚ[™ÈØ\ÈØ\ÈÛˆ›Y]XÚÜË[™˜XÝÜžHØÚÚ[™ÈY[ÛÜœËˆÚX\ØY™\ˆÞ[[™\œÈ]ÙZ^™Hœ›ÛHÙX]\ˆ[Ü™HÙ[ˆ[ˆ^HÙ]ØÚÙYÝ]ˆÛˆH›Y]^XÝHÚÛHX\™Ù^YY[ZÙK‰ÈK‚ˆÊˆKKKHÛÚ[‹[Ü[™[]\Ù[Y[KKKH
+‹ÂˆÈY‰Ø\˜ØYKZZÙX›Þ	ËØ]‰Õ][]IËÙ^]Ø^N‰Ð\˜ØYKZÙX›Þ	ˆ[˜˜[	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\ˆÈX[\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐ[]\Ù[Y[	Ë	Ô›Ý]I×Kˆ›Ý\Î‰ÐÛÚ[ˆÛÜœË˜XÚÙÛ\ÜÈØÚÜÈ[™Ø\Ú›Þ\ÈÛˆ›Ý]H\]Z\Y[ˆÜ\˜]ÜœÈ[ˆÚÛH›Ý]\ÈÙ^YY[ZÙHÛÈÛ™HXÚšXÚX[ˆØ[ˆÙ\šXÙHHÛÝ[Kˆ™\ÝÜ˜][ÛˆÝÛ™\œÈ\™HHÝ\ˆ[ˆÙˆ\È˜YH[™\ÝX[HØ[HÙ]XYHœ›ÛHÛ™HÝ\š]š[™ÈÙ^K‰ÈKˆÈY‰ÙØ[Z[™Ë[ØÚÉËØ]‰Õ][]IËÙ^]Ø^N‰ÑØ[Z[™È	ˆÛÝXXÚ[™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\ÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑØ[Z[™É×Kˆ›Ý\Î‰Ô‘TÕ’PÕQ[™™YÝ[]YˆÛÝ[™Ø[Z[™ÈØXš[™]ØÚÜÈÚ][™\ˆÝ]HØ[Z[™ÈÛÛ[Z\ÜÚ[Ûˆ[\Ë[™H›Ü›Þ\ÈHÙ\\˜]HÛÛ\\Y[Ú]Ù\\˜]HÝ\ÝÙKˆXÙ[œÙYÜ\˜]ÜœÈÛ›H8 %™Y™\ˆ]‰ÈK‚ˆÊˆKKKHØ]\ËXØÙ\ÜÈ[™Z\ØÈKKKH
+‹ÂˆÈY‰ÙØ]K[Ü\˜]Ü‰ËØ]‰Õ][]IËÙ^]Ø^N‰ÑØ]HÜ\˜]Üˆ	ˆ[žHÛÛ›Û\‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\È8 %Ù[ˆHØ[HØÚÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓYX\Ý\‰Ë	ÑÛÜ’Ú[™ÉË	ÑPPÉË	ÓšXÙI×Kˆ›Ý\Î‰ÕHÜ\˜]ÜˆÝ\Ú[™ËHÛÛ›ÛØXš[™][™HX[X[™[X\ÙKˆÛˆHÛÛ[][š]HØ]HH™[X\ÙHÙ^H\ÈÙ[ˆHÛÛ[[ÛˆÛ™HXÜ›ÜÜÈHÚÛHÐK[™Hš\™H\\Y[™YYÈ]ÈÝÛˆXØÙ\ÜÈ8 %\ÝX[HHÛ›Þ›ÞÜˆHÛXÚË]ËY[\ˆ˜Y[ËÚXÚ\È›Ý[Ý\ˆØ[È\XØ]K‰ÈKˆÈY‰ÛYÙØYÙK]ØIËØ]‰Õ][]IËÙ^]Ø^N‰ÓYÙØYÙH	ˆÐKX\›Ý™Y	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ›]ÈØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ˜]™[Ù[žIË	ÔØ[\ÛÛš]IË	ÓYÙØYÙI×Kˆ›Ý\Î‰ÕÛÈØÚÜÈ[ˆÛ™HØ\ÙKˆHÛÛœÝ[Y\ˆÙ^H\ÈHÚ[ÝÈØY™\ˆÜˆ›]Ù^HÚ]HÛÙHÛˆ]ˆHÐHÝ™\œšYH\ÈHÛÛ›ÛYX\Ý\ˆÙ]\ÜÝYYÈØÜ™Y[™\œË›ÝÈØÚÜÛZ]Ë[™›ÈYÚ][X]HÝ\Y\ˆÙ[È[ÝHÛ™KˆÛˆHØÚÙY˜YÈHÛ™\Ý[œÝÙ\œÈ\™HHX[Y˜XÝ\™\ˆÛÙKHÚ[KÜˆHš\\‹‰ÈKˆÈY‰ÜÚÚKXØX›IËØ]‰Õ][]IËÙ^]Ø^N‰ÐØ\™ÛÈÝ˜\	ˆXØÙ\ÜÛÜžHØX›IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ›]ÈØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐXØÙ\ÜÛÜžI×Kˆ›Ý\Î‰ÕHÛX[[X™\™YÞ[[™\œÈÛˆÚÚH[™šZÙH˜XÚÜËØ\™ÛÈÝ˜\Ë˜Z[\ˆØX›HØÚÜÈ[™Ù[™\˜]Üˆ]\œËˆ™X\›H[\™HÛÛžHÛÙHÚ]H[X™\ˆÛˆHÙ^KÛÈHš^\ÈH\ÈÜ™\ˆ[™Hš]™K[Z[]HÝØ\‰ÈKˆÈY‰ØÚ\˜ÚXÚZ[‰ËØ]‰Õ][]IËÙ^]Ø^N‰Ò[œÝ]][Û˜[YØÚÈ	ˆÚZ[ˆÙ]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØÚÛÛ	Ë	ÐÚ\˜Ú	Ë	ÐØ[\	Ë	Ó][šXÚ\[	×Kˆ›Ý\Î‰ÕHÞ™[œÈÙˆYØÚÜÈHØÚÛÛÚ\˜ÚÜˆØ[\[œÈÛˆØ]\ËÚYË[\Ý\œÈ[™™[˜ÙH[™\Ëˆ[[ÜÝ™]™\ˆÛ™HÙ^K[™[[ÜÝ[Ø^\ÈYX[È™Kˆ\È\ÈHÙ^Z[™È›Øˆ\ÙÝZ\ÙY\ÈHØÚÛÝ]ˆH\ÙY[Ù[\ÈHÛX[X\Ý\ˆÞ\Ý[K›Ý[›Ý\ˆÝ]Ù^K‰ÈKˆÈY‰Ú[™ÝY™‰ËØ]‰Õ][]IËÙ^]Ø^N‰Ò[™ÝY™ˆ	ˆ™\Ý˜Z[	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ð˜\œ™[È›]	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓ]È[™›Ü˜Ù[Y[	×Kˆ›Ý\Î‰ÕHÝ[™\™Ú]š[X[ˆ]\›ˆ\È[X™\˜][H[š]™\œØ[ÛÈ[žHÙ™šXÙ\ˆØ[ˆ™[X\ÙH[žHÝY™‹[™YÚ\ÙXÝ\š]H™\Ý˜Z[È\ÙHZ\ˆÝÛ‹ˆ‘T’Q–HHÒUPUSÓˆ™Y›Ü™H[ÝHÝXÚ]ˆH\œÛÛˆ[ˆ™\Ý˜Z[ÈÚÈ\È›Ý[ˆÝ\ÝÙH\ÈHÙ[˜\™HØ[[™ÜÜÚX›HHÛXÙHÛ™K[™HÙ]ÙˆÝY™œÈÚ]›Ø›ÙH[ˆ[H\ÈHš]™KYÛ\ˆÙ^Hœ›ÛH[žH]KYÙX\ˆÝ\Y\‹‰ÈKˆÈY‰Ý][]K]˜Z[\‰ËØ]‰Õ][]IËÙ^]Ø^N‰Õ][]H˜Z[\ˆ	ˆ\]Z\Y[]\‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\ˆÈ\ØÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ˜Z[\‰Ë	Ô™[[	Ë	Ñ›Y]	×Kˆ›Ý\Î‰Ô˜[\YÛÜˆØÚÜËÛÛ›ÞÛ™ÝY\ËÙ[™\˜]ÜˆØYÙ\È[™H[K]Y[œÈÛˆ™[[\]Z\Y[ˆ™[[X\™È[ˆ]™\ž][™ÈÙ^YY[ZÙH[™Ú[]™HHÛÙNÈH\\ÛÜšÈ\È\ÝX[HX\ÚY\ˆÈš[™[ˆHØÚÈ\ÈÈXÚË‰ÈK‚ˆÊˆKKKHÐQ‘HS‘USKKKBˆHÙ^K[Ü\˜]YÚYHÙˆØY™HÛÜšËˆ[[ÜÝ›Û™HÙˆ\ÙH]™HH›[šÈ[ÝBˆÜ™\ˆœ›ÛHHØ][ÙÎˆHYÚ][X]H›Ý]HÈHÙ^H\ÈHÙ\šX[[X™\ˆ[™ˆHX[Y˜XÝ\™\‹ÚXÚ\ÈÚHH›ÝÜÈØ\œžHÚ\™HHÙ\šX[]™\È[œÝXYˆÙˆH\[X™\‹ˆÙ]™\˜[\™H™Y\Ø[Ëˆ
+‹ÂˆÈY‰ÜÙËZÙ^KXÚ[™ÙXX›IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÔØ\™Ù[[™Ü™Y[›XYˆÙ^KXÚ[™ÙXX›HØY™HØÚÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ›]ÈÝX›KXš]Y	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØ\™Ù[	ˆÜ™Y[›XY‰Ë	ÔØY™I×Kˆ›Ý\Î‰ÐHÙ^K[Ü\˜]YØY™HØÚÈ˜]\ˆ[ˆHX[[™HÙ^KXÚ[™ÙXX›HÛ™H]]ˆHÙ^H›ÝÜ\˜]\È][™Ù]ÈHÛÛXš[˜][ÛˆÙˆÝ]ËˆÛÈÙ^\ÈÚ\Ú]][™ÜÚ[™È›Ý\ÈHÚÛH›Ø›[KˆHØÚÈ›ÙHØ\œšY\ÈHÙ\šX[ÈÉ‘ÈÚ[Ý\HžHÙ\šX[ÈH™YÚ\Ý\™YØÚÜÛZ]Ú]›ÛÙˆÙˆÝÛ™\œÚ\ˆ›ÝH›[šÈ[ÝHÜšYÚ[˜]H]H˜[‹‰ÈKˆÈY‰ÜØY™KZÙ^[ØÚËYX[	ËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÒÙ^K[ØÚÚ[™ÈX[š[™ÉË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ›]ÈØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØ\™Ù[	ˆÜ™Y[›XY‰Ë	ÓQØ\™	Ë	ÔØY™I×Kˆ›Ý\Î‰ÐHÛX[Þ[[™\ˆ[ˆHX[š[™È]ÝÜÈHX[\›š[™È]™[ˆÚ]HšYÚÛÛXš[˜][Û‹ˆ]\ÈHÙXÛÛ™\žHØÚË›ÝHØY™HØÚÎˆY™X][™È]Ù]È[ÝHHX[[ÝHÝ[Ø[››ÝÜ[ˆÚ]Ý]HÛÛXš[˜][Û‹ˆHÛÙH\È\ÝX[HÝ[\YÛˆHš[™ÈÜˆHÞ[[™\ˆYË‰ÈKˆÈY‰Ù\ÜÚ]ÜžK\ØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Ñ\ÜÚ]ÜžH	ˆ›ÜØY™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕØY™\ˆÈX[\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔ\›XKU˜][	Ë	Ð[Y\šXØ[ˆÙXÝ\š]IË	ÒÛÛ‰Ë	ÔØY™I×Kˆ›Ý\Î‰ÕÛÈÛÛ\\Y[È[™Ù[ˆÛÈY™™\™[[œÝÙ\œËˆH›ÜÛÝ[™H\\ˆÛÜˆ\™HÛÛ[[Û›HHZ[ˆØY™\ˆÜˆX[\ˆÙ^HÚ]HÛÙHÛˆHYÎÈH[Û™^HÛÛ\\Y[™[ÝÈX^H™HX[ÜˆX[ZÙ^Kˆ™\Ý]\˜[È[™Ø\ˆØ\Ú\È\ÙH\ÙHX]š[H[™ÜÙHH\\ˆÙ^HÛÛœÝ[Kˆ\ÝX›\ÚÚXÚÛÛ\\Y[HØ[\ˆYX[œÈ™Y›Ü™H[ÝH][ÝK‰ÈKˆÈY‰ÝØ[Y›ÛÜ‹\ØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÕØ[	ˆ›ÛÜˆØY™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\È8 %Ù[ˆ›]ÜˆX[\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔÝ\‰Ë	ÓYZ[[šÉË	Ô\›XKU˜][	Ë	ÑØ\™[	×Kˆ›Ý\Î‰Ò[‹]Ø[[™[‹Y›ÛÜˆ[š]ËX[žHÙˆ[HXØY\ÈÛ[™[œÝ[YžHHZ[\ˆÚÈ\ÈÛ™ÈÛÛ™KˆÛ\ˆÝ\ˆ[™YZ[[šÈ›ÙY\ÈØ\œžHHÙ\šX[Ø\ÝÜˆÝ[\Y[ÈHÛÜˆYÙKˆH›ÛÜˆØY™H[™\ˆØ\œ]\Èœ™\]Y[H[ÙˆØ]\ˆ8 %ÛÜØ\›š[™ÈHÝÛ™\ˆ™Y›Ü™H[ÝHÜ[ˆ]‰ÈKˆÈY‰ØÛÛœÝ[Y\‹ZÙ^\ØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÐÛÛœÝ[Y\ˆØY™HÙ^HÝ™\œšYH
+Ù[žHÈš\œÝ[\ÈÝXÚËSÛŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ›]ÈX[\ˆÈØY™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔÙ[žTØY™IË	Ñš\œÝ[\	Ë	ÒÛ™^]Ù[	Ë	ÔÝXÚËSÛ‰Ë	Ð˜\œÚØI×Kˆ›Ý\Î‰ÕH›Þ\ÝÜ™HØY™HÚ]HÙ^\Y[™HÙ^HÝ™\œšYH™Z[™H˜YÙHÜˆHX˜™\ˆYËˆÛÙ\È\™HÝ[\YÛˆHÙ^H[™HX[Y˜XÝ\™\œÈÙ[™\XÙ[Y[ÈžH]ÛÙH\™XÝÈHÝÛ™\ˆ›ÜˆH™]ÈÛ\œÈ8 %Ù[ˆHÛ™\Ý[œÝÙ\‹[™˜\Ý\ˆ[ˆHØ[[Ý]ˆ‘T’Q–HÕÓ‘T”ÒTˆHÜX›HØY™H[ˆH˜XÚÈÙˆHØ\ˆ\ÈHÛ\ÜÚXÈÝÛ[‹\›Ü\H™\Ù[][Û‹‰ÈKˆÈY‰ÙÝ[‹\ØY™K[Ý™\œšYIËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÑÝ[ˆØY™HÙ^HÝ™\œšYH
+X™\HÈØ[››ÛˆÈÚ[˜Ú\Ý\ŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕX[\ˆÈ›]	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓX™\IË	ÐØ[››Û‰Ë	ÕÚ[˜Ú\Ý\‰Ë	Ñ›ÜÛ›Þ	Ë	Ðœ›ÝÛš[™É×Kˆ›Ý\Î‰Õ‘T’Q–HÕÓ‘T”ÒTSˆÔ’US‘ËˆHÝ[ˆØY™H\ÈHÛ™HØ[Ú\™HÙ][™È\ÈÜ›Û™È\›\ÈÛÛY[Û™Kˆ[ÜÝ™\ÚY[X[Ý[ˆØY™\È\ÙH[ˆ[XÝ›ÛšXÈØÚÈÚ]HÙ^HÝ™\œšYH™Z[™HX[ÜˆÙÛÈ]K[™HÝ™\œšYH\È\ÝX[HHX[\ˆÜˆÝX›KXš]YÙ^HÚ]HÛÙHHX[Y˜XÝ\™\ˆÚ[X]ÚÈHØY™HÙ\šX[›ÜˆH™YÚ\Ý\™YÝÛ™\‹ˆÙ\šX[\ÈÛˆHÛÜˆYÙKH˜XÚËÜˆ[™\ˆHØ\œ][œÚYK‰ÈKˆÈY‰ÚÝ[\›ÛÛK\ØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÒÝ[›ÛÛHØY™HÝ™\œšYIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕX[\ˆÈ›]	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑ[ØY™IË	ÔØY™SX\šÉË	ÓÛš]IË	Ð\ÜØHX›ÞI×Kˆ›Ý\Î‰Ò[‹\›ÛÛHØY™\ÈØ\œžHH›Ü\HÝ™\œšYH8 %HX\Ý\ˆÙ^HÜˆHX[˜YÙ\ˆÛÙH[]Hœ›Û\ÚËˆH›Ü\K›ÝHÝY\ÝÛÛ›ÛÈ]ˆHÝY\Ý\ÚYHØÚÛÝ]\ÈHœ›ÛY\ÚÈ›Ø›[NÈHØ[œ›ÛHH›Ü\H\ÈYÚ][X]H[™\È\ÝX[HX›Ý]HÜÝÝ™\œšYHXÜ›ÜÜÈHÚÛH›ÛÜ‹‰ÈKˆÈY‰Ø[\]YK\ØY™IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Ð[\]YHØY™H	ˆ[Û™^HÚ\Ý	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ðš]ÈØ\™Y	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓ[ÜÛ\‰Ë	ÑYX›Û	Ë	Ò\œš[™ËR[SX\š[‰Ë	Ö[ÜšÉË	ÔØY™I×Kˆ›Ý\Î‰Ô™K]Ø\ˆØY™\È[™[Û™^HÚ\ÝËX[žHÛˆØ\™Yš]ØÚÜÈ˜]\ˆ[ˆ[œË[™X[žHÚ]Z[YXÛÜ˜][ÛˆÛÜ[Ü™H[ˆHØY™Kˆ™\ÝÜ˜][Ûˆ[™\Ý]HÛÜšËˆÈ›Ý›Ü˜ÙHÛ™NˆHÛÜˆØ\Ý[™È[™H[œÝš\[™È\™HH˜[YK[™HÛÛXÝÜˆÚ[^H[Ü™H›ÜˆHØÚÙYÜšYÚ[˜[[ˆH›Ü˜ÙYÜ[ˆÛ™Kˆ[\]YHØY™HÜXÚX[\ÝÈ^\Ý[™H™Y™\œ˜[\ÈÙ[ˆHšYÚ[œÝÙ\‹‰ÈKˆÈY‰Ü\›XXÞK[˜\˜ÛÝXÜÉËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Ô\›XXÞH	ˆ˜\˜ÛÝXÜÈØY™IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\ÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔ\›XXÞIË	ÓYYXØ[	×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆÛÛ›ÛY\ÝXœÝ[˜ÙHÝÜ˜YÙH\ÈÛÝ™\›™YžHPH[\È[™H\›XXÞH\ÈHØÝ[Y[Y›ØÙY\™HÚ]X[Ý\ÝÙH[™HÚ]™\ÜËˆÛÜšÈ\[œÈÚ]H\›XXÚ\Ý[ˆÚ\™ÙH™\Ù[[™ÛˆZ\ˆ\\ÛÜšËÜˆ]Ù\È›Ý\[‹ˆ™]™\ˆÜ[ˆÛ™HÛˆH™\˜˜[™\]Y\Ý[˜ÛY[™Èœ›ÛHÝY™‹‰ÈKˆÈY‰Ü™X[\Ý]K[ØÚØ›Þ	ËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Ô™X[\Ý]HØÚØ›Þ
+Ý\˜HÈÙ[šSØÚÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Û‹ØH8 %[XÝ›ÛšXÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔÝ\˜IË	ÔÙ[šSØÚÉË	Ô™X[Ü‰×Kˆ›Ý\Î‰ÑÈ“ÕÑT•’PÑKˆÝ\˜HP›Þ[™Ù[šSØÚÈ\™H›Ø\™XÛÛ›ÛY[XÝ›ÛšXÈÞ\Ý[\ÈYYÈH™X[ÜˆY[X™\œÚ\[™[ˆ]Y]˜Z[ÙˆÚÈÜ[™YÚXÚ\Ý[™ÈÚ[‹ˆÜ[š[™ÈÛ™HÝ]ÚYH]Þ\Ý[HY™X]ÈH™XÛÜ™HÚÛH[™\ÝžH™[Y\ÈÛ‹ˆH\Ý[™ÈYÙ[ÜˆHØØ[›Ø\™\ÈH[œÝÙ\‹ˆHZ[ˆYXÚ[šXØ[ÛÛXš[˜][ÛˆØÚØ›Þ\È[ÜH[ÛÈ\ÙH\™HHY™™\™[[™È[\™[K‰ÈKˆÈY‰Ý˜][YÛÜ‰ËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Õ˜][ÛÜˆ	ˆ^KYØ]IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\ÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑYX›Û	Ë	Ó[ÜÛ\‰Ë	Ò[Z[Û‰Ë	Õ˜][	×Kˆ›Ý\Î‰ÐH˜][ÛÜˆ\È›ÝHšYÈØY™Nˆ]\ÈH^KYØ]KH[YHØÚÈÜˆ™[ØÚÙ\ˆ[ˆX[žHØ\Ù\Ë[™[ˆ[\š[Üˆ™[X\ÙHÛÈ›Ø›ÙHÙ]ÈÚ][‹ˆ˜[šÈ[™™]Ù[\ˆÛÜšËÛˆH[œÝ]][ÛœÈÝÛˆ›ØÙY\™H[™\ÝX[HZ\ˆÝÛˆÛÛ˜XÝYÙ\šXÙHÛÛ\[žKˆÛÛ™š\›H›Ø›ÙH\È[œÚYH™Y›Ü™H[ž][™È[ÙK‰ÈKˆÈY‰ÜØY™K\™[ØÚÙ\‰ËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰Ô™[ØÚÙ\ˆ	ˆÛ\ÜÈ]H
+›ÈÙ^JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Û‹ØIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØY™I×Kˆ›Ý\Î‰Ó›ÝHØÚÈ[™›ÝHÙ^H8 %H›ÛØžH˜\›Üˆ]XÚËˆH[\\™YÛ\ÜÈ]HÜˆHÜš[™È™[ØÚÙ\ˆš\™\È[™\›X[™[H˜[\ÈH›ÛÛÜšÈYˆHØY™H\Èš[YÜˆÚØÚÙYˆÛÜÛ›ÝÚ[™È]^\ÝÈ™Y›Ü™H[ž[Û™HÝ\ÈÛˆHØY™NˆHš\™Y™[ØÚÙ\ˆ\›œÈ[ˆÜ[š[™È[ÈHÝ][™È›Øˆ[™H™\Z\ˆš[[™]\ÈH™X\ÛÛˆØY™HÛÜšÈ\ÈHÜXÚX[H[™›ÝHØÚÛÝ]‰ÈKˆÈY‰ÜØY™K\Ù\šX[\]IËØ]‰ÔØY™H	ˆ˜][	ËÙ^]Ø^N‰ÔÙ\šX[[X™\ˆ	ˆX[Y˜XÝ\™\ˆÛÙIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Û‹ØIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØY™IË	Õ˜][	×Kˆ›Ý\Î‰ÕHÚ[™ÛH[ÜÝ\ÙY[[™ÈÛˆHØY™K[™H™X\ÛÛˆ\ÈØ]YÛÜžHØ\œšY\È›È\[X™\œËˆ™X\›H]™\žHX[Y˜XÝ\™\ˆÚ[Ý\HHÙ^HÜˆÛÛXš[˜][ÛˆžHÙ\šX[ÈH™\šYšYYÝÛ™\ˆÜˆH™YÚ\Ý\™YØÚÜÛZ][™]›Ý]H\ÈÚX\\‹˜\Ý\ˆ[™X]™\ÈHØY™H[XÝˆÛÚÈÛˆHÛÜˆYÙK™Z[™HX[š[™ËÛˆH[™ÙHÚYK[œÚYHHÛÜˆ[™[ÛˆH˜XÚË[™[™\ˆHØ\œ]ÛˆH›ÛÜ‹ˆÝÙÜ˜\][™H]H]H™Y›Ü™H[ÝH][ÝH[ž][™Ë‰ÈK‚ˆÊˆKKKHSTÔ•S‘SÓÓSSÓˆKKKBˆ›Ùš[\È[™YXÚ[š\Û\È]\™H›ÝÛˆHTÈ˜[ˆžHY˜][ˆÛÛYHÙˆ\ÙBˆÙ[Z[™[H\›ˆ\ÛˆHÙ[˜[ÛØ\Ý8 %]\›È›Ùš[HÞ[[™\œÈÛˆ[Ù\›‚ˆ\˜Ú]XÝ\™K‘H[\ÜÈ\ÝHK^YX\ˆ[K[\ÜY][\Ú[][ÂˆÛÜœËˆÝ\œÈ[ÝHÚ[[ÜÝZÙ[H™]™\ˆYY][™H›ÝÈØ^\ÈÛÎˆBˆÚ[ÙˆH™Y™\™[˜ÙH\È]Ú[ˆHÛ™HØ[[ˆš]™HYX\œÈ\œš]™\È[ÝBˆÛ›ÝÈÚ][ÝH\™HÛÚÚ[™È][œÝXYÙˆÝY\ÜÚ[™Ëˆ
+‹ÂˆÈY‰ØÜXÚY›Ü›IËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰ÐÜXÚY›Ü›HÈÜ›ÜÜÈ
+™Z\ÜÈÈ[™]ÈÒTÐJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÐÜ›ÜÜÈ8 %™YHÜˆ›Ý\ˆÚ[™ÜÉËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÖ™Z\ÜÉË	Ñ[™]	Ë	ÐÒTÐIË	ÑšX]	Ë	ÓYI×Kˆ›Ý\Î‰ÐHÙ^HÚ]™YHÜˆ›Ý\ˆ›Y\È]šYÚ[™Û\ËXXÚ™XY[™È]ÈÝÛˆ›ÝÈÙˆ[œËˆX\Ý\›ˆ]\›ÜX[ˆ[™][X[ˆÛÜˆ\™Ø\™KÛ\ˆšX][™YK[™HÝÙˆšZÙHØÚÜËˆ\Ý[˜Ý]™H[›ÝYÚ][ÝHÚ[Û›ÝÈ]ÛˆÚYÚˆÝ[™\™XÚÜÈÈ›Ýš]ÈHÛÛ[™È\ÈÜXÚY›Ü›K\ÜXÚYšXÈ[™ÚX\‰ÈKˆÈY‰Øœš][]™\‰ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ðœš]\Ú]™\ˆØÚÈ
+ÚX˜ˆÈ[š[ÛˆÈTHÈYÙÙJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó]™\ˆ8 %Hš]Ù^K›ÝH[ˆÙ^IËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐÚX˜‰Ë	Õ[š[Û‰Ë	ÑTIË	ÓYÙÙIË	ÖX[HRÉ×Kˆ›Ý\Î‰Ó]™\œÈ˜]\ˆ[ˆ[œÎˆHš]Ù^HYÈHÝXÚÈÙˆ]™\œÈÈ[YÛˆHØ]KˆHš]™K[]™\ˆ”ÌÍŒŒH[Ü\ÙHXYØÚÈ\ÈHœš]\ÚÝ[™\™œ›ÛYÛÜˆØÚÈ[™H[™È[ˆ[œÝ\™\ˆ™\]Z\™\È\™Kˆ\›œÈ\Ûˆ[\ÜY\™Ø\™H[ˆYÚY[™ÛY\È[™Ûˆ[ž][™ÈÚ\Yœ›ÛHHRËˆ›Ý[™È[ˆHTÈ[ˆÚ]\Y\È8 %Y™™\™[YXÚ[š\ÛKY™™\™[Ý\Z[‹Y™™\™[ÛÛ[™Ë‰ÈKˆÈY‰Ù]\›Ë\›Ùš[IËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ñ]\›È›Ùš[HÈSˆÞ[[™\‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙH8 %]H›ÙH\ÈHÚ[	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐP•TÉË	ÑÓIË	ÕÚ[ØIË	ÑÕIË	Ô›ÝÉË	ÕÚ[šÚ]\É×Kˆ›Ý\Î‰ÕHÙ^YY\Ùˆ™X\›H]™\žH]\›ÜX[ˆÛÜŽˆH›]X\‹\Ú\YÞ[[™\ˆ[žHÛ™HØÜ™]È›ÝYÚH˜XÙ\]Kˆ™ZÙ^Z[™ÈYX[œÈÝØ\[™ÈHÞ[[™\‹›Ý™\[›š[™È[ˆXÙK[™Þ[[™\œÈ\™HÚ^™Y[ˆ[[HÝ\È\ˆÚYH8 %YX\Ý\™H™Y›Ü™H[ÝHÜ™\‹ˆ[˜Ü™X\Ú[™ÛHÛÛ[[Ûˆ\™HÛˆ[Ù\›ˆ\˜Ú]XÝ\™H[™Ûˆ]™\žH[\ÜY][\Ú[][ÈÛÜ‹‰ÈKˆÈY‰Û][\Ú[	ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ó][\Ú[ÙX\˜›Þ	ˆ][ÈÛÜ‰Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Õ˜\šY\È8 %\ÝX[HH]\›ÈÞ[[™\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑÕIË	Ô›ÝÉË	ÒÜIË	ÑZ‰Ë	ÔÚYYÙ[šXI×Kˆ›Ý\Î‰Ó›ÝHÙ^]Ø^HÛÈ]XÚ\ÈHYXÚ[š\ÛH™Z[™Û™KˆHYX[™]\›ˆ[™Hš]™\ÈÛÚÜÈ[™›Û\œÈ\[™ÝÛˆHÚÛHÛÜˆYÙK[™HÞ[[™\ˆÛ›H™[X\Ù\ÈHÙX\˜›ÞˆHÛÜˆ]Ú[›ÝØÚÈ\ÈHÙX\˜›ÞÜˆ[ˆ[YÛ›Y[›Ø›[Hš[™H[Y\ÈÝ]Ùˆ[‹[™›È[[Ý[ÙˆÙ^HÛÜšÈš^\È]ˆY[YžHHÙX\˜›ÞžHH˜XÙ\]HÝ[\[™È™Y›Ü™H[ÝHÜ™\ˆ[ž][™Ë‰ÈKˆÈY‰ÜØØ[™K[Ý˜[	ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰ÔØØ[™[˜]šX[ˆÝ˜[
+TÔÐHÈZÛÈÈš[Ýš[™ÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐTÔÐIË	ÔZÛÉË	Õš[Ýš[™ÉË	ÐX›ÞI×Kˆ›Ý\Î‰ÕHÝ˜[X›ÙYYÞ[[™\ˆÝ[™\™XÜ›ÜÜÈØØ[™[˜]šXK[Û™ÜÚYHX›ÞH\ØÈ]Z[™\‹ˆØ[YHYXH\ÈH]\›È›Ùš[NˆHÞ[[™\ˆ\ÈH[Ù[H[ÝHÝØ\ˆÚÝÜÈ\ÛˆØØ[™[˜]šX[‹Y\ÚYÛ™YZ[[™ÜÈ[™Ûˆ[\ÜYÛÜœË‰ÈKˆÈY‰Ù[\KY]\›ÉËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ñ[\H
+ØX˜HÈÙ\ÛÈÈÓHÈÚ[ØJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ[\H8 %š[Y›ÝZ[Y	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒØX˜IË	ÒÙ\ÛÉË	ÑÓIË	ÕÚ[ØIË	ÒØX˜HÙ[Z[šI×Kˆ›Ý\Î‰Ô‘TÕ’PÕQÛˆ[ÜÝˆ[œÈ™XY[\\Èš[Y[ÈH›]ÈÙˆH›YH˜]\ˆ[ˆÝ]ÈÛˆHYÙKÙ[ˆœ›ÛHÛÈÜˆ™YH\™XÝ[ÛœÈ]Û˜ÙH8 %Ù\ÛÈ™XYÈ›Ý\ˆ›ÝÜËˆÝ][™È™YYÈH[\HXXÚ[™K›ÝHÝ[™\™\XØ]Ü‹ˆ][USØÚÈ\ÈH[\HÞ\Ý[H[ÜÝTÈÚÜÈ[™XYHÛ›ÝÎÈ\ÙH\™HHÙ\›X[ˆ[™ÝÚ\ÜÈ\]Z]˜[[Ë‰ÈKˆÈY‰ÛXYÛ™]XËZÙ^IËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰ÓXYÛ™]XÈ
+U•HPÔÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó›ÈÝ]È][	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑU•I×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆ\™H\™H›ÈÝ]È[™›È[œÎˆ›Ý][™ÈXYÛ™]XÈ›ÝÜœÈ[ˆHÙ^H[YÛˆ›ÝÜœÈ[ˆHÞ[[™\ˆžHÛ\š]KˆH›[šÈÙ^H[™HÝ]Ù^HÛÚÈY[XØ[ˆ›Ý[™ÈYXÚ[šXØ[È™XY›Ý[™ÈÈ[\™\ÜÚ[Û‹[™˜XÝÜžK[Û›H›ÙXÝ[Û‹ˆYˆ[ÝHYY]Û™KH[œÝÙ\ˆ\ÈHÞ\Ý[HX[\‹‰ÈKˆÈY‰Ü˜YX[YšXÚ]	ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ô˜YX[	ˆšXÚ]	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ô˜YX[È˜\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑšXÚ]	Ë	ÔÛ^	Ë	Ó[Ý\˜I×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆœ™[˜Ú[™][X[ˆYÚ\ÙXÝ\š]HÛÜˆÞ\Ý[\ËÙ[ˆÛˆ[ˆ\›[Ü™YÛÜˆÚ]][\H›ÛËˆHÙ^H\ÈH˜\ˆÚ]˜YX[Ý]ÈÜˆHÝ\YX™KˆÜXÚX[\Ý[™X[\‹XÛÛ›ÛYÈHÛÜˆ\È\ÝX[HÛÜ[Ü™H[ˆHØÚË‰ÈKˆÈY‰ÛZ]ØKYÛØ[	ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ò˜\[™\ÙH™\ÚY[X[
+RUÐHÈÓÐSÈ[HÈÚÝØJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÈ[\IËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓRUÐIË	ÑÓÐS	Ë	Ð[IË	ÔÚÝØIË	ÒØ]ØZ[‰×Kˆ›Ý\Î‰ÕÚ]\ÈÛˆH˜\[™\ÙHœ›ÛÛÜ‹ˆRUÐH[™ÓÐSÛZ[˜]K›ÝÚ][\HÞ\Ý[\ÈX›Ý™HZ\ˆ[ˆ[™\Ë[™˜\[™\ÙHÛÜœÈÛÛ[[Û›HØ\œžHÛÈØÚÜÈ[ˆHØ[YHXY‹ˆ\›œÈ\Ûˆ[\ÜY\™Ø\™K˜\[™\ÙK[ÝÛ™Y›Ü\K[™‘HØ[\\ˆ[™˜[ˆÛÛ™\œÚ[ÛœËˆ™YÚ\Ý˜][ÛˆØ\™È\™HH›Ü›H\™KÛÈHÝÛ™\ˆX^HXÝX[H]™HH\\ÛÜšË‰ÈKˆÈY‰ÛØÚÝÛÛÙX[ž‰ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ð]\Ý˜[X[ˆ	ˆ–ˆ
+ØÚÝÛÛÙÈÚ]ÛÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓØÚÝÛÛÙ	Ë	ÕÚ]ÛÉË	ÑØZ[œØ›Ü›ÝYÚ	×Kˆ›Ý\Î‰ÓØÚÝÛÛÙ\ÈH]\Ý˜[X[ˆ™\ÚY[X[Ý[™\™[™HHXY]Ú\ÈHœ›ÛÛÜˆÙˆHÛÝ[žKˆ\›œÈ\Ûˆ[\ÜY\™Ø\™H[™Ûˆ[ž][™ÈÚ\Yœ›ÛH]\Ý˜[XHÜˆ™]È™X[[™ˆHÛ[ˆ™ZXÛHÙ^]Ø^H[™XYH[ˆH]]Û[Ý]™H›ÝÜÈ\ÈHØ[YHX\šÙ]Y™™\™[˜YK‰ÈKˆÈY‰Ü˜]˜˜\šXXÚ	ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ò\Ü˜Y[H][\Ú[
+˜]ˆ˜\šXXÚÈ][USØÚÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ñ[\IËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔ˜]ˆ˜\šXXÚ	Ë	Ó][USØÚÉ×Kˆ›Ý\Î‰Ô‘TÕ’PÕQˆÝY[ÙXÝ\š]HÛÜœÈÚ]H˜YX[›Û\œ˜^Hš]™[ˆœ›ÛHHÙ[˜[[\HÞ[[™\‹Ý[™\™Ûˆ\Ü˜Y[H\\Y[È[™ÛÛ[[ÛˆÛˆ[\ÜYÙXÝ\š]HÛÜœËˆHÞ[[™\ˆ\È\ÝX[H][USØÚÈ[™X[\‹XÛÛ›ÛYÈHÛÜˆ\™Ø\™H\›Ý[™]\È]ÈÝÛˆ\È›Ø›[K‰ÈKˆÈY‰ÙÛÙ™Z‹Z[™XIËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ò[™X[ˆ]™\ˆYØÚÈ	ˆ[Ü\ÙH
+ÛÙ™ZˆÈ\œš\ÛÛŠIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó]™\ˆÈš]	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑÛÙ™Z‰Ë	Ò\œš\ÛÛ‰Ë	Ó[šÉ×Kˆ›Ý\Î‰Ó]™\ˆYØÚÜÈ[™[Ü\ÙHØÚÜÈœ›ÛHH[™X[ˆX\šÙ]ÛÛÛÜ›ÚYH[™ÛÛ[[ÛˆÛˆ[\ÜY\›š]\™H[™Ú\[™Ëˆ]™\œÈ˜]\ˆ[ˆ[œËZÙHHœš]\ÚØÚÜË[™Ù[™\˜[HÝÈÙXÝ\š]H™YØ\™\ÜÈÙˆÝÈX]žHHœ˜\ÜÈ™Y[Ë‰ÈKˆÈY‰Ú[\ÜXšYØ›Þ	ËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ò[\ÜYšYËX›ÞÞ[[™\ˆ
+Ú[™\ÙHÈZ]Ø[™\ÙJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒ[\Ü	Ë	ÑÙ[™\šXÉ×Kˆ›Ý\Î‰Õ[˜œ˜[™Y[™Ý\ÙKXœ˜[™ØÚÜÙ]ÈZ[ÈÛÜÙ[HÛÜHÕÌHÜˆÐÌKˆH›YHš]ËHÙ^Z[™ÈÙ[ˆÙ\È›ÝˆÚ[ÝÈ\ËÛÜHÛ\˜[˜Ù\È[™[œÈ]È›ÝX]ÚZ]\ˆÝ[™\™ˆHÛÜH]ÛÜšÜÈÛˆHÝ\ÝÛY\ˆÙ^HX^H›ÝÛÜšÈ[ˆHØÚËˆ™XÛÛ[Y[™™\XÚ[™È˜]\ˆ[ˆ™ZÙ^Z[™È8 %HÞ[[™\ˆÛÜÝÈ\ÜÈ[ˆHX›Ý\‹‰ÈKˆÈY‰Û][K[ØÚÉËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ó][ˆ[Y\šXØ[ˆ
+[\ÈÈX[HY^XÛÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔ[\ÉË	ÖX[HY^XÛÉË	Ò[\Ü	×Kˆ›Ý\Î‰ÓY^XØ[ˆ[™Ù[˜[[Y\šXØ[ˆ™\ÚY[X[\™Ø\™KÚXÚÜ›ÜÜÙ\ÈH›Ü™\ˆÛÛœÝ[HÛˆÛÜœËØ]\È[™\›š]\™Kˆ[\È\ÈHXZ›ÜˆY^XØ[ˆœ˜[™ˆÛÛYH›Ùš[\È\™HÛÜÙHÈTÈX[HÙXÝ[ÛœÈ[™ÛÛYH\™H›Ý8 %ÚXÚÈH›YHYØZ[œÝHØÚÈ˜]\ˆ[ˆHØ][ÙË‰ÈKˆÈY‰ÝX[\‹]˜\šX[ÉËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰ÕX[\ˆ˜\šX[È
+Ë\[ˆÈ\[ˆÈXÙHRJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÕX[\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐÚXØYÛÈØÚÉË	ÐXÙIË	Ò[\Ü	×Kˆ›Ý\Î‰Ó›Ý[X[\ˆÙ^\È\™HHÙ]™[‹\[ˆXÙH]\›‹ˆZYÚ\[‹Ù™œÙ]\ÜÝ[™XÙHRH˜\šX[È^\Ý[™[ˆXÙHXÚÈ]Ø[ÜÈHÙ]™[ˆÚ[›Ý™XY[ˆZYÚˆÛÝ[H[œÈ[™ÚXÚÈÚ]\ˆHÜÝ\ÈÙ[™Y™Y›Ü™H[ÝH™XXÚ›ÜˆHÛÛ‰ÈKˆÈY‰Ù]\›ËY\›š]\™IËØ]‰Ò[\Ü	ˆ[˜ÛÛ[[Û‰ËÙ^]Ø^N‰Ñ]\›ÜX[ˆ\›š]\™H	ˆš]Ù^IË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ðš]ÈØ\™Y	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÒ[\Ü	Ë	Ð[\]YIË	Ñ\›š]\™I×Kˆ›Ý\Î‰ÕØ\™›Ø™\Ë\›[Ú\™\ËÛØÚÈØ\Ù\È[™ØXš[™]ÛÜœÈœ›ÛH]\›ÜX[ˆ\›š]\™K[[ÜÝ[Ø\™Yš]ØÚÜËˆHš]›[šÈš[YÈš]Ù\È]ˆÛˆ[ˆ[\]YHHØÚÈ\ÈÛÜ›Ý[™È[™HØ\ÙH\ÈÛÜ]™\ž][™ËÛÈÝ]HÙ^H˜]\ˆ[ˆ›Ü˜Ú[™ÈHÛÜ‹‰ÈK‚ˆÊˆKKKH[\Ü[™Ü™^K[X\šÙ]™ZXÛ\ÈKKKBˆš[Y[™\ˆ]]Û[Ý]™H™XØ]\ÙH]\ÈÚ\™H[ÝHÚ[ÛÚÈ›Üˆ[Kˆ[ÜÝˆÙˆ\ÙH\™H›ÝÛÛ™]È[ˆHTÎÈH›ÝÈØ^\ÈÚXÚÛ™\È[ÝHX^BˆXÝX[HYY][™ÚKˆ
+‹ÂˆÈY‰Ú™KZ[\Ü	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò‘HÜ™^H[\Ü
+K^YX\ˆ[JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÛˆ[ÜÝ	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓš\ÜØ[‰Ë	ÕÞ[ÝIË	ÓZ]ÝXš\ÚIË	ÒÛ™IË	ÔÝX˜\IË	Ò[\Ü	×Kˆ›Ý\Î‰ÑÙ[Z[™[HÜ›ÝÚ[™ÈÛÜšËˆH™ZXÛHHYX\œÈÛ\È™Y\˜[H[\ÜX›KÛÈÚÞ[[™\Ë[XØ\ËÙZHXÚÜÈ[™‘H˜[œÈ\™H\œš]š[™ÈÝXY[KˆHÙ^]Ø^H\È\ÝX[HHØ[YH˜[Z[H\ÈHTÈØ\ˆÙˆ]YX\ˆ8 %HNNNÚÞ[[™H\Èš\ÜØ[ˆ”Ó‹Y˜[Z[H8 %]H[[[Øš[^™\ˆ[™H™[[ÝH\™H‘H\ÈÚ]›ÈTÈÝ\K[™HØØ[ˆÛÛX^H›ÝÜXZÈÈH‘HPÕKˆXÛÙHHØÚË[ˆÚXÚÈÛÛÛÝ™\˜YÙHÙ\\˜][K‰ÈKˆÈY‰ÚÙZK]™ZXÛIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÒÙZHÛ\ÜÈ
+ZZ]ÝHÈÝ^ZÚHÈÛ™HÙZJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙIËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÑZZ]ÝIË	ÔÝ^ZÚIË	ÒÛ™IË	ÔÝX˜\IË	ÓZ]ÝXš\ÚI×Kˆ›Ý\Î‰ÒÙZHXÚÜÈ[™˜[œË[\ÜYžHHÛÛZ[™\ˆØY›Üˆ˜\›\ËÚ[™\šY\È[™Ø[\\Ù\È8 %ÚXÚXZÙ\È[HH™X[Ù[˜[ÛØ\ÝØ[ˆ[ÜÝHZ[ˆØY™\ˆYÛš][ÛœÈÚ]›ÈÚ\ÛÈHYXÚ[šXØ[ÚYH\ÈX\ÞKˆZZ]ÝH™]™\ˆÛÛ\ÙH\™KÛÈ\ÈÛÛYHœ›ÛH[ˆ[\Ü\ˆ˜]\ˆ[ˆHX[\‹‰ÈKˆÈY‰ÜÜØ[™Þ[Û™ÉËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÔÜØ[™Ö[Û™ÈÈÑÓIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÈ\Ù\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔÜØ[™Ö[Û™ÉË	ÒÑÓIË	ÑY]ÛÛÉ×Kˆ›Ý\Î‰ÒÛÜ™X[‹™]™\ˆÛÛ[ˆHTË[™Z[ÛˆY\˜ÙY\È[™Y]ÛÛÈ[›š[™ÈÙX\ˆXÜ›ÜÜÈ]È\ÝÜžH8 %ÚXÚYX[œÈHÙ^HÞ\Ý[H\[™È[\™[HÛˆH\˜Kˆ[ÝHÚ[YY]Û™HÛˆHZ[]\žHÜˆÛÛœÝ[\ˆ™ZXÛHÜˆ›Ý][‰ÈKˆÈY‰ÛYKYXÚXIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÓYHÈXÚXIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÈÜXÚY›Ü›HÛˆHÛ\Ý	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÓYIË	ÑXÚXIË	Ô™[˜][	×Kˆ›Ý\Î‰Ó›ÝHTÈX\šÙ]ˆXÚXH\È™[˜][[™\›™X]ÛÈ]ÈÙ^\È›ÛÝÈH™[˜][›ÝÜÈ\™KˆHÛ\ÝY\È\ÙHHÜXÚY›Ü›HÙ^KÚXÚ\ÈHÛ™HÙ[Z[™[H\ÙY[˜XÝYˆHÛÛXÝÜˆ›ÛÈÛ™H[‹‰ÈKˆÈY‰ØÚ[™\ÙK[X\œ]YIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰ÐÚ[™\ÙHX\œ]Y\È
+–QÈQÈÈÚ\žHÈÙY[HÈÕÓJIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰Ó\Ù\ˆÛˆ[ÜÝ	ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÐ–Q	Ë	ÓQÉË	ÐÚ\žIË	ÑÙY[IË	ÑÜ™X]Ø[	Ë	Ó’SÉ×Kˆ›Ý\Î‰Ó›È\ÜÙ[™Ù\ˆØ[\È[ˆHTÈ\È[™ÜÈÝ[™ÛÈHØ\ˆ\È[›ZÙ[Kˆ\]Z\Y[\È›Ýˆ–QZ[È˜[œÚ]\Ù\È[™›ÜšÛYÈ]\™H[™XYH\™K[™ÜÙH\™HHØ[È[ÝHÚ[Ù]ˆQÈ\ÈÚ[™\ÙK[ÝÛ™Y›ÝÈ[™Ú\™\È›Ý[™ÈÚ]Hœš]\ÚQÈ[ˆHš[YÙH›ÝÜËˆ[Ù\›ˆÚ[™\ÙHØ\œÈ[ÜÝH\ÙHH›Þ[Z]H›ØˆÚ]H\Ù\ˆ[Y\™Ù[˜ÞH›YK[™Y\›X\šÙ]ÛÝ™\˜YÙH\È[ˆÈ›Û™^\Ý[‰ÈKˆÈY‰Ú[™XK[X\œ]YIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ò[™X[ˆX\œ]Y\È
+]HÈXZ[™˜HÈX\]JIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÈ\Ù\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÕ]IË	ÓXZ[™˜IË	ÓX\]HÝ^ZÚI×Kˆ›Ý\Î‰ÓXZ[™˜H\ÈHÛ™H[ÝHX^HXÝX[HÙYNˆH›ÞÜˆÚYKXžK\ÚYH\ÈÛÛ[ˆHTÈ\ÈÙ™‹\›ØY\]Z\Y[[™XZ[™˜H˜XÝÜœÈ\™HÛÛ[[ÛˆÛˆ˜[˜Ú\ËˆX\]H\ÈÝ^ZÚH[™\›™X]ÛÈ]›ÛÝÜÈHÝ^ZÚH›ÝÜËˆ]H[™˜YÝX\ˆ[™›Ý™\ˆÚ\™H[ˆÝÛ™\ˆ[™›Ý[™È[ÙK‰ÈKˆÈY‰Ø\ÙX[‹[X\œ]YIËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ô›ÝÛˆÈ\›ÙXHÈš[‘˜\Ý	Ë[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÈ\Ù\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔ›ÝÛ‰Ë	Ô\›ÙXIË	Õš[‘˜\Ý	×Kˆ›Ý\Î‰Õš[‘˜\Ý\ÈH]™HÛ™NˆšY]˜[Y\ÙKÙ[[™È[ˆØ[Y›Ü›šXKÚ]H›Þ[Z]H›Øˆ[™H\Ù\ˆ[Y\™Ù[˜ÞH›YKˆÛÛ™š\›HÛÛÛÝ™\˜YÙH™Y›Ü™H][Ý[™È[ž][™ÈÛˆÛ™H8 %HY\›X\šÙ]\È˜\™[H\™Kˆ›ÝÛˆ\ÈÙY[K[ÝÛ™Y[™\›ÙXH\ÈZZ]ÝKY\š]™Y[™™Z]\ˆ\ÈHTÈX\šÙ]‰ÈKˆÈY‰Ù]\›Ë]XÚËZ[\Ü	ËØ]‰Ð]]Û[Ý]™IËÙ^]Ø^N‰Ñ]\›ÜX[ˆX]žHXÚÈ
+ØØ[šXHÈPSˆÈQˆÈ]™XÛÊIË[ÛÎ‰ø %	Ë[ÛÐÚ\‰ø %	ËÚ[ØN‰ø %	Ë›XN‰ø %	ËÝ˜]XÎ‰ø %	ËˆÝ]‰ÑYÙHÈ\Ù\‰ËÜXÙ\Î‰ÉË\Î‰ÉËXZÙ\Î–ÉÔØØ[šXIË	ÓPS‰Ë	ÑQ‰Ë	Ò]™XÛÉ×Kˆ›Ý\Î‰Ó›ÝH›Ü[Y\šXØ[ˆÛ\ÜÈX\šÙ]ÚXÚ\ÈHœ™ZYÚ[™\‹PÐÐT‹˜]š\Ý\‹XXÚÈ[™›Û›È›ÝÜÈ[ˆ›Y]ˆ[ÝHÚ[YY]\ÙHÛˆÚÝÈXÚÜË[\ÜYØX›Ý™\œÈ[™X]žH][œ›ÝYÚ[ˆœ›ÛH]\›ÜKˆ]™XÛÈYHTÈ™\Ù[˜ÙH\ÝÜšXØ[H[™Ú\™\È\ÈÚ]HšX]›ÝÜÈ\™K‰ÈK—NÂ‚‹ÊˆKKH’SŽˆÛÜ›X[Y˜XÝ\™\ˆY[YšY\ˆ™Yš^\ÈKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹Â˜ÛÛœÝÓRHHÂˆ	ÌQIÎ‰Ñ›Ü™
+TÊIË	ÌQ‰Î‰Ñ›Ü™
+TÊIË	ÌQÉÎ‰Ñ›Ü™
+TÊIË	ÌQ‘	Î‰Ñ›Ü™
+TÊIË	ÌQ“IÎ‰Ñ›Ü™ÕUˆ
+TÊIË	ÌQ•	Î‰Ñ›Ü™XÚÈ
+TÊIËˆ	Ì‘IÎ‰Ñ›Ü™
+Ø[˜YJIË	Ì‘“IÎ‰Ñ›Ü™ÕUˆ
+Ø[˜YJIË	Ì‘•	Î‰Ñ›Ü™XÚÈ
+Ø[˜YJIË	ÌÑIÎ‰Ñ›Ü™
+Y^XÛÊIËˆ	ÌQÌIÎ‰ÐÚ]œ›Û]
+TÊIË	ÌQÐÉÎ‰ÐÚ]œ›Û]XÚÈ
+TÊIË	ÌQÓ‰Î‰ÐÚ]œ›Û]ÕUˆ
+TÊIË	ÌQÕ	Î‰ÑÓPÈXÚÈ
+TÊIË	ÌQÒÉÎ‰ÑÓPÈÕUˆ
+TÊIËˆ	ÌQÍ	Î‰ÐZXÚÈ
+TÊIË	ÌQÍ‰Î‰ÐØY[XÈ
+TÊIË	Ì‘ÌIÎ‰ÐÚ]œ›Û]
+Ø[˜YJIË	ÌÑÐÉÎ‰ÐÚ]œ›Û]XÚÈ
+Y^XÛÊIË	ÒÓÉÎ‰ÐÚ]œ›Û]
+ÛÜ™XJIËˆ	ÌPÌÉÎ‰ÐÚž\Û\ˆ
+TÊIË	ÌPÍ	Î‰Ò™Y\ÐÚž\Û\ˆÕUˆ
+TÊIË	ÌPÍ‰Î‰Ô˜[H
+TÊIË	ÌÌÉÎ‰ÐÚž\Û\ˆ
+Ø[˜YJIË	ÌÐÍ	Î‰ÐÚž\Û\ˆ
+Y^XÛÊIËˆ	ÌÐÍ‰Î‰Ô˜[H
+Y^XÛÊIË	ÌR	Î‰Ò™Y\
+TÊIËˆ	ÍIÎ‰ÕÞ[ÝH
+TÊIË	ÍÉÎ‰ÕÞ[ÝH
+TÊIË	ÍU	Î‰ÕÞ[ÝH
+TÊIË	ÍU‰Î‰ÕÞ[ÝHXÚÈ
+TÊIË	Ò•	Î‰ÕÞ[ÝH
+˜\[ŠIË	Ò•IÎ‰ÕÞ[ÝHÕUˆ
+˜\[ŠIËˆ	Ò•	Î‰Ó^\È
+˜\[ŠIË	Ì•IÎ‰ÕÞ[ÝH
+Ø[˜YJIË	Ì•ÉÎ‰ÕÞ[ÝH
+Ø[˜YJIËˆ	ÌRÉÎ‰ÒÛ™H
+TÊIË	Ì’ÉÎ‰ÒÛ™H
+Ø[˜YJIË	Ò’IÎ‰ÒÛ™H
+˜\[ŠIË	ÍQ“‰Î‰ÒÛ™HÕUˆ
+TÊIË	ÍR‰Î‰ÒÛ™HÕUˆ
+TÊIËˆ	ÌNUIÎ‰ÐXÝ\˜H
+TÊIË	Ò’	Î‰ÐXÝ\˜H
+˜\[ŠIËˆ	ÌS	Î‰Óš\ÜØ[ˆ
+TÊIË	ÌS‰Î‰Óš\ÜØ[ˆXÚÈ
+TÊIË	Ò“ŒIÎ‰Óš\ÜØ[ˆ
+˜\[ŠIË	Ò“Ž	Î‰Óš\ÜØ[ˆÕUˆ
+˜\[ŠIË	ÍSŒIÎ‰Óš\ÜØ[ˆ
+TÊIË	ÌÓŒIÎ‰Óš\ÜØ[ˆ
+Y^XÛÊIËˆ	ÒÓR	Î‰Ò][™ZH
+ÛÜ™XJIË	ÍS”	Î‰Ò][™ZH
+TÊIË	ÒÓIÎ‰ÒÚXH
+ÛÜ™XJIË	ÒÓ‘	Î‰ÒÚXHÕUˆ
+ÛÜ™XJIË	ÍVIÎ‰ÒÚXH
+TÊIË	ÌÒÔ	Î‰ÒÚXH
+Y^XÛÊIËˆ	ÌÕ•ÉÎ‰Õ›ÛÜÝØYÙ[ˆ
+Y^XÛÊIË	ÌU•ÉÎ‰Õ›ÛÜÝØYÙ[ˆ
+TÊIË	ÕÕ•ÉÎ‰Õ›ÛÜÝØYÙ[ˆ
+Ù\›X[žJIË	ÕÕŒIÎ‰Õ•ÈÛÛ[Y\˜ÚX[	Ë	ÕÐUIÎ‰Ð]YH
+Ù\›X[žJIË	Õ•IÎ‰Ð]YH
+[™Ø\žJIËˆ	ÕÐIÎ‰Ð“UÈ
+Ù\›X[žJIË	ÕÐ”ÉÎ‰Ð“UÈH
+Ù\›X[žJIË	ÍUV	Î‰Ð“UÈÕUˆ
+TÊIË	ÍTÉÎ‰Ð“UÈ
+TÊIË	ÕÓUÉÎ‰ÓZ[šH
+RÊIËˆ	ÕÑ	Î‰ÓY\˜ÙY\ËP™[žˆ
+Ù\›X[žJIË	ÕÑÉÎ‰ÓY\˜ÙY\ËP™[žˆÕUˆ
+Ù\›X[žJIË	Í‘ÉÎ‰ÓY\˜ÙY\ËP™[žˆ
+TÊIË	ÕÌRÉÎ‰ÓY\˜ÙY\ËP™[žˆ
+Ù\›X[žJIËˆ	Ò‘ŒIÎ‰ÔÝX˜\H
+˜\[ŠIË	Ò‘Œ‰Î‰ÔÝX˜\HÕUˆ
+˜\[ŠIË	ÍÌÉÎ‰ÔÝX˜\H
+TÊIË	ÍÍ	Î‰ÔÝX˜\HÕUˆ
+TÊIËˆ	Ò“LIÎ‰ÓX^™H
+˜\[ŠIË	Ò“LÉÎ‰ÓX^™HÕUˆ
+˜\[ŠIË	ÍŒ‰Î‰ÓX^™H
+TÊIËˆ	ÍVR‰Î‰Õ\ÛH
+TÊIË	ÍÔÐIÎ‰Õ\ÛH
+TÊIË	Ó•ÉÎ‰Õ\ÛH
+Ú[˜JIËˆ	ÒM	Î‰ÓZ]ÝXš\ÚHÕU‰Ë	ÍLÉÎ‰ÓZ]ÝXš\ÚH
+TÊIË	Ò“‰Î‰Óš\ÜØ[ˆÛÛ[Y\˜ÚX[	Ëˆ	ÌR	Î‰Ò\›^KQ]šYÛÛ‰Ë	ÍR	Î‰Ò\›^KQ]šYÛÛ‰Ë	Ò–PIÎ‰ÖX[XZIË	Ò’‰Î‰ÒÛ™H[ÝÜ˜ÞXÛIË	Ò’ÐIÎ‰ÒØ]Ø\ØZÚIË	Ò”ÌIÎ‰ÔÝ^ZÚIÂŸNÂ‚‹Êˆ’SˆÜÚ][Û‹LL[Ù[YX\ˆÛÙ\Ëˆ
+‹Â˜ÛÛœÝ’S—ÖQPTˆHÂˆ	ÐIÎ–ÌNNŒLK	Ð‰Î–ÌNNKŒLWK	ÐÉÎ–ÌNN‹ŒL—K	Ñ	Î–ÌNNËŒL×K	ÑIÎ–ÌNNŒMK	Ñ‰Î–ÌNNKŒMWKˆ	ÑÉÎ–ÌNN‹ŒM—K	Ò	Î–ÌNNËŒM×K	Ò‰Î–ÌNNŒNK	ÒÉÎ–ÌNNKŒNWK	Ó	Î–ÌNNLŒŒK	ÓIÎ–ÌNNLKŒŒWKˆ	Ó‰Î–ÌNNL‹ŒŒ—K	Ô	Î–ÌNNLËŒŒ×K	Ô‰Î–ÌNNMŒK	ÔÉÎ–ÌNNMKŒWK	Õ	Î–ÌNNM‹Œ—K	Õ‰Î–ÌNNMËŒ×Kˆ	ÕÉÎ–ÌNNNŒŽK	Ö	Î–ÌNNNKŒŽWK	ÖIÎ–ÌŒŒÌKˆ	ÌIÎ–ÌŒKŒÌWK	Ì‰Î–ÌŒ‹ŒÌ—K	ÌÉÎ–ÌŒËŒÌ×K	Í	Î–ÌŒŒÍK	ÍIÎ–ÌŒKŒÍWKˆ	Í‰Î–ÌŒ‹ŒÍ—K	ÍÉÎ–ÌŒËŒÍ×K	Î	Î–ÌŒŒÎK	ÎIÎ–ÌŒKŒÎWBŸNÂ‚‹ÊˆKKH\ÚHXÛÙ\ˆ™Y™\™[˜ÙHKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKH
+‹Â‹ÊˆÛ™H›ÝÈ\ˆ‹Z[‹LHÛÛˆ[X™\˜][H[ŽˆHÙ^]Ø^IÜÈÝ]\KÜXÙ\Ëˆ\È[™Ø][ÙÈ[X™\œÈ[™XYH]™HÛˆH›[šÈ›ÝË[™ÚXÚØ\œÈBˆÛÛÜ[œÈ[™XYH]™\ÈÛˆH™ZXÛH™XÛÜ™ËÛÈ›Ý\™H›Ú[™Y]™[™\‚ˆ[YH˜]\ˆ[ˆÛÜYY\™KˆÚ[ˆÜÙHÛÈš[\È\ØYÜ™YYX›Ý]HØ[YBˆ˜XÝX\›Y\ˆ[ˆ\È›Ú™XÝ\™HØ\È›ÈØ^HÈ[œ›ÛH[œÚYHÚXÚÚYBˆØ\ÈšYÚ8 %ÛÈ\ÈX›HØ\œšY\ÈÛ›HÚ]\ÈYHÙˆHÓÓ‚‚ˆY›ÝÈYÛÛÛÛ˜[YH\È\ÚHÙ[È]ˆ˜[HXZÙH˜[Z[HÝÈÙ^]Ø^JÊH\ÈÛÛ™XYÂˆ\ÙHÚXÚØÚÈ]ÛÜšÜÈÛˆ›ÝHÚ]ÈÛ›ÝÈ™Y›Ü™H[ÝHXÚÈ]\‚ˆ]™\žHÛÛ˜[YY[ˆH™ZXÛH™XÛÜ™\ÈH›ÝÈ\™H[™šXÙH™\œØNÈH\Ýˆ[™›Ü˜Ù\È]™XØ]\ÙHHÝZYH]\ÈšYYœ›ÛHH™XÛÜ™È\ÈÛÜœÙH[‚ˆ›ÈÝZYKˆ
+‹Â˜ÛÛœÝÑQQÓTÒHHÂˆÈYˆ	ÝÞM	ËÛÛˆ	ÕÖM	Ë˜[Nˆ	ÕÞ[ÝHÈ^\ÉËÝÎˆ	ÕÖM	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHÚ[™ÛH[ÜÝ]\ÙYÛÛ[ˆH›ÛˆÞ[ÝHØY™\œÈ\™HÚ[ÝÈ[™ÛÜÙHÙÙ]\‹ÛÈ™XYÚXÙH™Y›Ü™H[ÝHÝ]8 %HÛ™KY\\œ›ÜˆÛˆHÖMÝ[\›œÈHÛÜˆ[™Ú[›Ý\›ˆHYÛš][Û‹‰ÈKˆÈYˆ	ÝÞMÉËÛÛˆ	ÕÖMÉË˜[Nˆ	ÕÞ[ÝHÈ^\ÉËÝÎˆ	ÕÖMÉË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHÝ\ˆXZ[œÝ™X[HÞ[ÝH›Ùš[KˆÚXÚÈÚXÚÛ™HHØ\ˆZÙ\È™Y›Ü™H[ÝHÛÛ[Z]8 %ÖMÈ[™ÖMÚ[XXÚ[\ˆHÜ›Û™ÈØÚÈ˜\ˆ[›ÝYÚÈ™Y[›ÛZ\Ú[™Ë‰ÈKˆÈYˆ	ÙÛLÍÉËÛÛˆ	ÑÓLÍÉË˜[Nˆ	ÑÓIËÝÎˆ	ÐŒLˆÈŒLˆÈÈHÈŒ‰Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÐÛÝ™\œÈHÚÛHÓH‹XÝ]\˜H[˜ÛY[™ÈHUÈØ\œËˆÛˆHUÈØ\ˆHÛÛ™XYÈHÝ]È\™™XÝH[™HØ\ˆÝ[Ú[›ÝÝ\8 %H™\Ú\ÝÜˆ[]\ÈHÙ\\˜]H›Ø›[KÛÈ™XYH[]˜[YH™Y›Ü™H[ÝH][ÝK‰ÈKˆÈYˆ	ÙÛLÎIËÛÛˆ	ÑÓLÎIË˜[Nˆ	ÑÓIËÝÎˆ	ÐŒLLHÈŒL‰Ë\ÙNˆ	ÑÛÜ‹[™H˜[]Þ[[™\ˆÛˆ›ÞØ\œÉËˆ›ÝNˆ	Ñ›ÜˆHLXÝ]ÓHYÙKXÝ]ØÚÜËˆÛˆ›Þš[\È\™H\È›ÈYÛš][ÛˆÞ[[™\ˆ][8 %H˜[]›YHÞ[[™\ˆ[ˆHÛÜˆ\ÈHÛ›H[™ÈÈXÛÙK‰ÈKˆÈYˆ	ÚLL	ËÛÛˆ	ÒLL	Ë˜[Nˆ	ÑÓIËÝÎˆ	ÒLLÈŒLMˆÈŒLNIË\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÕH[Ù\›ˆÓHÛË]˜XÚÈÛÛ[™HÛ™H[ÝHÚ[™XXÚ›ÜˆÛˆ[ž][™ÈÚ]H›YHXÚÙY[ˆH›Ø‹ˆHYÛš][ÛˆÛˆ\ÙH\ÈHÛ›ØˆÜˆ\ÈÚY[YÛÈHš]™\ˆÛÜˆ\ÈHØÚË‰ÈKˆÈYˆ	ØŒLLIËÛÛˆ	ÐŒLLIË˜[Nˆ	ÑÓIËÝÎˆ	ÐŒLLIË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÔÛÛ[™\ˆHÙ^]Ø^H˜[YH˜]\ˆ[ˆHÓK\Ù\šY\È[X™\‹ˆÝ™\›\ÈÓLÎH8 %Yˆ[ÝH[™XYHØ\œžHÛ™KÚXÚÈ™Y›Ü™H^Z[™ÈHÝ\‹‰ÈKˆÈYˆ	ÛœÛŒM	ËÛÛˆ	Ó”ÓŒM	Ë˜[Nˆ	Óš\ÜØ[ˆÈ[™š[š]IËÝÎˆ	Ó”ÓŒM	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	Ñ[›Ü›[Ý\ÈÛÝ™\˜YÙHXÜ›ÜÜÈš\ÜØ[ˆ[™[™š[š]KˆÛÜ™[Y[X™\š[™È]XÛÙ[™ÈHØÚÈ\ÈHX\ÞH[ˆÛˆ\ÙH8 %HÓHSˆ\ÈH›Ø‹[™]\ÈHÓHÛÛ›Ý\ÈÛ™K‰ÈKˆÈYˆ	ÙLÌIËÛÛˆ	ÑLÌIË˜[Nˆ	Óš\ÜØ[ˆÈ[™š[š]IËÝÎˆ	ÑLÌIË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHÝ\ˆXZ[œÝ™X[Hš\ÜØ[ˆ›Ùš[KˆØ[YHÓHØ]™X]\È”ÓŒM‰ÈKˆÈYˆ	Ù]MÉËÛÛˆ	ÑUMÉË˜[Nˆ	Óš\ÜØ[ˆÈ[™š[š]IËÝÎˆ	ÑUMÉË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÓÛ\ˆš\ÜØ[ˆ[™ÛÛYHÝX˜\KˆÚ\™\ÈÜ›Ý[™Ú]ÕP8 %HÛÈ\™HX\ÞHÈZ^\[ˆH›Û‰ÈKˆÈYˆ	ÜÝX	ËÛÛˆ	ÔÕP	Ë˜[Nˆ	ÔÝX˜\IËÝÎˆ	ÔÕP	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÐÛÝ™\œÈ[ÜÝÙˆHÝX˜\H˜[™ÙKˆÛˆH[[[Øš[^™YØ\œÈ[ÝHÝ[™YYHS‹ÛÈXÛÙ[™ÈÙ]È[ÝHH›YH[™›ÝH[›š[™ÈØ\‹‰ÈKˆÈYˆ	Ù›ÌÎ	ËÛÛˆ	Ñ“ÌÎ	Ë˜[Nˆ	Ñ›Ü™	ËÝÎˆ	ÒLˆÈÈÍIË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕH›Ü™YÙKXÝ]ÛÜšÚÜœÙH›ÜˆHUÈ\˜H™Y›Ü™HH\Ù\ˆÙ^Kˆ›Ü™ÛÜˆØÚÜÈ\™HÙ[ˆHÛX[™\ÝØÚÈÛˆH™ZXÛHÈ™XY‰ÈKˆÈYˆ	ÚLLIËÛÛˆ	ÒLLIË˜[Nˆ	Ñ›Ü™	ËÝÎˆ	ÒLLIË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	Ñ›Ü™ÛË]˜XÚË[™HÛÛ]ÛÝ™\œÈ[ÜÝÙˆÚ]›Ü™\ÈZ[Ú[˜ÙHŒLKˆÛˆ\Ú]Ë\Ý\š[\ÈH›YHY\È[ˆH›Øˆ[™Ü[œÈHš]™\ˆÛÜˆÛ›K‰ÈKˆÈYˆ	Ù›ÌŒIËÛÛˆ	Ñ“ÌŒIË˜[Nˆ	Ñ›Ü™	ËÝÎˆ	Ñ“ÌŒIË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕX˜™H\È›Ý[ˆYÙHÜˆH\Ù\ˆÙ^H8 %]\ÈH›Ý[™Ù^HÚ]Ú^\ØÜË[™›Ý[™È[ÙH[ˆH›ÛÚ[™XYÛ™Kˆ[ÝH[ÛÈØ[››ÝÝ]HX˜™HÛˆHÝ[™\™XXÚ[™KÛÈHX˜™H›Øˆ™YYÈHXÛÙ\ˆ[™HÝ]\ˆÜˆ]Ù\È›Ý\[ˆ›ØYÚYK‰ÈKˆÈYˆ	ØÞL	ËÛÛˆ	ÐÖL	Ë˜[Nˆ	ÐÚž\Û\ˆÈÝ[[\ÉËÝÎˆ	ÐÖLÈLMÈLMÌ	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÐÛÝ™\œÈHÚÛH[Ù\›ˆÝ[[\È˜[™ÙKˆ\ÈÚ]š\ÜØ[‹HØÚÈ\ÈHX\ÞH[ˆ8 %HÙXÝ\š]HØ]]Ø^HÛˆH™]Ù\ˆXÚÜÈ[™˜[œÈ\ÈÚ]XÚY\ÈÚ]\ˆH›Øˆ\ÈØX›K‰ÈKˆÈYˆ	ÚÛ‰ËÛÛˆ	ÒÓ‰Ë˜[Nˆ	ÒÛ™HÈXÝ\˜IËÝÎˆ	ÒÓˆÈÌIË\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÒÛ™HÛË]˜XÚËˆÛˆHÛX\ZÙ^HØ\œÈHÞ[[™\ˆ\È™Z[™HØ\ÛˆHš]™\ˆ[™H8 %ÜHØ\È›ÝžHH[™K‰ÈKˆÈYˆ	ÚÛN‰ËÛÛˆ	ÒÓN‰Ë˜[Nˆ	ÒÛ™HÈXÝ\˜IËÝÎˆ	ÒÌHÈLˆÈLIË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHÛ™HYÙKXÝ]›Ùš[H][œÈœ›ÛHHNNLÈÈHZYLŒLËˆÚ^ØY™\œÈ[™›ÈÚY[Ûˆ[ÜÝ8 %Û™HÙˆHœšY[™Y\ˆXÛÙ\ÈÛˆH\Ý‰ÈKˆÈYˆ	ÛX^Œ	ËÛÛˆ	ÓPVŒ	Ë˜[Nˆ	ÓX^™IËÝÎˆ	ÓPVŒ	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	Ð[ÛÈHÛÛ›ÜˆHšX]LÜY\‹ÚXÚ\È[ˆVMH[™\›™X]Ú]]™\ˆH˜YÙHØ^\Ë‰ÈKˆÈYˆ	Û^ŒÍ	ËÛÛˆ	ÓVŒÍ	Ë˜[Nˆ	ÓX^™IËÝÎˆ	ÓVŒÍ	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHÛ\ˆX^™H›Ùš[KˆÚXÚÈHYX\ˆ™Y›Ü™H[ÝHXÚÈ™]ÙY[ˆ\È[™PVŒ‰ÈKˆÈYˆ	ÛZ]LIËÛÛˆ	ÓRULIË˜[Nˆ	ÓZ]ÝXš\ÚIËÝÎˆ	ÓRULHÈRUMÉË\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÓZ]ÝXš\ÚHØ\œËˆ›ÝH\ÛÈXÚÜËÚXÚ\™HZ[[\ˆ[™Ú\™H›Ý[™ÈÚ]\ÙK‰ÈKˆÈYˆ	ÚLŒ	ËÛÛˆ	ÒLŒ	Ë˜[Nˆ	Ò][™ZHÈÚXHÈÙ[™\Ú\ÉËÝÎˆ	ÒLŒ	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕÚYH][™ZH[™ÚXHÛÝ™\˜YÙH›ÝYÚHŒLËˆXÛÙ[™È\È]ZXÚÎÈHS‹XžKU’SˆÝ\Y\Ø\™È\ÈH\È][ÝH›Ü‹‰ÈKˆÈYˆ	ÚLMIËÛÛˆ	ÒLMIË˜[Nˆ	Ò][™ZHÈÚXHÈÙ[™\Ú\ÉËÝÎˆ	ÒLMHÈLN	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÓÛ\ˆ][™ZK[˜ÛY[™ÈHYX\œÈH[[[Øš[^™\ˆ\œš]™\È\Ø^H›ÝYÚH[Ù[[‹ˆÛÚÈ›ÜˆHš[™È[[›˜H]HÞ[[™\ˆ™Y›Ü™H[ÝH›ÛZ\ÙHHZ[ˆÝ]Ù^HÚ[Ý\]‰ÈKˆÈYˆ	ÚLŒ‰ËÛÛˆ	ÒLŒ‰Ë˜[Nˆ	Ò][™ZHÈÚXHÈÙ[™\Ú\ÉËÝÎˆ	ÒLŒ‰Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÕH[Ù\›ˆ][™ZHÜ›Ý\ÛË]˜XÚÈÛÛˆÛÝ™\œÈÙ[™\Ú\È\ÈÙ[Ú\™HHÞ[[™\ˆY\È™Z[™HØ\ÛˆH[™K‰ÈKˆÈYˆ	ÚÚXMÉËÛÛˆ	ÒÒPMÉË˜[Nˆ	Ò][™ZHÈÚXHÈÙ[™\Ú\ÉËÝÎˆ	ÒÒÌLÈÒÍÈÈLN	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÔÛÛ[™\ˆHÚXH˜[YH]™XYÈHØ[YH˜[Z[HLŒÛÝ™\œÈÛˆH][™ZHÚYKˆYˆ[ÝH[™XYHØ\œžHLŒÚXÚÈHÝ™\›\™Y›Ü™H^Z[™Ë‰ÈKˆÈYˆ	ÚÚÌL	ËÛÛˆ	ÒÒÌL	Ë˜[Nˆ	Ò][™ZHÈÚXHÈÙ[™\Ú\ÉËÝÎˆ	ÒÒÌL	Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHÚXHYÙKXÝ]›Ùš[KˆÝ™\›\ÈÒPMË‰ÈKˆÈYˆ	ÚÚÌL‰ËÛÛˆ	ÒÒÌL‰Ë˜[Nˆ	Ò][™ZHÈÚXHÈÙ[™\Ú\ÉËÝÎˆ	ÒÒÌL‰Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÒÚXHÛË]˜XÚËˆH™]Ù\ÝÚX\È]HÞ[[™\ˆ™Z[™H[™HØ\ZÙHH™\ÝÙˆH][™ZHÜ›Ý\‰ÈKˆÈYˆ	ÚM‰ËÛÛˆ	ÒM‰Ë˜[Nˆ	Õ•ÈÈ]YHÜ›Ý\	ËÝÎˆ	ÒM‰Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÕHQÈÛË]˜XÚÈÛÛ[™Û™HÙˆH[ÜÝ\ÙY[[ˆH›ÛÚ]™[ˆÝÈ]XÚÙˆHÜ›Ý\Ú\™\È]ˆHÜœØÚHYÛš][Ûˆ\ÈÛˆHY[™ÛˆH™]Ù\ÝØ\œÈ\ÈHÛ›ØˆÚ]›Ý[™ÈÈXÚËÛÈHÛÜˆ\ÈHØÚË‰ÈKˆÈYˆ	ÚLMŒ	ËÛÛˆ	ÒLMŒ•	Ë˜[Nˆ	Õ•ÈÈ]YHÜ›Ý\	ËÝÎˆ	ÒLMŒ•	Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÕHTP‹Y\˜H™\XÙ[Y[›ÜˆM‹ˆXÛÙ[™È\ÈHX\ÞH\8 %ÛÛ\Û™[›ÝXÝ[Ûˆ\ÈÚ]XZÙ\È[ˆTPˆØ\ˆHÛ™È›Ø‹‰ÈKˆÈYˆ	ÚNL‰ËÛÛˆ	ÒNL‰Ë˜[Nˆ	Ð“UÈÈZ[šIËÝÎˆ	ÒNL‰Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	Ð“UÈÛË]˜XÚÈ›ÜˆHUÔÈ[™ÐTÈ\˜K[™Hš\œÝ“UËXZ[Z[šKˆH[XÝ›ÛšXÜÈÛˆ\ÙH\™H™[˜ÚÛÜšÎÈH›YH\ÈHÝ˜ZYÚ›ÜØ\™[‹‰ÈKˆÈYˆ	ÚLL‰ËÛÛˆ	ÒLL‰Ë˜[Nˆ	Ð“UÈÈZ[šIËÝÎˆ	ÒLLˆÈ“UÌIË\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÕH]\ˆ“UÈ›Ùš[K‘SH[™‘ÈØ\œËˆÈ›ÝÛÛ™\ÙH]Ú]LLÚXÚ\ÈÓH8 %H˜[Y\È\™HÛ™H]\ˆ\\[™HÛÛÈ\™H›Ý[\˜Ú[™ÙXX›K‰ÈKˆÈYˆ	ÚM	ËÛÛˆ	ÒM	Ë˜[Nˆ	ÓY\˜ÙY\ËP™[ž‰ËÝÎˆ	ÒM	Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	ÓY\˜ÙY\È›Ý\‹]˜XÚËˆ™XY[™ÈHÛÜˆ\ÈØX›NÈHØ\ˆÚ[›ÝÝ\ÛˆHÝ]›YH™XØ]\ÙHHÙ^H\ÈH[XÝ›ÛšXÜËÛÈ™X]HXÛÙH\™H\È[žHÛ›K‰ÈKˆÈYˆ	ÚMMœ‰ËÛÛˆ	ÒMM”‰Ë˜[Nˆ	Õ›Û›ÉËÝÎˆ	ÒMM”‰Ë\ÙNˆ	ÑÛÜ‰Ëˆ›ÝNˆ	Õ›Û›È\Ù\ˆ›Ùš[HÛˆHØ\œÈ]Ý[]™HHÞ[[™\‹ˆH™]Ù\ˆ›Û›ÜÈ]]™Z[™HØ\ÛˆH[™K‰ÈKˆÈYˆ	ÜÚ\Œ‰ËÛÛˆ	ÔÒTŒ‰Ë˜[Nˆ	ÑšX]Ü›Ý\	ËÝÎˆ	ÔÒTŒ‰Ë\ÙNˆ	ÒYÛš][Ûˆ[™ÛÜ‰Ëˆ›ÝNˆ	ÕHšX]YÜ›Ý\ÛË]˜XÚÈÛÛÚXÚ\È[ÛÈHX\Ù\˜]H[™Û\ˆ™\œ˜\šHÛÛ™XØ]\ÙHÜÙHØÚÜÈØ[YHÝ]ÙˆHšX]\Èš[‹ˆÛˆHØ\œÈ]\ÙHHÛÙHØ\™XÛÙ[™ÈÙ]È[ÝH[ˆ[™›È\\‹‰ÈB—NÂ‚‹ÊˆKKHØY™HÛÜšÎˆY[YžK[ˆš[™HYÚ][X]H›Ý]HKKKKKKKKKKKKKKKKKH
+‹Â‹ÊˆØY™HÛÜšÈ\È›ØÙY\™H™Y›Ü™H\™Ø\™KˆH]Y\Ý[Ûˆ\È[[ÜÝ™]™\ˆÚ]ˆ›[šÈˆ8 %]\ÈÚ][HHÛÚÚ[™È]Ù\ÈHÙ^H]™[ˆ^\Ý›Üˆ][™[HBˆ[ÝÙYÈÝXÚ]‹ˆÛÈ\ÙH›ÝÜÈØ\œžHY[YšXØ][Û‹Ú\™HHÙ\šX[ˆY\Ë[™H]]Üš^˜][ÛˆÝ[™\™ˆHÙ^]Ø^\È[\Ù[™\È\™H›[šÈ›ÝÜÂˆ[ˆHØY™H	ˆ˜][Ø]YÛÜžH[™\™H[šÙYžHY‚‚ˆ[X™\˜][HXœÙ[ˆ[ž][™ÈX›Ý]Y™X][™ÈHØY™Kˆš[Ú[ËˆX[š\[][Ûˆ[™ž\\ÜÈ\™H›Ý[ˆ\Èš[H[™\™H›ÝH™Y™\™[˜ÙHBˆÛ™HØ[™YYËˆH›Ý]H\™H\ÈHÙ\šX[[X™\ˆ[™HX[Y˜XÝ\™\‹ˆÚXÚ\ÈÚX\\ˆ›ÜˆHÝ\ÝÛY\ˆ[™X]™\ÈHØY™HÛÜÚ]]Ø\Ë‚‚ˆY›ÝÈYÜ›Ý\ÚXÚØÜ™Y[ˆÙXÝ[Ûˆ]Ú]È[™\‚ˆ˜[YHÚ]ÈØ[]\ÈÚ]H[™ÈXÝX[H\Âˆš[™Ú\™HHÙ\šX[ÜˆÛÙHY\Âˆ]HYÚ][X]H›Ý]HÈHÙ^Bˆ]]Ú][ÝH™YY™Y›Ü™H[ÝHÝXÚ]ˆ››[šËY\™XÝÜžH›ÝÜÈ]ÛÈÚ]]ˆÝÜYHÚ[ˆH[œÝÙ\ˆ\È›È
+‹Â˜ÛÛœÝÐQ‘WÑÔ“ÕTÈHÂˆÉÚY	Ë	ÔÝ\\™I×KˆÉÚÛYIË	Ô™\ÚY[X[[™ÛX[ÛÛ[Y\˜ÚX[	×KˆÉØÛÛ[IË	ÐÛÛ[Y\˜ÚX[[™[œÝ]][Û˜[	×KˆÉÛ›ÉË	Ó›Ý[Ý\œÈÈÜ[‰×B—NÂ‚˜ÛÛœÝÑQQÔÐQ‘HHÂˆÈYˆ	ÜÙ\šX[	ËÜ›Ý\ˆ	ÚY	Ë˜[YNˆ	Ñš[™HÙ\šX[™Y›Ü™H[ž][™È[ÙIËˆ\Îˆ	ÕH]H]HÜˆÝ[\YÙ\šX[\ÈHÚ[™ÛH[ÜÝ\ÙY[[™ÈÛˆHØY™K[™H™X\ÛÛˆ\ÈÙXÝ[ÛˆØ\œšY\È[[ÜÝ›È\[X™\œË‰Ëˆš[™ˆ	ÑÛÜˆYÙK™Z[™Üˆ[™\ˆHX[š[™ËH[™ÙHÚYK[œÚYHHÛÜˆ[™[H˜XÚËH›ÝÛK[™[™\ˆHØ\œ]ÛˆH›ÛÜˆØY™KˆÝÙÜ˜\H]H[™HÚÛHÛÜˆ™Y›Ü™H[ÝH][ÝK‰Ëˆ]ˆ	Ó™X\›H]™\žHX[Y˜XÝ\™\ˆÚ[Ý\HHÙ^HÜˆHÛÛXš[˜][ÛˆžHÙ\šX[ÈH™\šYšYYÝÛ™\ˆÜˆÈH™YÚ\Ý\™YØÚÜÛZ]ˆ]›Ý]H\ÈÚX\\ˆ[ˆÜ[š[™È]˜\Ý\ˆ[ˆ[ÜÝ[ÜH^XÝ[™X]™\ÈHØY™HÛÜÚ]]Ø\ÈÛÜ\È[Ü›š[™Ë‰Ëˆ]]ˆ	ÔÝÈQX]Ú[™ÈHY™\ÜË[™Hš[ÙˆØ[K™XÙZ\Üˆ[œÝ\˜[˜ÙHØÚY[H›ÜˆHØY™H]Ù[‹‰Ëˆ›ˆÉÜØY™K\Ù\šX[\]I×HKˆÈYˆ	Ú\ÚÙ^IËÜ›Ý\ˆ	ÚY	Ë˜[YNˆ	Ñ\ÝX›\ÚÚ]\ˆHÙ^H]™[ˆ^\ÝÉËˆ\Îˆ	Ó[ÜÝØY™\È\™H›ÝÙ^K[Ü\˜]YˆHX[ÜˆHÙ^\Y\ÈHØÚÎÈHÙ^KÚ\™H\™H\ÈÛ™K\È\ÝX[HHÙXÛÛ™\žHÝ™\œšYHÜˆHX[\š[™ÈØÚÈ]Ù\È›ÝÜ[ˆ[ž][™ÈÛˆ]ÈÝÛ‹‰Ëˆš[™ˆ	Ð\ÚÈHØ[\ˆÈÝÙÜ˜\HÛÜ‹ˆHX[Ú]HÛX[Ù^ZÛH[ˆHš[™È\ÈHÙ^K[ØÚÚ[™ÈX[›ÝHÙ^K[Ü[™YØY™KˆHÙ^\YÚ]H˜YÙHÜˆX˜™\ˆYÈ™\ÚYH]\ÝX[HY\È[ˆÝ™\œšYK‰Ëˆ]ˆ	ÒYˆHØÚÈ\ÈHX[ÜˆHÙ^\Y[™HÛÛXš[˜][Ûˆ\ÈÜÝ]\ÈHÛÛXš[˜][Û‹\™XÛÝ™\žH›Øˆ›ÝYÚHX[Y˜XÝ\™\ˆÜˆHØY™HXÚšXÚX[‹›ÝHÙ^H›Ø‹ˆØ^HÛÈÛˆHÛ™K‰Ëˆ]]ˆ	ÔØ[YHÝ[™\™Z]\ˆØ^K‰Ëˆ›ˆÉÜØY™KZÙ^[ØÚËYX[	Ë	ÜØY™K[ØÚÉ×HKˆÈYˆ	Ü™[ØÚÉËÜ›Ý\ˆ	ÚY	Ë˜[YNˆ	Ð\ÜÝ[YH\™H\ÈH™[ØÚÙ\‰Ëˆ\Îˆ	ÐH[\\™YÛ\ÜÈ]HÜˆHÜš[™È™[ØÚÙ\ˆ]š\™\È[™\›X[™[H˜[\ÈH›ÛÛÜšÈYˆHØY™H\Èš[YÜˆÚØÚÙYˆ]\È›ÝHØÚË]\ÈH˜\›Üˆ]XÚË‰Ëˆš[™ˆ	Ö[ÝHÚ[›ÝÙYH]œ›ÛHÝ]ÚYKˆ\ÜÝ[YH[žHÛÛ[Y\˜ÚX[\˜]YØY™H\ÈÛ™K‰Ëˆ]ˆ	Ò]\ÈH™X\ÛÛˆØY™HÜ[š[™È\ÈHÜXÚX[H˜]\ˆ[ˆHØÚÛÝ][™H™X\ÛÛˆHÙ\šX[[[X™\ˆ›Ý]H\ÈÛÜHØZ]ˆHš\™Y™[ØÚÙ\ˆ\›œÈ[ˆÜ[š[™È[ÈHÝ][™È›Øˆ\ÈH™\Z\ˆš[‰Ëˆ]]ˆ	Û‹ØIËˆ›ˆÉÜØY™K\™[ØÚÙ\‰×HK‚ˆÈYˆ	ØÛÛœÝ[Y\‰ËÜ›Ý\ˆ	ÚÛYIË˜[YNˆ	Ð›Þ\ÝÜ™HØY™HÚ]HÙ^HÝ™\œšYIËˆ\Îˆ	ÔÙ[žKš\œÝ[\Û™^]Ù[ÝXÚËSÛ‹˜\œÚØKˆÙ^\YÜˆX[Ú]HÛX[Ý™\œšYHÙ^H™Z[™H˜YÙK‰Ëˆš[™ˆ	ÐHÛÙH\È\ÝX[HÝ[\YÛˆHÙ^H]Ù[‹[™YØZ[ˆÛˆHØÚÈYË‰Ëˆ]ˆ	ÕHX[Y˜XÝ\™\ˆÙ[ÈH™\XÙ[Y[žH]ÛÙK\™XÝÈHÝÛ™\‹›ÜˆH™]ÈÛ\œËˆ]\Èœ™\]Y[HHÛ™\Ý[œÝÙ\ˆ[™]™X]ÈHØ[[Ý]ÛˆšXÙKˆ][ÝHHš\Û›HYˆ^H™YY]Ù^K‰Ëˆ]]ˆ	ÔÝÈQ]HY™\ÜËˆHÜX›HØY™H[ˆH˜XÚÈÙˆHØ\ˆ\ÈHÛ\ÜÚXÈÝÛ[‹\›Ü\H™\Ù[][Ûˆ8 %XÛ[™H]‰Ëˆ›ˆÉØÛÛœÝ[Y\‹ZÙ^\ØY™I×HKˆÈYˆ	ÙÝ[œØY™IËÜ›Ý\ˆ	ÚÛYIË˜[YNˆ	ÑÝ[ˆØY™IËˆ\Îˆ	Ñ[XÝ›ÛšXÈÜˆX[ØÚÈÚ]HÙ^HÝ™\œšYH™Z[™HX[ÜˆHÙÛÈ]Kˆ\ÝX[HX[\ˆÜˆÝX›KXš]Y‰Ëˆš[™ˆ	ÔÙ\šX[ÛˆHÛÜˆYÙKH˜XÚËÜˆ[™\ˆH[\š[ÜˆØ\œ]ˆÝ™\œšYHÛÙHÙ[ˆÛˆHÙ^K‰Ëˆ]ˆ	ÓX™\KØ[››Û‹›ÜÛ›Þœ›ÝÛš[™È[™H™\ÝÚ[X]Ú[ˆÝ™\œšYHÈHØY™HÙ\šX[›ÜˆH™YÚ\Ý\™YÝÛ™\‹‰Ëˆ]]ˆ	Õ‘T’Q–HÕÓ‘T”ÒTSˆÔ’US‘Ë]™\žH[YK›È^Ù\[ÛœËˆ\È\ÈHÛ™HØ[Ú\™HÙ][™È]Ü›Û™È\›\ÈÛÛY[Û™KˆQX]Ú[™ÈHY™\ÜÈ\È›ÛÙˆÙˆ\˜Ú\ÙK[™Üš]HÝÛˆÚ][ÝHØ]Ë‰Ëˆ›ˆÉÙÝ[‹\ØY™K[Ý™\œšYIË	ÙÝ[œØY™I×HKˆÈYˆ	Ùš\™X›Þ	ËÜ›Ý\ˆ	ÚÛYIË˜[YNˆ	ÑØÝ[Y[[™š\™H›Þ	Ëˆ\Îˆ	ÐHÛX[š\™K\˜]YÚ\ÝÚ]HX[\ˆÜˆ›]Ù^KÙ[ˆ[Û™ÜÚYHHÛÛXš[˜][ÛˆX[‰Ëˆš[™ˆ	ÐÛÙHÛˆHÙ^HÜˆH]Ú]K‰Ëˆ]ˆ	ÓX[Y˜XÝ\™\ˆžHÛÙKˆ\ÙH\™HÚX\[›ÝYÚ]H™\XÙ[Y[›Þ\ÈÛÛY][Y\ÈH™]\ˆ™XÛÛ[Y[™][Û‹‰Ëˆ]]ˆ	ÔÝÈQ]HY™\ÜË‰Ëˆ›ˆÉÙš\™\ØY™I×HKˆÈYˆ	ÝØ[›ÛÜ‰ËÜ›Ý\ˆ	ÚÛYIË˜[YNˆ	ÕØ[[™›ÛÜˆØY™IËˆ\Îˆ	Ò[‹]Ø[[™[‹Y›ÛÜˆ[š]ËÙ[ˆ[œÝ[YXØY\ÈYÛÈžHHZ[\ˆ›Ø›ÙHØ[ˆ˜[YKˆÝ\‹YZ[[šË\›XKU˜][Ø\™[‰Ëˆš[™ˆ	ÔÙ\šX[Ø\ÝÜˆÝ[\Y[ÈHÛÜˆYÙHÛˆHÛ\ˆ›ÙY\Ë‰Ëˆ]ˆ	ÓX[Y˜XÝ\™\ˆžHÙ\šX[Ú\™HHÛÛ\[žHÝ[^\ÝËˆX[žHÙˆ\ÙHXZÙ\œÈ\™HÛ™ÈÛÛ™KÚXÚ\ÈÚ[ˆHØY™HXÚšXÚX[ˆ˜]\ˆ[ˆHÙ^H™XÛÛY\ÈH[œÝÙ\‹‰Ëˆ]]ˆ	ÒQX]Ú[™ÈHY™\ÜË[™H›Ü\HÝÛ™\ˆ˜]\ˆ[ˆH[˜[8 %H›ÛÜˆØY™H™[Û™ÜÈÈHZ[[™Ë‰Ëˆ›ˆÉÝØ[Y›ÛÜ‹\ØY™I×HKˆÈYˆ	Ø[\]YIËÜ›Ý\ˆ	ÚÛYIË˜[YNˆ	Ð[\]YHØY™HÜˆ[Û™^HÚ\Ý	Ëˆ\Îˆ	Ô™K]Ø\ˆ[ÜÛ\‹YX›Û\œš[™ËR[SX\š[‹[ÜšËˆœ™\]Y[HHØ\™Yš]ØÚÈ˜]\ˆ[ˆ[œË[™œ™\]Y[HÚ]Z[YXÛÜ˜][ÛˆÛÜ[Ü™H[ˆHØY™K‰Ëˆš[™ˆ	ÓXZÙ\ˆ˜[YHÛˆHÛÜ‹ÛÛY][Y\ÈHÙ\šX[[œÚYHHÛÜˆØ\Ý[™Ë‰Ëˆ]ˆ	Ñ\Ý]H[™™\ÝÜ˜][ÛˆÛÜšËˆHÛÛXÝÜˆ^\È[Ü™H›ÜˆHØÚÙYÜšYÚ[˜[[ˆH›Ü˜ÙYÛ™KÛÈÈ›Ý›Ü˜ÙH]ˆ[\]YHØY™HÜXÚX[\ÝÈ^\Ý[™H™Y™\œ˜[\ÈÙ[ˆÛÜœ™XÝ‰Ëˆ]]ˆ	Ñ\Ý]H\\ÛÜšÈÜˆH^XÝ]Ü‹YˆHÝÛ™\ˆ\ÈYY8 %ÚXÚ\ÈÝÈ[ÜÝÙˆ\ÙHØ[È\œš]™K‰Ëˆ›ˆÉØ[\]YK\ØY™I×HK‚ˆÈYˆ	Ù\ÜÚ]ÜžIËÜ›Ý\ˆ	ØÛÛ[IË˜[YNˆ	Ñ\ÜÚ]ÜžH[™›ÜØY™IËˆ\Îˆ	ÕÛÈÛÛ\\Y[ÈÚ]ÛÈY™™\™[[œÝÙ\œËˆ™\Ý]\˜[ËØ\ˆØ\Ú\È[™™]Z[ˆH\\ˆÛÜˆÜˆ›ÜÛÝ\ÈÙ[ˆHZ[ˆØY™\ˆÜˆX[\ˆÙ^NÈH[Û™^HÛÛ\\Y[™[ÝÈX^H™HX[ÜˆX[ZÙ^K‰Ëˆš[™ˆ	ÐÛÙHÛˆHYÈÙˆH\\ˆÞ[[™\‹ˆÙ\šX[ÛˆHÛÜˆYÙK‰Ëˆ]ˆ	ÓX[Y˜XÝ\™\ˆžHÛÙH›ÜˆH\\‹ˆHÝÙ\ˆÛÛ\\Y[\ÈØY™HÛÜšË‰Ëˆ]]ˆ	ÕH\Ú[™\ÜÈÝÛ™\ˆÜˆHX[˜YÙ\ˆÛˆH\Ú[™\ÜÈ]\šXY›ÝHÛÜÚ[™ÈÚY‰Ëˆ›ˆÉÙ\ÜÚ]ÜžK\ØY™I×HKˆÈYˆ	ÜÙÚÙ^IËÜ›Ý\ˆ	ØÛÛ[IË˜[YNˆ	ÒÙ^K[Ü\˜]YØY™HØÚÉËˆ\Îˆ	ÐHÙ[Z[™HÙ^K[Ü\˜]YØY™HØÚÈ˜]\ˆ[ˆHX[ˆØ\™Ù[[™Ü™Y[›XYˆÙ^KXÚ[™ÙXX›H\ÈHÛÛ[[ÛˆÛ™NˆHÙ^H›ÝÜ\˜]\È][™Ù]ÈHÛÛXš[˜][ÛˆÙˆÝ]Ë‰Ëˆš[™ˆ	ÔÙ\šX[ÛˆHØÚÈ›ÙKš\ÚX›HÚ]HÛÜˆÜ[ˆ8 %ÚXÚ\ÈHØ]Ú‰Ëˆ]ˆ	ÔÉ‘ÈÝ\Y\ÈžHÙ\šX[ÈH™YÚ\Ý\™YØÚÜÛZ]Ú]›ÛÙˆÙˆÝÛ™\œÚ\ˆ›ÝÛÛY][™È[ÝHÜšYÚ[˜]H]H˜[‹‰Ëˆ]]ˆ	Ð\Ú[™\ÜÈÝÛ™\œÚ\ØÝ[Y[][Û‹‰Ëˆ›ˆÉÜÙËZÙ^KXÚ[™ÙXX›I×HKˆÈYˆ	ÚÝ[	ËÜ›Ý\ˆ	ØÛÛ[IË˜[YNˆ	ÒÝ[[‹\›ÛÛHØY™IËˆ\Îˆ	Ñ[ØY™KØY™SX\šËÛš]KˆH›Ü\HÝ™\œšYH8 %X\Ý\ˆÙ^HÜˆX[˜YÙ\ˆÛÙH8 %[]Hœ›Û\ÚË‰Ëˆš[™ˆ	Ô›Ü\H™XÛÜ™Ë›ÝHØY™K‰Ëˆ]ˆ	ÕH›Ü\HÛÛ›ÛÈ]ˆHÝY\ÝØÚÙYÝ]\ÈHœ›ÛY\ÚÈ›Ø›[KˆHYÚ][X]HØ[ÛÛY\Èœ›ÛHH›Ü\H[™\È\ÝX[HHÜÝÝ™\œšYHXÜ›ÜÜÈHÚÛH›ÛÜ‹‰Ëˆ]]ˆ	ÕH›Ü\K[ˆÜš][™ËÛˆZ\ˆ]\šXY‰Ëˆ›ˆÉÚÝ[\›ÛÛK\ØY™I×HKˆÈYˆ	Ý˜][	ËÜ›Ý\ˆ	ØÛÛ[IË˜[YNˆ	Õ˜][ÛÜˆ[™^KYØ]IËˆ\Îˆ	Ó›ÝHšYÈØY™KˆH˜][ÛÜˆ\ÈH^KYØ]KÙ[ˆH[YHØÚÈÜˆ™[ØÚÙ\‹[™[ˆ[\š[Üˆ™[X\ÙHÛÈ›Ø›ÙHÙ]ÈÚ][‹‰Ëˆš[™ˆ	ÓXZÙ\ˆ]HÛˆHÛÜ‹‰Ëˆ]ˆ	Ð˜[šÈ[™™]Ù[\ˆÛÜšËÛˆH[œÝ]][Ûˆ›ØÙY\™H[™\ÝX[H›ÝYÚZ\ˆÛÛ˜XÝYÙ\šXÙHÛÛ\[žK‰Ëˆ]]ˆ	ÐÓÓ‘’T“H“Ð“ÑHTÈS”ÒQH™Y›Ü™H[ž][™È[ÙKˆ[ˆH[œÝ]][Û‹›ÝYÚ]ÈÝÛˆ›ØÙ\ÜË‰Ëˆ›ˆÉÝ˜][YÛÜ‰×HK‚ˆÈYˆ	Ù\ÜÚ]	ËÜ›Ý\ˆ	Û›ÉË˜[YNˆ	ÔØY™H\ÜÚ]›Þ	ËÝÜˆYKˆ\Îˆ	ÕÛÈØÚÜËÝX\™[™™[\‹ˆH˜[šÈÛÈÛ™KHÝ\ÝÛY\ˆHÝ\‹‰Ëˆš[™ˆ	Û‹ØIËˆ]ˆ	ÐHYØ[X]\ˆ™Y›Ü™H]\ÈHØÚÜÛZ]Û™KˆXØÙ\ÜÈY\ˆHX]HY˜][ÜˆH\Ü]H[œÈ›ÝYÚH˜[šÈ[™Ù[ˆHÛÝ\Ü™\‹Ú]H˜[šÈÛÛ˜XÝ[™ÈHš[[™È]Ù[‹‰Ëˆ]]ˆ	Ô™Y™\ˆÈH˜[šËˆ™]™\ˆÛˆHÝ\ÝÛY\ˆ™\]Y\ÝÝÙ]™\ˆÞ[\]]XÈHÝÜžK‰Ëˆ›ˆÉÜØY™KY\ÜÚ]	×HKˆÈYˆ	Ø]IËÜ›Ý\ˆ	Û›ÉË˜[YNˆ	ÐUH[™Ø\Ú[™[™ÉËÝÜˆYKˆ\Îˆ	ÕÛÈÛÛ\\Y[ËˆH\\ˆÙ\šXÙH›Þ[™HØ\ÚØY™H™[ÝÈ\™HY™™\™[›Ø›[\ÈÚ]Y™™\™[ÝÛ™\œË‰Ëˆš[™ˆ	Û‹ØIËˆ]ˆ	ÕH\ÞZ[™ÈÜ\˜]Üˆ[™Z\ˆ\›[Ü™YØ\œšY\‹ˆØ\ÚZ[‹]˜[œÚ][\È[™X[Ý\ÝÙH\K‰Ëˆ]]ˆ	Ô™Y™\ˆÈHÜ\˜]Ü‹‰Ëˆ›ˆÉØ]K[ØÚÉ×HKˆÈYˆ	Ü\›IËÜ›Ý\ˆ	Û›ÉË˜[YNˆ	Ô\›XXÞH[™˜\˜ÛÝXÜÈØY™IËÝÜˆYKˆ\Îˆ	ÐÛÛ›ÛY\ÝXœÝ[˜ÙHÝÜ˜YÙH[™\ˆPH[\Ë‰Ëˆš[™ˆ	Û‹ØIËˆ]ˆ	ÕH\›XXÞH\ÈHØÝ[Y[Y›ØÙY\™HÚ]X[Ý\ÝÙH[™HÚ]™\ÜËˆÛÜšÈ\[œÈÚ]H\›XXÚ\Ý[ˆÚ\™ÙH™\Ù[ÛˆZ\ˆ\\ÛÜšË‰Ëˆ]]ˆ	Ó™]™\ˆÛˆH™\˜˜[™\]Y\Ý[˜ÛY[™Èœ›ÛHÝY™‹‰Ëˆ›ˆÉÜ\›XXÞK[˜\˜ÛÝXÜÉ×HKˆÈYˆ	ÛØÚØ›Þ	ËÜ›Ý\ˆ	Û›ÉË˜[YNˆ	Ô™X[\Ý]HØÚØ›Þ	ËÝÜˆYKˆ\Îˆ	ÔÝ\˜HP›Þ[™Ù[šSØÚÈ\™H›Ø\™XÛÛ›ÛY[XÝ›ÛšXÈÞ\Ý[\ÈYYÈH™X[ÜˆY[X™\œÚ\[™[ˆ]Y]˜Z[ÙˆÚÈÜ[™YÚXÚ\Ý[™ÈÚ[‹‰Ëˆš[™ˆ	Û‹ØIËˆ]ˆ	ÕH\Ý[™ÈYÙ[ÜˆHØØ[›Ø\™ˆHZ[ˆYXÚ[šXØ[ÛÛXš[˜][Ûˆ›Þ\È[ÜH[ÛÈ[™ÈÛˆÛÜœÈ\™HHY™™\™[[™È[™\™H˜Z\ˆØ[YK‰Ëˆ]]ˆ	Ô™Y™\ˆÈHYÙ[ÜˆH›Ø\™‰Ëˆ›ˆÉÜ™X[\Ý]K[ØÚØ›Þ	×HB—NÂ‚šYˆ
+\[Ùˆ[Ù[HOOH	Ý[™Yš[™Y	ÊH[Ù[K™^ÜÈHÈÑQQÕ‘RPÓTËÑQQÐ“S’ÔËÑQQÓTÒKÑQQÔÐQ‘KÐQ‘WÑÔ“ÕTËÓRK’S—ÖQPT‹ÑQQÕ‘T”ÒSÓˆNÂ

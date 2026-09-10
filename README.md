@@ -44,7 +44,7 @@ tests enforce that: one that every refusal still refuses, and one that no row in
 the section or its blank category has drifted into explaining a way in.
 
 **Tools > Dealer only** answers the first question on a call: can you do this
-job at all. 150 of the 727 records carry a warning, in six tiers that are six
+job at all. 158 of the 742 records carry a warning, in six tiers that are six
 different phone conversations — dealer only, bench or module work, needs the OEM
 master key, gateway-gated, all-keys-lost only, and too new to promise. Nothing
 else is listed, because everything else is ordinary OBD work and a warning
@@ -241,7 +241,7 @@ because that is the job, not a footnote: the blank comes from an authorized deal
 against the end user on file, and the honest answer on site is to say so rather
 than promise a key. The USPS arrow lock record says do not service it at all.
 
-The seed ships 727 records across 117 makes and 615 nameplates, every make
+The seed ships 742 records across 117 makes and 630 nameplates, every make
 carried at generation depth — split where the transponder or keyway changes, which
 is what decides the job, rather than where the styling changed. Coverage is audited
 programmatically against the NHTSA vPIC database: no overlapping year ranges, no
@@ -298,6 +298,9 @@ model fields when you add one, so spelling stays consistent.
 Records are written in a compact form and expanded by `V()` at the top of
 `data.js` — short keys, one record per handful of lines. The object it returns is
 the same shape the app has always read.
+
+Combined or alternate nameplates can also carry an `aka` array. Those aliases
+are searchable and editable without changing the display name of the record.
 
 Where a fob's FCC ID or OEM part number was not something the data could state
 confidently, the field is left blank rather than filled with a plausible guess — an empty field costs you a lookup, a wrong
