@@ -190,6 +190,14 @@ for the blank directory — 226 keyways, all editable: automotive, powersports,
 fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
 residential and commercial.
 
+The **Utility** category is the odds and ends: barrel and bayonet locks, meter and
+enclosure hardware, the padlock brands below Master and American, office casework,
+truck toolboxes, roof racks, coin-op and amusement, luggage and cable locks. On most
+of these there is no catalog number worth printing and the useful fact is where the
+code is stamped, so that is what the rows carry. Several are refusals rather than
+jobs — a locked gas meter, a hydrant and a fire-service cap belong to the utility or
+the district, and the row says so and gives the referral instead.
+
 The residential and commercial records are deliberately a separate category rather
 than more rows in the car list — it is different work, and the restricted systems
 in it (Everest, Primus, Medeco, Mul-T-Lock, Abloy, ASSA) are marked as restricted
