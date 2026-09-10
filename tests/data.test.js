@@ -126,7 +126,7 @@ const orphan = L.filter(r => !String(r.tool).split(/[\/,]/)
 check('every guide row is named by at least one record', !orphan.length, orphan.join(', '));
 
 /* ---- categories ---- */
-const CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial', 'Safe & vault'];
+const CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial', 'Safe & vault', 'Import & uncommon'];
 const badCat = B.filter(b => !CATS.includes(b.cat));
 check('every blank sits in a known category', !badCat.length,
   badCat.map(b => b.id + ':' + b.cat).join(', '));
@@ -148,7 +148,7 @@ const bare = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).filter(Boolean);
 
 const crossLinks = [];
-const NON_AUTO = ['Residential', 'Commercial', 'Utility', 'Safe & vault'];
+const NON_AUTO = ['Residential', 'Commercial', 'Utility', 'Safe & vault', 'Import & uncommon'];
 B.filter(b => NON_AUTO.includes(b.cat)).forEach(b => {
   const keys = new Set(words(b.keyway));
   const cats = new Set([b.ilco, b.ilcoChip].flatMap(bare));

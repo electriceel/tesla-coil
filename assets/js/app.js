@@ -803,7 +803,14 @@ const KEY_STOPWORDS = new Set([
   'DISPENSER', 'FORECOURT', 'HARDWARE', 'KEYING', 'HOTEL', 'SAFE', 'DRAWER', 'REGISTER',
   'LAUNDRY', 'PEDESTAL', 'SERVER', 'EQUIPMENT', 'OFFICE', 'WINDOW', 'GATE', 'PRIVACY',
   'OVERRIDE', 'SLIDING', 'SCREEN', 'STORM', 'POOL', 'GRADE', 'BUILDER', 'SMART', 'HIGH',
-  'SECURITY', 'ASSORTED', 'BLADES', 'DEPOSIT', 'DUAL', 'FIRE', 'DEPARTMENT', 'LOCKER'
+  'SECURITY', 'ASSORTED', 'BLADES', 'DEPOSIT', 'DUAL', 'FIRE', 'DEPARTMENT', 'LOCKER',
+  /* A nationality describes a market, not a keyway. Sharing one tells you
+     nothing: "British lever lock" matched a vintage exotic whose keyway note
+     said "often Fiat or British Leyland family", and "European furniture"
+     matched the same car on the word European. */
+  'BRITISH', 'EUROPEAN', 'GERMAN', 'ITALIAN', 'FRENCH', 'JAPANESE', 'KOREAN', 'CHINESE',
+  'AMERICAN', 'SWEDISH', 'SWISS', 'AUSTRIAN', 'INDIAN', 'ISRAELI', 'AUSTRALIAN',
+  'SCANDINAVIAN', 'IMPORT', 'IMPORTED', 'DOMESTIC', 'FOREIGN', 'MARKET'
 ]);
 const keyWords = (s) => String(s || '')
   .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/)
@@ -834,7 +841,7 @@ function matchBlanks() {
 }
 
 /* Categories sort in the order you meet them on a working day, not A-Z. */
-const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial', 'Safe & vault'];
+const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial', 'Safe & vault', 'Import & uncommon'];
 const catRank = (c) => { const i = BLANK_CATS.indexOf(c); return i < 0 ? BLANK_CATS.length : i; };
 
 function groupBlanks(list) {
