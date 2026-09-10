@@ -5365,6 +5365,104 @@ const SEED_BLANKS = [
   { id:'rollup-door', cat:'Commercial', keyway:'Roll-up & overhead commercial door', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:5, depths:4, makes:['Overhead Door','Cookson','Janus','Wayne Dalton'],
     notes:'Slide bolts, chain keepers and cylinder locks on warehouse and storage roll-ups. The cylinder is often a standard mortise or rim in the building keyway; the hardware around it is what varies. Check the door is not under spring tension before you start taking things off it.' },
+
+  /* ---- UTILITY, ENCLOSURE AND ODDS-AND-ENDS ----
+     The rows that are not a car, not a house door and not commercial door
+     hardware: padlocks, enclosures, furniture, toolboxes and the coin-op world.
+     Catalog numbers are left blank wherever there is nothing to cite; on most of
+     these the useful fact is where the code is stamped, not what the blank is
+     called. */
+  { id:'barrel-utility', cat:'Utility', keyway:'Barrel / bayonet (utility)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Barrel', spaces:'', depths:'', makes:['Highfield','McGard','Utility','Municipal'],
+    notes:'A hollow barrel key on a spring latch, not a pinned cylinder. Gas meters, parking meters, curb boxes and coin boxes. There is nothing to pick in the usual sense and nothing to impression — you match the barrel diameter and the tip, so carry the set rather than planning to originate one.' },
+  { id:'gasmeter-lock', cat:'Utility', keyway:'Gas & water meter barrel lock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Barrel', spaces:'', depths:'', makes:['Utility','Municipal'],
+    notes:'DO NOT SERVICE without the utility. A locked gas meter is locked because the utility locked it, usually for non-payment or a safety condition, and cutting it off is their call and sometimes a criminal matter. The honest answer on site is the utility phone number.' },
+  { id:'hydrant', cat:'Utility', keyway:'Fire hydrant & standpipe', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Pentagon / special', spaces:'', depths:'', makes:['Municipal','Fire'],
+    notes:'DO NOT SERVICE. Hydrant caps, locking hydrants and standpipe valves belong to the water district and the fire department. Opening one is a code violation and in a drought jurisdiction a citable offense. Refer it to the district.' },
+  { id:'penta-socket', cat:'Utility', keyway:'Pentahead / penta socket', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Not a key — a socket', spaces:'', depths:'', makes:['Utility','Municipal','Electrical'],
+    notes:'Padmount transformers, meter pedestals, irrigation vaults and traffic cabinets often use a five-sided head rather than a lock. It is a wrench, not a key, and no amount of picking helps. On a live electrical enclosure it also stays shut: that is the utility, not you.' },
+  { id:'ev-charger', cat:'Utility', keyway:'EV charging station & pedestal', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often a cam or tubular', spaces:'', depths:'', makes:['ChargePoint','Tesla','EVgo','Blink'],
+    notes:'The service door on a public charger, and the cable retention lock on some. Network property, so a call about one is nearly always the site owner needing the enclosure opened for a contractor. Most use an ordinary cam or tubular lock rather than anything exotic.' },
+  { id:'irrigation-box', cat:'Utility', keyway:'Irrigation & backflow enclosure', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Municipal','Landscape'],
+    notes:'Backflow cages, valve boxes and controller cabinets on commercial landscape and school grounds. Usually a cheap padlock or a cam lock, often a whole district keyed alike — ask the grounds supervisor before you rekey one out of the set.' },
+
+  /* ---- padlocks the directory did not reach ---- */
+  { id:'wilson-bohannan', cat:'Utility', keyway:'Wilson Bohannan brass padlock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['Wilson Bohannan','Utility','Municipal'],
+    notes:'The brass padlock utilities, ports and municipalities buy by the pallet, made in Ohio since 1860. Almost always ordered keyed alike or in a master system across an entire agency, so the question is never "what does this key" but "whose system is this".' },
+  { id:'sg-padlock', cat:'Utility', keyway:'Sargent & Greenleaf padlock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['Sargent & Greenleaf','Government'],
+    notes:'RESTRICTED in practice. The 951 and 833 series are government and defense hardware with controlled keyways. Not something you originate; the agency has its own channel.' },
+  { id:'consumer-pad', cat:'Utility', keyway:'Consumer padlock (Brinks / Stanley / Squire / Hillman)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['Brinks','Stanley','Squire','Hillman'],
+    notes:'Big-box padlocks below the Master and American tiers. Shallow keying, loose tolerances and often a code stamped on the back of the body. Price the trip honestly: the lock cost eight dollars and the customer knows it, so a cut key is frequently a worse deal for them than a new lock.' },
+  { id:'bike-lock', cat:'Utility', keyway:'Bike & cable lock (Kryptonite / OnGuard / Abus)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat / tubular / dimple', spaces:'', depths:'', makes:['Kryptonite','OnGuard','Abus','Kensington'],
+    notes:'U-locks, folding locks and cable locks. Most carry a key code on the key and a registration program that will mail a replacement, which is cheaper and faster than anything you can do on site — say so. VERIFY OWNERSHIP: a bike locked to a public rack is the classic theft scenario, so paperwork or nothing.' },
+  { id:'medeco-pad', cat:'Utility', keyway:'Medeco & Best padlock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Angled / SFIC', spaces:6, depths:'', makes:['Medeco','Best','Abloy'],
+    notes:'RESTRICTED. High-security padlocks carrying the same cylinder as the door hardware — a Medeco padlock is a Medeco cylinder in a shackle, and a Best padlock takes the building SFIC core. If the building is on a system, the padlock is on the system too.' },
+
+  /* ---- furniture, casework and office ---- */
+  { id:'ace-tubular', cat:'Utility', keyway:'Ace / Chicago tubular', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular', spaces:7, depths:'', makes:['Chicago Lock','Ace','Vending','Amusement'],
+    notes:'Seven pins in a circle around a hollow post. Vending, amusement, bar coolers, gun cabinets and older coin equipment. A tubular pick opens most of them in seconds, which is the whole reason nothing valuable should be behind one — worth telling a customer who is about to store cash behind one.' },
+  { id:'file-cabinet', cat:'Utility', keyway:'Office file cabinet (HON / Steelcase / Herman Miller)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer', spaces:'', depths:'', makes:['HON','Steelcase','Herman Miller','Anderson Hickey','Global'],
+    notes:'The single most common office call, and the easiest: the code is nearly always stamped on the plug face or the lock body, and the manufacturer will sell a key by code. Pull the drawer above and read the back of the cylinder before you set up to pick anything.' },
+  { id:'fort-esp', cat:'Utility', keyway:'Fort / ESP / Illinois cabinet', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer', spaces:'', depths:'', makes:['Fort','ESP','Illinois','Timberline'],
+    notes:'The other casework cylinder families beyond National and CompX. Same story: read the code off the lock. ESP and Timberline both use removable cores, so a rekey is a core swap rather than a repin.' },
+  { id:'desk-piano', cat:'Utility', keyway:'Desk, piano & antique furniture', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Bit / warded / flat', spaces:'', depths:'', makes:['Furniture','Antique'],
+    notes:'Roll-top desks, piano fallboards, secretary drawers and steamer trunks. Mostly warded, so a bit key or a blank filed to fit does it. On a valuable piece do not force anything — the lock is worth less than the veneer around it, and a split escutcheon is the expensive part.' },
+
+  /* ---- truck, toolbox and cargo ---- */
+  { id:'toolbox-truck', cat:'Utility', keyway:'Truck toolbox (Delta / Weather Guard / Knaack)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer / tubular', spaces:'', depths:'', makes:['Delta','Weather Guard','Knaack','UWS','Dee Zee'],
+    notes:'Crossover boxes, side boxes and jobsite chests. A steady trade call, because the key lives on the ring that just went missing with the truck keys. Codes are usually stamped on the latch or the lock face, and most brands sell by code. Knaack jobsite boxes commonly run a whole crew keyed alike.' },
+  { id:'roof-rack', cat:'Utility', keyway:'Roof rack & cargo box (Thule / Yakima)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer', spaces:'', depths:'', makes:['Thule','Yakima','Rhino-Rack'],
+    notes:'Thule One-Key and Yakima SKS cores are numbered and sold by code, so a lost key is a parts order rather than a decode. The number is on the key and stamped on the core face. A whole rack, box and bike carrier set is usually one code.' },
+  { id:'wheel-lock', cat:'Utility', keyway:'Wheel lock & lug key (McGard)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Not a key — a socket pattern', spaces:'', depths:'', makes:['McGard','Gorilla','Vehicle'],
+    notes:'The keyed lug nut and the spare-tire lock. Not a lock in the pinned sense: a splined socket in a numbered pattern. The number is on the key. Without it this is a wheel-shop extraction job, not a locksmith one, and saying so on the phone saves everyone a trip.' },
+  { id:'gas-cap', cat:'Utility', keyway:'Locking fuel cap & fuel door', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer', spaces:'', depths:'', makes:['Stant','Vehicle','Fleet'],
+    notes:'Aftermarket locking gas caps on fleet trucks, and factory locking fuel doors. Cheap wafer cylinders that seize from weather more often than they get locked out. On a fleet, expect the whole yard keyed alike.' },
+
+  /* ---- coin-op and amusement ---- */
+  { id:'arcade-jukebox', cat:'Utility', keyway:'Arcade, jukebox & pinball', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer / tubular', spaces:'', depths:'', makes:['Amusement','Route'],
+    notes:'Coin doors, backglass locks and cash boxes on route equipment. Operators run whole routes keyed alike so one technician can service a county. Restoration owners are the other half of this trade and usually want a set made from one surviving key.' },
+  { id:'gaming-lock', cat:'Utility', keyway:'Gaming & slot machine', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Gaming'],
+    notes:'RESTRICTED and regulated. Slot and gaming cabinet locks sit under state gaming commission rules, and the drop box is a separate compartment with separate custody. Licensed operators only — refer it.' },
+
+  /* ---- gates, access and misc ---- */
+  { id:'gate-operator', cat:'Utility', keyway:'Gate operator & entry controller', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often a cam lock', spaces:'', depths:'', makes:['LiftMaster','DoorKing','FAAC','Nice'],
+    notes:'The operator housing, the control cabinet and the manual release. On a community gate the release key is often a common one across a whole HOA, and the fire department needs its own access — usually a Knox Box or a click-to-enter radio, which is not your call to duplicate.' },
+  { id:'luggage-tsa', cat:'Utility', keyway:'Luggage & TSA-approved', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat / wafer', spaces:'', depths:'', makes:['Travel Sentry','Samsonite','Luggage'],
+    notes:'Two locks in one case. The consumer key is a shallow wafer or flat key with a code on it. The TSA override is a controlled master set issued to screeners, not to locksmiths, and no legitimate supplier sells you one. On a locked bag the honest answers are the manufacturer code, a shim, or the zipper.' },
+  { id:'ski-cable', cat:'Utility', keyway:'Cargo strap & accessory cable', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat / wafer', spaces:'', depths:'', makes:['Accessory'],
+    notes:'The small numbered cylinders on ski and bike racks, cargo straps, trailer cable locks and generator tethers. Nearly all are sold by code with the number on the key, so the fix is a parts order and a five-minute swap.' },
+  { id:'church-chain', cat:'Utility', keyway:'Institutional padlock & chain set', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['School','Church','Camp','Municipal'],
+    notes:'The dozens of padlocks a school, church or camp runs on gates, sheds, dumpsters and fence lines. Almost never one key, and almost always meant to be. This is a keying job disguised as a lockout: the useful sell is a small master system, not another cut key.' },
+  { id:'handcuff', cat:'Utility', keyway:'Handcuff & restraint', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Barrel / flat', spaces:'', depths:'', makes:['Law enforcement'],
+    notes:'The standard civilian pattern is deliberately universal so any officer can release any cuff, and high-security restraints use their own. VERIFY THE SITUATION before you touch it: a person in restraints who is not in custody is a welfare call and possibly a police one, and a set of cuffs with nobody in them is a five-dollar key from any duty-gear supplier.' },
+  { id:'utility-trailer', cat:'Utility', keyway:'Utility trailer & equipment tether', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer / disc', spaces:'', depths:'', makes:['Trailer','Rental','Fleet'],
+    notes:'Ramp-door locks, toolbox tongues, generator cages and the anti-theft pins on rental equipment. Rental yards run everything keyed alike and will have the code; the paperwork is usually easier to find than the lock is to pick.' },
 ];
 
 /* --- VIN: World Manufacturer Identifier prefixes -------------------------- */

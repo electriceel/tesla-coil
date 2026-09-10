@@ -834,7 +834,7 @@ function matchBlanks() {
 }
 
 /* Categories sort in the order you meet them on a working day, not A-Z. */
-const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Residential', 'Commercial'];
+const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial'];
 const catRank = (c) => { const i = BLANK_CATS.indexOf(c); return i < 0 ? BLANK_CATS.length : i; };
 
 function groupBlanks(list) {
