@@ -390,3 +390,12 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .mkrow-nm{flex:1;font-weight:650;font-size:15px}
 .mkrow-n{font-size:11px;color:var(--fg3);white-space:nowrap}
 .mkrow-go{color:var(--fg3);font-size:18px;line-height:1}
+
+/* ---- dealer-only reference ----
+   Two lines of evidence under each name, because the whole point of the screen
+   is that you can see why a record landed in a tier. */
+.drow{align-items:flex-start;padding-top:11px;padding-bottom:11px}
+.drow .brow-key{display:flex;flex-direction:column;gap:2px;white-space:normal}
+.dyr{font-size:11.5px;color:var(--fg3);font-weight:600}
+.dwhy{display:flex;flex-direction:column;gap:3px;white-space:normal;text-align:left;line-height:1.45}
+.dwhy b{color:var(--fg3);font-weight:700;font-size:10.5px;letter-spacing:.4px;margin-right:4px}

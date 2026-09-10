@@ -8,8 +8,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
 /* ======================= routing ======================= */
-const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'lishi', 'master', 'bcm',
-               'quote', 'hex', 'jobs', 'settings'];
+const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'lishi', 'dealer', 'master',
+               'bcm', 'quote', 'hex', 'jobs', 'settings'];
 let current = 'lookup';
 
 let vehShown = '';
@@ -1873,6 +1873,67 @@ function lishiCarsHtml(tool, make) {
       </div>`).join('')}`;
 }
 
+/* ======================= dealer-only reference =======================
+   Grouped by what it means for the job rather than by make, because the first
+   question on a call is "can I do this at all". The classifier lives in
+   dealer.js and reads only each record's own programming fields, so this view
+   holds no list of its own and a new record classifies itself. */
+let dealerQ = '';
+let dealerOpen = {};
+
+function dealerRows() {
+  const q = squash(dealerQ);
+  return Store.vehicles().map(v => ({ v, c: classifyAccess(v) }))
+    .filter(r => r.c)
+    .filter(r => !q || squash([r.v.make, r.v.model, (r.v.transponder || {}).system,
+                               r.c.obd, r.c.akl].join(' ')).includes(q))
+    .sort((a, b) => (a.v.make + a.v.model).localeCompare(b.v.make + b.v.model)
+                 || b.v.yearStart - a.v.yearStart);
+}
+
+function RENDER_dealer() {
+  $('#dealerTop').hidden = false;
+  const rows = dealerRows();
+  const byTier = new Map();
+  rows.forEach(r => {
+    if (!byTier.has(r.c.tier)) byTier.set(r.c.tier, []);
+    byTier.get(r.c.tier).push(r);
+  });
+
+  $('#dealerQ').value = dealerQ;
+  const total = Store.vehicles().length;
+  $('#dealerCount').textContent = dealerQ
+    ? `${rows.length} record${rows.length === 1 ? '' : 's'} matching`
+    : `${rows.length} of ${total} records need a warning`;
+
+  $('#dealerResults').innerHTML = rows.length
+    ? DEALER_TIERS.map(t => {
+        const list = byTier.get(t.tier) || [];
+        if (!list.length) return '';
+        /* Searching opens the tiers that matched — a closed section with a
+           count is not an answer when you are on the phone. */
+        const open = dealerQ ? true : !!dealerOpen[t.tier];
+        return `<div class="card" style="padding:0;overflow:hidden">
+          <button class="grp" data-dtier="${t.tier}">
+            <span class="grp-name">${t.tier} &middot; ${esc(t.name)}
+              <span class="grp-sub">${esc(t.sub)}</span></span>
+            <span class="grp-n">${list.length}</span>
+            <span class="grp-x">${open ? '&minus;' : '+'}</span>
+          </button>
+          ${open ? `<div class="grp-body">${list.map(r => `
+            <button class="brow drow" data-vid="${esc(r.v.id)}">
+              <span class="brow-key">${esc(r.v.make)} ${esc(r.v.model)}
+                <span class="dyr">${r.v.yearStart}&ndash;${r.v.yearEnd}</span></span>
+              <span class="brow-sub dwhy">${r.c.obd ? `<span><b>OBD</b> ${esc(r.c.obd)}</span>` : ''}${r.c.akl ? `<span><b>AKL</b> ${esc(r.c.akl)}</span>` : ''}</span>
+              <span class="brow-go">&rsaquo;</span>
+            </button>`).join('')}</div>` : ''}
+        </div>`;
+      }).join('')
+    : `<div class="empty">Nothing matches that.<br><br>
+        <span class="tiny muted">A record with no match is ordinary OBD work &mdash;
+        this screen only lists the ones that need a warning.</span></div>`;
+}
+
 const RENDER = {
   lookup: (...a) => RENDER_lookup(...a),
   moto: (...a) => RENDER_moto(...a),
@@ -1881,6 +1942,7 @@ const RENDER = {
   blanks: (...a) => RENDER_blanks(...a),
   tools: (...a) => RENDER_tools(...a),
   lishi: (...a) => RENDER_lishi(...a),
+  dealer: (...a) => RENDER_dealer(...a),
   jobs: (...a) => RENDER_jobs(...a),
   master: (...a) => RENDER_master(...a),
   bcm: (...a) => RENDER_bcm(...a),
@@ -1892,7 +1954,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -1929,6 +1991,12 @@ document.addEventListener('click', (e) => {
     lookupShowAll = false;
     renderCatalog();
     window.scrollTo(0, 0);
+    return;
+  }
+  if (t.dataset.dtier) {
+    const k = t.dataset.dtier;
+    dealerOpen[k] = !dealerOpen[k];
+    RENDER_dealer();
     return;
   }
   if (t.dataset.lishi) {
@@ -2062,6 +2130,7 @@ function boot() {
      you added it from rather than disappearing into the car list. */
   $('#addMotoBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null, { body: 'moto' }); });
   $('#lishiQ').addEventListener('input', (e) => { lishiQ = e.target.value; lishiOpen = ''; RENDER_lishi(); });
+  $('#dealerQ').addEventListener('input', (e) => { dealerQ = e.target.value; RENDER_dealer(); });
 
   /* vin */
   $('#vinForm').addEventListener('submit', (e) => { e.preventDefault(); runVinDecode(); });
