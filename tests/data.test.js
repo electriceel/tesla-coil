@@ -1,6 +1,6 @@
 /* Data integrity, checked without a browser. These are the mistakes that are
    easy to make by hand and impossible to see by eye in a 300 KB seed file. */
-const { SEED_VEHICLES: V, SEED_BLANKS: B, SEED_LISHI: L } = require('../assets/js/data.js');
+const { SEED_VEHICLES: V, SEED_BLANKS: B, SEED_LISHI: L, SEED_SAFE: S, SAFE_GROUPS: SG } = require('../assets/js/data.js');
 
 let fail = 0;
 const check = (name, ok, detail) => {
@@ -43,6 +43,35 @@ const src = require('fs').readFileSync(require('path').join(__dirname, '../asset
 const stray = [...new Set([...src].filter(c => c.charCodeAt(0) > 127 && c !== '—'))];
 check('no stray non-ASCII characters', !stray.length,
   stray.map(c => `${c} (U+${c.charCodeAt(0).toString(16).toUpperCase()})`).join(', '));
+
+/* ---- safe reference ----
+   The safe section links to blank rows by id, so a typo there is a chip that
+   goes nowhere. And the refusals have to keep refusing: a row in the
+   not-yours-to-open group whose guidance stopped saying no would be worse than
+   no row at all. */
+const blankIds = new Set(B.map(b => b.id));
+const safeGroups = new Set(SG.map(g => g[0]));
+check('safe rows have unique ids', new Set(S.map(r => r.id)).size === S.length);
+check('every safe row has a name, an identification and an authorization rule',
+  S.every(r => r.name && r.is && r.path && r.auth));
+const safeBadGroup = S.filter(r => !safeGroups.has(r.group));
+check('every safe row sits in a known group', !safeBadGroup.length,
+  safeBadGroup.map(r => r.id + ':' + r.group).join(', '));
+const safeDeadLink = S.flatMap(r => (r.bl || []).filter(id => !blankIds.has(id)).map(id => r.id + ' -> ' + id));
+check('every safe row links to blank rows that exist', !safeDeadLink.length, safeDeadLink.join(', '));
+const safeNoRefusal = S.filter(r => r.stop && !/refer|never|not on a|the bank|the operator|the agent|the board/i.test(r.auth + ' ' + r.path));
+check('every refusal actually refuses', !safeNoRefusal.length, safeNoRefusal.map(r => r.id).join(', '));
+
+/* This section exists to route work to the legitimate channel, not to explain
+   how to get into a safe. Nothing about defeating one belongs in it, and a
+   future edit that drifts that way should fail rather than ship. */
+const DEFEAT = /drill point|drill spot|where to drill|scop(e|ing)|manipulat|dial(ing)? the combination|punch the|peel the|pry the door|soft spot|bypass the (lock|relocker)|hard plate at/i;
+const safeHowTo = S.filter(r => DEFEAT.test([r.is, r.find, r.path, r.auth].join(' ')));
+check('the safe section explains no way into a safe', !safeHowTo.length,
+  safeHowTo.map(r => r.id).join(', '));
+const safeBlankHowTo = B.filter(b => b.cat === 'Safe & vault' && DEFEAT.test(String(b.notes || '')));
+check('nor do the safe blank rows', !safeBlankHowTo.length,
+  safeBlankHowTo.map(b => b.id).join(', '));
 
 /* ---- body style ----
    `body` is not decoration any more: it routes a record to the Vehicles tab or
@@ -97,7 +126,7 @@ const orphan = L.filter(r => !String(r.tool).split(/[\/,]/)
 check('every guide row is named by at least one record', !orphan.length, orphan.join(', '));
 
 /* ---- categories ---- */
-const CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial'];
+const CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial', 'Safe & vault'];
 const badCat = B.filter(b => !CATS.includes(b.cat));
 check('every blank sits in a known category', !badCat.length,
   badCat.map(b => b.id + ':' + b.cat).join(', '));
@@ -110,13 +139,16 @@ check('every blank sits in a known category', !badCat.length,
    caught a warehouse roll-up door claiming an Isuzu box truck, and a trailer
    reefer unit claiming an office cam lock. */
 const STOP = require('./stopwords.js');
+/* A single character is never evidence that two keyways are related. Without
+   this, the S and the G in "S&G" matched the S in Can-Am's "D.E.S.S." and put a
+   safe lock on a Sea-Doo. */
 const words = (s) => String(s || '').replace(/\(.*?\)/g, ' ').toUpperCase()
-  .split(/[^A-Z0-9]+/).filter(w => w && !STOP.has(w));
+  .split(/[^A-Z0-9]+/).filter(w => w.length > 1 && !STOP.has(w));
 const bare = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).filter(Boolean);
 
 const crossLinks = [];
-const NON_AUTO = ['Residential', 'Commercial', 'Utility'];
+const NON_AUTO = ['Residential', 'Commercial', 'Utility', 'Safe & vault'];
 B.filter(b => NON_AUTO.includes(b.cat)).forEach(b => {
   const keys = new Set(words(b.keyway));
   const cats = new Set([b.ilco, b.ilcoChip].flatMap(bare));

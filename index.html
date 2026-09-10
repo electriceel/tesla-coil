@@ -61,6 +61,24 @@
     <div id="vehicleBody"></div>
   </section>
 
+  <!-- ============ SAFE KEYS ============ -->
+  <section class="view" id="view-safe">
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
+    <div id="safeTop">
+      <h2>Safe keys</h2>
+      <div class="notice warn"><strong>Safe work is the job where the paperwork comes first.</strong>
+        A safe is where people keep the things worth stealing, so a caller who cannot
+        document ownership is a caller you decline. Nothing here is about defeating a
+        safe &mdash; the route is the serial number and the manufacturer, which costs the
+        customer less and leaves the safe worth what it was.</div>
+      <div class="toolbar">
+        <input id="safeQ" type="search" placeholder="Sentry, gun safe, deposit box, dial&hellip;" aria-label="Search safe types">
+      </div>
+      <div class="countline" id="safeCount"></div>
+    </div>
+    <div id="safeResults"></div>
+  </section>
+
   <!-- ============ DEALER-ONLY REFERENCE ============ -->
   <section class="view" id="view-dealer">
     <button class="back" data-go="tools">&lsaquo; Back to tools</button>
@@ -147,6 +165,11 @@
   <section class="view" id="view-tools">
     <h2>Tools</h2>
     <div class="tiles">
+      <button class="tile" data-go="safe">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="10.5" cy="12" r="3.4"/><path d="M10.5 8.6v1.2M10.5 14.2v1.2M7.1 12h1.2M12.7 12h1.2"/><path d="M18 9v6"/></svg></span>
+        <span class="tile-nm">Safe keys</span>
+        <span class="tile-sub">Identify it, find the serial, and what to verify first.</span>
+      </button>
       <button class="tile" data-go="dealer">
         <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5v5c0 4.5-3.6 7.6-9 8.5-5.4-.9-9-4-9-8.5v-5z"/><path d="M12 8.5v4M12 15.5v.5"/></svg></span>
         <span class="tile-nm">Dealer only</span>

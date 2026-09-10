@@ -399,3 +399,9 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .dyr{font-size:11.5px;color:var(--fg3);font-weight:600}
 .dwhy{display:flex;flex-direction:column;gap:3px;white-space:normal;text-align:left;line-height:1.45}
 .dwhy b{color:var(--fg3);font-weight:700;font-size:10.5px;letter-spacing:.4px;margin-right:4px}
+
+/* ---- safe keys ----
+   A row you refuse should not look like a row you work. */
+.stopcard{border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.stopcard .grp-name{color:var(--fg)}
+.warnval{color:var(--warn);font-weight:650}
