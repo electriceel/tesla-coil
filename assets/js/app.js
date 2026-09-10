@@ -84,7 +84,7 @@ const squash = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9
 
 function vehicleHaystack(v) {
   return [
-    v.make, v.model, v.blanks && v.blanks.keyway, v.blanks && v.blanks.ilco,
+    v.make, v.model, (v.aliases || []).join(' '), v.blanks && v.blanks.keyway, v.blanks && v.blanks.ilco,
     v.blanks && v.blanks.silca, v.blanks && v.blanks.jma, v.blanks && v.blanks.oem,
     v.transponder && v.transponder.chip, v.transponder && v.transponder.system,
     (v.remotes || []).map(r => `${r.fcc} ${r.pn}`).join(' ')
@@ -580,7 +580,7 @@ function vehPartsHtml(v) {
 /* ---- vehicle editor (same view, swapped body) ---- */
 function editVehicle(id, prefill) {
   const blank = {
-    id: '', make: '', model: '', yearStart: '', yearEnd: '', body: 'car',
+    id: '', make: '', model: '', aliases: [], yearStart: '', yearEnd: '', body: 'car',
     blanks: {}, transponder: {}, remotes: [{}], lock: {}, programming: {},
     obdPort: '', doorUnlock: '', notes: '', verified: true
   };
@@ -601,6 +601,7 @@ function editVehicle(id, prefill) {
           ${F('make', 'Make', v.make, 'Toyota', 'vpicMakes')}
           ${F('model', 'Model', v.model, 'Camry', 'vpicModels')}
         </div>
+        ${F('aliases', 'Search aliases', (v.aliases || []).join(', '), 'Grand Cherokee L, WL75')}
         ${typeof VPIC_MODELS === 'undefined' ? '' : `
           <datalist id="vpicMakes">${Object.keys(VPIC_MODELS).map(m => `<option value="${esc(m)}">`).join('')}</datalist>
           <datalist id="vpicModels">${vpicModelsFor(v.make).map(m => `<option value="${esc(m)}">`).join('')}</datalist>`}
@@ -676,6 +677,7 @@ function editVehicle(id, prefill) {
     const rec = {
       id: id || `${f.make}-${f.model}-${f.yearStart || 'x'}`.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       make: f.make.trim(), model: f.model.trim(),
+      aliases: f.aliases.split(',').map(x => x.trim()).filter(Boolean),
       yearStart: parseInt(f.yearStart, 10) || 1990,
       yearEnd: parseInt(f.yearEnd, 10) || parseInt(f.yearStart, 10) || new Date().getFullYear(),
       body: v.body || 'car',

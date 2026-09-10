@@ -15,6 +15,8 @@ check('vehicle ids are unique', !dupes(V.map(v => v.id)).length, dupes(V.map(v =
 check('blank ids are unique', !dupes(B.map(b => b.id)).length, dupes(B.map(b => b.id)).join(', '));
 check('every vehicle has make, model and years',
   V.every(v => v.make && v.model && v.yearStart && v.yearEnd));
+check('vehicle aliases are arrays of non-empty strings',
+  V.every(v => Array.isArray(v.aliases) && v.aliases.every(a => typeof a === 'string' && a.trim())));
 check('every blank has a keyway and a category',
   B.every(b => b.keyway && b.cat));
 

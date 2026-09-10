@@ -10,14 +10,15 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.09.08';
+const SEED_VERSION = '2026.09.10';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
    few hundred rows readable and diffable; the object V returns is the same shape
    the app has always consumed.
 
-     id   record id        mk/md  make / model      y0/y1  first / last year
+     id   record id        mk/md  make / model      aka    search aliases
+     y0/y1  first / last year
      b    body style       kw     keyway            il/si/jm  Ilco / Silca / JMA
      oem  OEM part no.     chip   transponder       sys    immobilizer system
      clone  cloneable?     rem    [[type, fcc, pn, buttons], ...]
@@ -31,6 +32,7 @@ const DEFAULT_OBD_PORT = 'Driver side, under dash';
 
 const V = (o) => ({
   id: o.id, make: o.mk, model: o.md, yearStart: o.y0, yearEnd: o.y1, body: o.b || 'car',
+  aliases: Array.isArray(o.aka) ? o.aka : [],
   blanks: { keyway: o.kw || '', ilco: o.il || '', silca: o.si || '', jma: o.jm || '', oem: o.oem || '' },
   transponder: { chip: o.chip || '', system: o.sys || '', cloneable: o.clone || '' },
   remotes: (o.rem || []).map(r => ({ type: r[0], fcc: r[1], pn: r[2], buttons: r[3] })),
@@ -2449,7 +2451,8 @@ const SEED_VEHICLES = [
       obd: 'Yes', on: '2-key onboard', akl: 'OBD, 10-minute PATS wait',
       note: 'Super Duty running gear under an SUV body — the key follows the F-250 of the same year.',
       entry: 'Lishi FO38' }),
-  V({ id: 'ford-bronco-maverick-2021-2024', mk: 'Ford', md: 'Bronco / Bronco Sport / Maverick', y0: 2021, y1: 2024, b: 'suv',
+  V({ id: 'ford-bronco-maverick-2021-2024', mk: 'Ford', md: 'Bronco / Bronco Sport / Maverick',
+      aka: ['Bronco', 'Bronco Sport', 'Maverick'], y0: 2021, y1: 2024, b: 'suv',
       kw: 'HU101 emergency blade in the fob', chip: 'ID49 (Hitag Pro)', sys: 'PATS / IPC', clone: 'No',
       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
       obd: 'Yes with an ID49-capable tool', on: 'No', akl: 'OBD, and many need the dealer parameter reset',
@@ -2565,7 +2568,8 @@ const SEED_VEHICLES = [
       obd: 'Later years', on: 'Some accept the 2-key onboard procedure', akl: 'OBD, or the reset with a Toyota-capable tool',
       note: 'Many of these have no transponder at all — check for the security light before you assume a chip.',
       entry: 'Lishi TOY43' }),
-  V({ id: 'toyota-mirai-crown-2016-2024', mk: 'Toyota', md: 'Mirai / Crown / Corolla Cross / Grand Highlander', y0: 2016, y1: 2024, b: 'car',
+  V({ id: 'toyota-mirai-crown-2016-2024', mk: 'Toyota', md: 'Mirai / Crown / Corolla Cross / Grand Highlander',
+      aka: ['Mirai', 'Crown', 'Corolla Cross', 'Grand Highlander'], y0: 2016, y1: 2024, b: 'car',
       kw: 'TOY48 emergency blade in the fob',
       chip: '8A / H chip (128-bit AES)', sys: 'Toyota smart key', clone: 'No — must be programmed',
       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Blade cuts the door only',
@@ -2621,7 +2625,8 @@ const SEED_VEHICLES = [
       sp: 8, dp: 4, cut: 'Edge cut', dec: 'Lishi KK10 on the door',
       obd: 'Yes with PIN', on: 'No', akl: 'OBD with the PIN', pin: 'Yes — PIN by VIN',
       entry: 'Lishi KK10' }),
-  V({ id: 'kia-k5-ev6-2018-2024', mk: 'Kia', md: 'K5 / Seltos / Niro / Stinger / EV6 / EV9', y0: 2018, y1: 2024, b: 'car',
+  V({ id: 'kia-k5-ev6-2018-2024', mk: 'Kia', md: 'K5 / Seltos / Niro / Stinger / EV6 / EV9',
+      aka: ['K5', 'Seltos', 'Niro', 'Stinger', 'EV6', 'EV9'], y0: 2018, y1: 2024, b: 'car',
       kw: 'KK12 (emergency blade on prox)',
       chip: 'ID47 / Hitag3, Hitag AES on the newest', sys: 'Kia smart key', clone: 'No',
       sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi KK12 on the door',
@@ -2629,7 +2634,8 @@ const SEED_VEHICLES = [
       entry: 'Lishi KK12' }),
 
   /* ---- MAZDA / SUBARU / MITSUBISHI ---- */
-  V({ id: 'mazda-cx3-cx50-2016-2024', mk: 'Mazda', md: 'CX-3 / CX-50 / CX-90 / MX-30', y0: 2016, y1: 2024, b: 'suv',
+  V({ id: 'mazda-cx3-cx50-2016-2024', mk: 'Mazda', md: 'CX-3 / CX-50 / CX-90 / MX-30',
+      aka: ['CX-3', 'CX-50', 'CX-90', 'MX-30'], y0: 2016, y1: 2024, b: 'suv',
       kw: 'MAZ24 (emergency blade on prox)',
       chip: 'ID49 (Hitag Pro)', sys: 'Mazda smart key', clone: 'No',
       sp: 8, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi MAZ24 on the door',
@@ -3341,7 +3347,8 @@ const SEED_VEHICLES = [
       note: 'Pre-MQB, so this is the friendly generation — ID48 clones and OBD works. The 2018-on Tiguan in the other record is a different animal.',
       entry: 'Lishi HU66' }),
 
-  V({ id: 'jeep-wagoneer-2022-2025', mk: 'Jeep', md: 'Wagoneer / Grand Wagoneer / Grand Cherokee (WL)', y0: 2022, y1: 2025, b: 'suv',
+  V({ id: 'jeep-wagoneer-2022-2025', mk: 'Jeep', md: 'Wagoneer / Grand Wagoneer / Grand Cherokee (WL)',
+      aka: ['Wagoneer', 'Grand Wagoneer', 'Grand Cherokee WL'], y0: 2022, y1: 2025, b: 'suv',
       kw: 'CY24 (emergency blade)', il: 'Y170-PT', chip: '4A (Hitag AES)',
       sys: 'RF Hub / security gateway', clone: 'No',
       rem: [['prox', '', '', '5B / 6B with power liftgate and remote start']],
@@ -4655,7 +4662,81 @@ const SEED_VEHICLES = [
       dec: 'Impression, or the marque specialist',
       obd: 'n/a', on: 'n/a', akl: 'Impression or the marque specialist',
       note: 'Very high value, very low volume. Take the lockout if you are confident of a non-marking entry; refer the keys. Do not experiment on a customer Ferrari.',
-      port: 'n/a', entry: 'Non-marking entry only, or decline' })
+      port: 'n/a', entry: 'Non-marking entry only, or decline' }),
+
+  /* ---- Search-complete current and fleet nameplates ----------------------
+     These are separate rows even where another badge already carries the same
+     platform. A technician searching by the emblem on the vehicle should not
+     have to know the rebadge before the record appears. New-platform details
+     stay deliberately sparse until confirmed against a machine or OEM catalog. */
+  V({ id: 'gmc-canyon-2004-2012', mk: 'GMC', md: 'Canyon', aka: ['Colorado twin'],
+      y0: 2004, y1: 2012, b: 'truck', kw: 'B111', il: 'B111-PT', chip: 'GM Circle Plus',
+      sys: 'PK3+', clone: 'Yes', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37',
+      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn',
+      note: 'GMC twin of the first-generation Chevrolet Colorado. No North American 2013-2014 model.', entry: 'Lishi GM37' }),
+  V({ id: 'gmc-canyon-2015-2022', mk: 'GMC', md: 'Canyon', aka: ['Colorado twin'],
+      y0: 2015, y1: 2022, b: 'truck', kw: 'B119', il: 'B119-PT', chip: 'GM 46E (Hitag2)',
+      sys: 'Immobilizer 2', clone: 'No', sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
+      obd: 'Yes', on: '30-min x3 relearn', akl: 'Relearn or OBD', entry: 'Lishi HU100' }),
+  V({ id: 'gmc-canyon-2023-2026', mk: 'GMC', md: 'Canyon', aka: ['Colorado twin'],
+      y0: 2023, y1: 2026, b: 'truck', kw: 'B119 (emergency blade)', il: 'B119-PT',
+      chip: 'GM AES', sys: 'GM passive entry / security gateway', clone: 'No',
+      cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Current GM-capable tool', on: 'No',
+      akl: 'Confirm tool coverage for the exact year',
+      note: 'Third-generation truck. Verify the fob and programming path before quoting.', entry: 'Emergency blade behind the handle cap' }),
+  V({ id: 'gmc-savana-1996-2026', mk: 'GMC', md: 'Savana', aka: ['Savana Cargo', 'Savana Passenger', 'Chevrolet Express twin'],
+      y0: 1996, y1: 2026, b: 'van', kw: 'B102 / B111 by year', il: 'B111-PT',
+      chip: 'None to Circle Plus by year', sys: 'Passlock / PK3+', clone: 'Yes on chipped versions',
+      sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37', obd: 'Yes on later years',
+      on: '30-min x3 relearn', akl: 'Relearn, or cut by code on non-transponder versions',
+      note: 'GMC twin of the Chevrolet Express. Confirm the year and fitted immobilizer before cutting.', entry: 'Lishi GM37' }),
+  V({ id: 'gmc-sierra-hd-2007-2019', mk: 'GMC', md: 'Sierra HD', aka: ['Sierra 2500HD', 'Sierra 3500HD'],
+      y0: 2007, y1: 2019, b: 'truck', kw: 'B111 then B119 by year', il: 'B111-PT / B119-PT',
+      chip: 'GM Circle Plus then 46E', sys: 'PK3+ / Immobilizer 2', clone: 'Depends on year',
+      cut: 'Edge cut', dec: 'Lishi GM37 or HU100 to suit the keyway', obd: 'Yes',
+      on: 'Relearn available on many blade-key versions', akl: 'Relearn or OBD',
+      note: 'Confirm the keyway and chip at the generation split; HD changeovers do not always match the 1500.' }),
+  V({ id: 'gmc-sierra-hd-2020-2026', mk: 'GMC', md: 'Sierra HD', aka: ['Sierra 2500HD', 'Sierra 3500HD'],
+      y0: 2020, y1: 2026, b: 'truck', kw: 'B119 (emergency blade)', il: 'B119-PT',
+      chip: 'GM AES', sys: 'GM passive entry / security gateway', clone: 'No',
+      cut: 'Laser / sidewinder', dec: 'Lishi HU100', obd: 'Current GM-capable tool', on: 'No',
+      akl: 'Confirm tool coverage for the exact year', note: 'Do not assume Sierra 1500 coverage includes the HD security system.' }),
+  V({ id: 'toyota-crown-signia-2025-2026', mk: 'Toyota', md: 'Crown Signia', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'Emergency blade', chip: 'Toyota AES', sys: 'Toyota smart key', clone: 'No',
+      obd: 'Current Toyota-capable tool', on: 'No', akl: 'Confirm seed-key and tool coverage',
+      note: 'New nameplate. FCC ID, part number and blade profile intentionally blank until verified.' }),
+  V({ id: 'toyota-gr-corolla-2023-2026', mk: 'Toyota', md: 'GR Corolla', y0: 2023, y1: 2026,
+      kw: 'Emergency blade', chip: 'Toyota AES', sys: 'Toyota smart key', clone: 'No',
+      obd: 'Current Toyota-capable tool', on: 'No', akl: 'Confirm seed-key and tool coverage',
+      note: 'Performance Corolla; do not select a standard Corolla fob by nameplate alone.' }),
+  V({ id: 'toyota-bz-woodland-2026', mk: 'Toyota', md: 'bZ Woodland', aka: ['bZ Woodland EV'], y0: 2026, y1: 2026, b: 'suv',
+      chip: 'Toyota AES', sys: 'Toyota smart key', clone: 'No', obd: 'Confirm current tool coverage', on: 'No',
+      akl: 'Dealer on many tools today', note: 'New EV; blank, FCC ID and part number intentionally left open for confirmation.' }),
+  V({ id: 'hyundai-ioniq9-2026', mk: 'Hyundai', md: 'Ioniq 9', aka: ['IONIQ 9'], y0: 2026, y1: 2026, b: 'suv',
+      chip: 'Hyundai AES', sys: 'Hyundai smart key / digital key', clone: 'No',
+      obd: 'Confirm current Hyundai coverage', on: 'No', akl: 'PIN and current tool coverage required', pin: 'Yes',
+      note: 'New EV; verify market-specific fob and emergency-entry hardware before quoting.' }),
+  V({ id: 'mazda-cx70-2025-2026', mk: 'Mazda', md: 'CX-70', y0: 2025, y1: 2026, b: 'suv',
+      kw: 'Emergency blade', chip: 'Mazda AES', sys: 'Mazda advanced keyless entry', clone: 'No',
+      obd: 'Current Mazda-capable tool', on: 'No', akl: 'Confirm coverage for the exact year',
+      note: 'Shares architecture with the CX-90, but verify the fob part number rather than assuming interchange.' }),
+  V({ id: 'jeep-wagoneer-s-2024-2026', mk: 'Jeep', md: 'Wagoneer S', y0: 2024, y1: 2026, b: 'suv',
+      chip: 'Stellantis AES', sys: 'RF Hub / security gateway', clone: 'No',
+      obd: 'Current gateway-authorized tool', on: 'No', akl: 'Confirm coverage before quoting',
+      note: 'Battery-electric STLA platform; it is not the body-on-frame Wagoneer key system.' }),
+  V({ id: 'jeep-grand-cherokee-l-2021-2026', mk: 'Jeep', md: 'Grand Cherokee L', aka: ['WL75'],
+      y0: 2021, y1: 2026, b: 'suv', kw: 'CY24 (emergency blade)', il: 'Y170-PT',
+      chip: '4A (Hitag AES)', sys: 'RF Hub / security gateway', clone: 'No',
+      cut: 'Edge cut', dec: 'Lishi CY24', obd: 'Gateway-authorized tool', on: 'No',
+      akl: 'Gateway access required', pin: 'Yes', entry: 'Emergency cylinder behind the driver-handle cap' }),
+  V({ id: 'rivian-edv-2023-2025', mk: 'Rivian', md: 'EDV', aka: ['Electric Delivery Van', 'Amazon delivery van'],
+      y0: 2023, y1: 2025, b: 'van', kw: 'None recorded', chip: 'Rivian keyless credentials',
+      sys: 'Fleet keyless access', clone: 'No', obd: 'No standard locksmith programming path', on: 'No',
+      akl: 'Fleet administrator or Rivian service', note: 'Fleet vehicle. Verify authorization with the fleet operator before any access work.' }),
+  V({ id: 'tesla-semi-2023-2026', mk: 'Tesla', md: 'Semi', aka: ['Tesla Semi truck'], y0: 2023, y1: 2026, b: 'truck',
+      kw: 'None', chip: 'Tesla keyless credentials', sys: 'Tesla keyless / fleet access', clone: 'No',
+      obd: 'No standard locksmith programming path', on: 'No', akl: 'Tesla service through the fleet account',
+      note: 'Fleet-only heavy truck. Treat a lockout as a fleet credential or low-voltage service issue, not a conventional key job.' })
 ];
 
 /* --- Key blank cross-reference directory ---------------------------------
