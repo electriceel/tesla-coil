@@ -5170,10 +5170,10 @@ const SEED_BLANKS = [
   { id:'garage-tbar', cat:'Residential', keyway:'Garage T-handle & overhead', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:5, depths:4, makes:['Chamberlain','Wayne Dalton','Clopay','Genie'],
     notes:'T-handle and side-lock cylinders on overhead doors, plus the release lock. Wafer, usually coded on the plug face.' },
-  { id:'gunsafe', cat:'Residential', keyway:'Gun safe & cabinet', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+  { id:'gunsafe', cat:'Safe & vault', keyway:'Gun safe & cabinet', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:5, depths:4, makes:['Stack-On','Sargent & Greenleaf','Liberty','Hornady'],
     notes:'Key override on a gun safe or cabinet. VERIFY OWNERSHIP IN WRITING before you open one — this is the call most likely to come back on you, and the one where a photo of the ID next to the safe is worth the two minutes.' },
-  { id:'firesafe', cat:'Residential', keyway:'Fire safe & lockbox', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+  { id:'firesafe', cat:'Safe & vault', keyway:'Fire safe & lockbox', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:4, depths:4, makes:['SentrySafe','Honeywell','First Alert'],
     notes:'The little tubular or wafer key on a document safe. Most carry a code on the key or the latch; the manufacturer will cut one from the code with proof of purchase, which is often the honest answer.' },
   { id:'abus-pad', cat:'Residential', keyway:'Abus padlock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
@@ -5300,7 +5300,7 @@ const SEED_BLANKS = [
   { id:'vending-t', cat:'Commercial', keyway:'Vending T-handle', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:5, depths:4, makes:['Eagle','Kaba','Vending','Amusement'],
     notes:'The plunger T-handle on vending, amusement and car-wash equipment. Usually tubular, often keyed alike across an operator route — which is why the operator, not the location, is the one who authorizes work on it.' },
-  { id:'safe-deposit', cat:'Commercial', keyway:'Safe deposit (dual key)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+  { id:'safe-deposit', cat:'Safe & vault', keyway:'Safe deposit (dual key)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','Bank'],
     notes:'RESTRICTED, and a legal matter before it is a locksmith one. Two locks, guard and renter, and drilling one is done for the institution under its own procedure with documentation. Never on a walk-in request.' },
   { id:'cliq', cat:'Commercial', keyway:'Electromechanical (CLIQ / XT / eCylinder)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
@@ -5341,10 +5341,10 @@ const SEED_BLANKS = [
   { id:'fuel-dispenser', cat:'Commercial', keyway:'Fuel dispenser & forecourt', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:5, depths:4, makes:['Gilbarco','Wayne','Bennett','Tokheim'],
     notes:'Dispenser doors, nozzle cabinets and the tank monitor. Historically keyed alike by manufacturer, which is exactly why skimmers were a problem and why many sites have since been rekeyed to unique cylinders. Site owner or the fuel operator authorizes, and expect to be asked for credentials.' },
-  { id:'safe-lock', cat:'Commercial', keyway:'Safe locks (S&G / LaGard / Kaba Mas)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+  { id:'safe-lock', cat:'Safe & vault', keyway:'Safe locks (S&G / LaGard / Kaba Mas)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Other', spaces:'', depths:'', makes:['Sargent & Greenleaf','LaGard','Kaba Mas','Safe'],
     notes:'RESTRICTED and mostly not a key at all — dial, electronic keypad, or a key-locking dial as a secondary. Kaba Mas X-09 and X-10 are government-spec containers and are their own credentialed world. Safe work is a separate trade inside the trade: know which side of that line you are on before quoting.' },
-  { id:'atm-lock', cat:'Commercial', keyway:'ATM & cash handling', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+  { id:'atm-lock', cat:'Safe & vault', keyway:'ATM & cash handling', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Other', spaces:'', depths:'', makes:['Diebold','NCR','Triton','Hyosung'],
     notes:'RESTRICTED. Two compartments with two very different answers: the top box is service access, the safe below is safe work under the owner procedure with documentation and usually a witness. Never on a walk-in request, and never without the owning institution or ISO in the loop.' },
   { id:'detention', cat:'Commercial', keyway:'Detention hardware', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
@@ -5463,6 +5463,51 @@ const SEED_BLANKS = [
   { id:'utility-trailer', cat:'Utility', keyway:'Utility trailer & equipment tether', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Wafer / disc', spaces:'', depths:'', makes:['Trailer','Rental','Fleet'],
     notes:'Ramp-door locks, toolbox tongues, generator cages and the anti-theft pins on rental equipment. Rental yards run everything keyed alike and will have the code; the paperwork is usually easier to find than the lock is to pick.' },
+
+  /* ---- SAFE AND VAULT ----
+     The key-operated side of safe work. Almost none of these have a blank you
+     order from a catalog: the legitimate route to a key is the serial number and
+     the manufacturer, which is why the rows carry where the serial lives instead
+     of a part number. Several are refusals. */
+  { id:'sg-key-changeable', cat:'Safe & vault', keyway:'Sargent and Greenleaf key-changeable safe lock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat / double-bitted', spaces:'', depths:'', makes:['Sargent & Greenleaf','Safe'],
+    notes:'A key-operated safe lock rather than a dial, and a key-changeable one at that: the key both operates it and sets the combination of cuts. Two keys ship with it and losing both is the whole problem. The lock body carries a serial; S&G will supply by serial to a registered locksmith with proof of ownership. Not a blank you originate at the van.' },
+  { id:'safe-keylock-dial', cat:'Safe & vault', keyway:'Key-locking dial ring', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat / wafer', spaces:'', depths:'', makes:['Sargent & Greenleaf','LaGard','Safe'],
+    notes:'A small cylinder in the dial ring that stops the dial turning even with the right combination. It is a secondary lock, not the safe lock: defeating it gets you a dial you still cannot open without the combination. The code is usually stamped on the ring or the cylinder plug.' },
+  { id:'depository-safe', cat:'Safe & vault', keyway:'Depository & drop safe', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Wafer / tubular', spaces:'', depths:'', makes:['Perma-Vault','American Security','Hollon','Safe'],
+    notes:'Two compartments and often two different answers. The drop slot and the upper door are commonly a plain wafer or tubular key with a code on the plug; the money compartment below may be dial or dual-key. Restaurants and car washes use these heavily and lose the upper key constantly. Establish which compartment the caller means before you quote.' },
+  { id:'wall-floor-safe', cat:'Safe & vault', keyway:'Wall & floor safe', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often flat or tubular', spaces:'', depths:'', makes:['Star','Meilink','Perma-Vault','Gardall'],
+    notes:'In-wall and in-floor units, many of them decades old and installed by a builder who is long gone. Older Star and Meilink bodies carry a serial cast or stamped into the door edge. A floor safe under carpet is frequently full of water — worth warning the owner before you open it.' },
+  { id:'consumer-keysafe', cat:'Safe & vault', keyway:'Consumer safe key override (Sentry / First Alert / Stack-On)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat / tubular / wafer', spaces:'', depths:'', makes:['SentrySafe','First Alert','Honeywell','Stack-On','Barska'],
+    notes:'The box-store safe with a keypad and a key override behind a badge or a rubber plug. Codes are stamped on the key and the manufacturers sell replacements by that code direct to the owner for a few dollars — often the honest answer, and faster than a call-out. VERIFY OWNERSHIP: a portable safe in the back of a car is the classic stolen-property presentation.' },
+  { id:'gun-safe-override', cat:'Safe & vault', keyway:'Gun safe key override (Liberty / Cannon / Winchester)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular / flat', spaces:'', depths:'', makes:['Liberty','Cannon','Winchester','Fort Knox','Browning'],
+    notes:'VERIFY OWNERSHIP IN WRITING. A gun safe is the one call where getting this wrong arms someone. Most residential gun safes use an electronic lock with a key override behind the dial or logo plate, and the override is usually a tubular or double-bitted key with a code the manufacturer will match to the safe serial for the registered owner. Serial is on the door edge, the back, or under the carpet inside.' },
+  { id:'hotel-room-safe', cat:'Safe & vault', keyway:'Hotel room safe override', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular / flat', spaces:'', depths:'', makes:['Elsafe','SafeMark','Onity','Assa Abloy'],
+    notes:'In-room safes carry a property override — a master key or a manager code held at the front desk. The property, not the guest, controls it. A guest-side lockout is a front-desk problem; a call from the property is legitimate and is usually about a lost override across a whole floor.' },
+  { id:'antique-safe', cat:'Safe & vault', keyway:'Antique safe & money chest', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Bit / warded', spaces:'', depths:'', makes:['Mosler','Diebold','Herring-Hall-Marvin','York','Safe'],
+    notes:'Pre-war safes and money chests, many on warded bit locks rather than pins, and many with painted decoration worth more than the safe. Restoration and estate work. Do not force one: the door casting and the pinstriping are the value, and a collector will pay more for a locked original than a forced open one. Antique safe specialists exist and a referral is often the right answer.' },
+  { id:'pharmacy-narcotics', cat:'Safe & vault', keyway:'Pharmacy & narcotics safe', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Pharmacy','Medical'],
+    notes:'RESTRICTED. Controlled-substance storage is governed by DEA rules and the pharmacy has a documented procedure with dual custody and a witness. Work happens with the pharmacist in charge present and on their paperwork, or it does not happen. Never open one on a verbal request, including from staff.' },
+  { id:'realestate-lockbox', cat:'Safe & vault', keyway:'Real estate lockbox (Supra / SentriLock)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'n/a — electronic', spaces:'', depths:'', makes:['Supra','SentriLock','Realtor'],
+    notes:'DO NOT SERVICE. Supra iBox and SentriLock are board-controlled electronic systems tied to a Realtor membership and an audit trail of who opened which listing when. Opening one outside that system defeats the record the whole industry relies on. The listing agent or the local board is the answer. The plain mechanical combination lockboxes people also use are a different thing entirely.' },
+  { id:'vault-door', cat:'Safe & vault', keyway:'Vault door & day-gate', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','Vault'],
+    notes:'A vault door is not a big safe: it has a day-gate, a time lock or relocker in many cases, and an interior release so nobody gets shut in. Bank and jeweler work, on the institutions own procedure and usually their own contracted service company. Confirm nobody is inside before anything else.' },
+  { id:'safe-relocker', cat:'Safe & vault', keyway:'Relocker & glass plate (no key)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'n/a', spaces:'', depths:'', makes:['Safe'],
+    notes:'Not a lock and not a key — a booby trap for attack. A tempered glass plate or a spring relocker fires and permanently jams the boltwork if the safe is drilled or shocked. Worth knowing it exists before anyone starts on a safe: a fired relocker turns an opening into a cutting job and a repair bill, and it is the reason safe work is a specialty and not a lockout.' },
+  { id:'safe-serial-plate', cat:'Safe & vault', keyway:'Serial number & manufacturer code', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'n/a', spaces:'', depths:'', makes:['Safe','Vault'],
+    notes:'The single most useful thing on a safe, and the reason this category carries no part numbers. Nearly every manufacturer will supply a key or combination by serial to a verified owner or a registered locksmith, and that route is cheaper, faster and leaves the safe intact. Look on the door edge, behind the dial ring, on the hinge side, inside the door panel, on the back, and under the carpet on the floor. Photograph it and the data plate before you quote anything.' },
 ];
 
 /* --- VIN: World Manufacturer Identifier prefixes -------------------------- */
@@ -5581,4 +5626,132 @@ const SEED_LISHI = [
     note: 'The Fiat-group two-track tool, which is also the Maserati and older Ferrari tool because those locks came out of the Fiat parts bin. On the cars that use a code card, decoding gets you in and no further.' }
 ];
 
-if (typeof module !== 'undefined') module.exports = { SEED_VEHICLES, SEED_BLANKS, SEED_LISHI, WMI, VIN_YEAR, SEED_VERSION };
+/* --- Safe work: identify, then find the legitimate route ------------------ */
+/* Safe work is procedure before hardware. The question is almost never "what
+   blank" — it is "what am I looking at, does a key even exist for it, and am I
+   allowed to touch it". So these rows carry identification, where the serial
+   hides, and the authorization standard. The keyways themselves are blank rows
+   in the Safe & vault category and are linked by id.
+
+   Deliberately absent: anything about defeating a safe. Drill points,
+   manipulation and bypass are not in this file and are not the reference a
+   phone call needs. The route here is the serial number and the manufacturer,
+   which is cheaper for the customer and leaves the safe worth what it was.
+
+     id   row id      group  which screen section it sits under
+     name what to call it    is   what the thing actually is
+     find where the serial or code hides
+     path the legitimate route to a key
+     auth what you need before you touch it
+     bl   blank-directory rows that go with it
+     stop true when the answer is no */
+const SAFE_GROUPS = [
+  ['id',    'Start here'],
+  ['home',  'Residential and small commercial'],
+  ['comm',  'Commercial and institutional'],
+  ['no',    'Not yours to open']
+];
+
+const SEED_SAFE = [
+  { id: 'serial', group: 'id', name: 'Find the serial before anything else',
+    is: 'The data plate or stamped serial is the single most useful thing on a safe, and the reason this section carries almost no part numbers.',
+    find: 'Door edge, behind or under the dial ring, the hinge side, inside the door panel, the back, the bottom, and under the carpet on a floor safe. Photograph the plate and the whole door before you quote.',
+    path: 'Nearly every manufacturer will supply a key or a combination by serial to the verified owner or to a registered locksmith. That route is cheaper than opening it, faster than most people expect, and leaves the safe worth what it was worth this morning.',
+    auth: 'Photo ID matching the address, and a bill of sale, receipt or insurance schedule for the safe itself.',
+    bl: ['safe-serial-plate'] },
+  { id: 'iskey', group: 'id', name: 'Establish whether a key even exists',
+    is: 'Most safes are not key-operated. A dial or a keypad is the lock; a key, where there is one, is usually a secondary override or a dial-ring lock that does not open anything on its own.',
+    find: 'Ask the caller to photograph the door. A dial with a small keyhole in the ring is a key-locking dial, not a key-opened safe. A keypad with a badge or rubber plug beside it usually hides an override.',
+    path: 'If the lock is a dial or a keypad and the combination is lost, that is a combination-recovery job through the manufacturer or a safe technician, not a key job. Say so on the phone.',
+    auth: 'Same standard either way.',
+    bl: ['safe-keylock-dial', 'safe-lock'] },
+  { id: 'relock', group: 'id', name: 'Assume there is a relocker',
+    is: 'A tempered glass plate or a spring relocker that fires and permanently jams the boltwork if the safe is drilled or shocked. It is not a lock, it is a trap for attack.',
+    find: 'You will not see it from outside. Assume any commercial-rated safe has one.',
+    path: 'It is the reason safe opening is a specialty rather than a lockout, and the reason the serial-number route is worth the wait. A fired relocker turns an opening into a cutting job plus a repair bill.',
+    auth: 'n/a',
+    bl: ['safe-relocker'] },
+
+  { id: 'consumer', group: 'home', name: 'Box-store safe with a key override',
+    is: 'Sentry, First Alert, Honeywell, Stack-On, Barska. Keypad or dial with a small override key behind a badge.',
+    find: 'A code is usually stamped on the key itself, and again on the lock plug.',
+    path: 'The manufacturer sells a replacement by that code, direct to the owner, for a few dollars. That is frequently the honest answer and it beats a call-out on price. Quote the trip only if they need it today.',
+    auth: 'Photo ID at the address. A portable safe in the back of a car is the classic stolen-property presentation — decline it.',
+    bl: ['consumer-keysafe'] },
+  { id: 'gunsafe', group: 'home', name: 'Gun safe',
+    is: 'Electronic or dial lock with a key override behind the dial or the logo plate. Usually tubular or double-bitted.',
+    find: 'Serial on the door edge, the back, or under the interior carpet. Override code often on the key.',
+    path: 'Liberty, Cannon, Fort Knox, Browning and the rest will match an override to the safe serial for the registered owner.',
+    auth: 'VERIFY OWNERSHIP IN WRITING, every time, no exceptions. This is the one call where getting it wrong arms someone. ID matching the address plus proof of purchase, and write down what you saw.',
+    bl: ['gun-safe-override', 'gunsafe'] },
+  { id: 'firebox', group: 'home', name: 'Document and fire box',
+    is: 'A small fire-rated chest with a tubular or flat key, often alongside a combination dial.',
+    find: 'Code on the key or the latch plate.',
+    path: 'Manufacturer by code. These are cheap enough that a replacement box is sometimes the better recommendation.',
+    auth: 'Photo ID at the address.',
+    bl: ['firesafe'] },
+  { id: 'wallfloor', group: 'home', name: 'Wall and floor safe',
+    is: 'In-wall and in-floor units, often installed decades ago by a builder nobody can name. Star, Meilink, Perma-Vault, Gardall.',
+    find: 'Serial cast or stamped into the door edge on the older bodies.',
+    path: 'Manufacturer by serial where the company still exists. Many of these makers are long gone, which is when a safe technician rather than a key becomes the answer.',
+    auth: 'ID matching the address, and the property owner rather than a tenant — a floor safe belongs to the building.',
+    bl: ['wall-floor-safe'] },
+  { id: 'antique', group: 'home', name: 'Antique safe or money chest',
+    is: 'Pre-war Mosler, Diebold, Herring-Hall-Marvin, York. Frequently a warded bit lock rather than pins, and frequently with painted decoration worth more than the safe.',
+    find: 'Maker name on the door, sometimes a serial inside the door casting.',
+    path: 'Estate and restoration work. A collector pays more for a locked original than a forced one, so do not force it. Antique safe specialists exist and the referral is often correct.',
+    auth: 'Estate paperwork or the executor, if the owner has died — which is how most of these calls arrive.',
+    bl: ['antique-safe'] },
+
+  { id: 'depository', group: 'comm', name: 'Depository and drop safe',
+    is: 'Two compartments with two different answers. Restaurants, car washes and retail. The upper door or drop slot is often a plain wafer or tubular key; the money compartment below may be dial or dual-key.',
+    find: 'Code on the plug of the upper cylinder. Serial on the door edge.',
+    path: 'Manufacturer by code for the upper. The lower compartment is safe work.',
+    auth: 'The business owner or a manager on the business letterhead, not the closing shift.',
+    bl: ['depository-safe'] },
+  { id: 'sgkey', group: 'comm', name: 'Key-operated safe lock',
+    is: 'A genuine key-operated safe lock rather than a dial. Sargent and Greenleaf key-changeable is the common one: the key both operates it and sets the combination of cuts.',
+    find: 'Serial on the lock body, visible with the door open — which is the catch.',
+    path: 'S&G supplies by serial to a registered locksmith with proof of ownership. Not something you originate at the van.',
+    auth: 'Business ownership documentation.',
+    bl: ['sg-key-changeable'] },
+  { id: 'hotel', group: 'comm', name: 'Hotel in-room safe',
+    is: 'Elsafe, SafeMark, Onity. A property override — master key or manager code — held at the front desk.',
+    find: 'Property records, not the safe.',
+    path: 'The property controls it. A guest locked out is a front-desk problem. A legitimate call comes from the property and is usually a lost override across a whole floor.',
+    auth: 'The property, in writing, on their letterhead.',
+    bl: ['hotel-room-safe'] },
+  { id: 'vault', group: 'comm', name: 'Vault door and day-gate',
+    is: 'Not a big safe. A vault door has a day-gate, often a time lock or relocker, and an interior release so nobody gets shut in.',
+    find: 'Maker plate on the door.',
+    path: 'Bank and jeweler work, on the institution procedure and usually through their contracted service company.',
+    auth: 'CONFIRM NOBODY IS INSIDE before anything else. Then the institution, through its own process.',
+    bl: ['vault-door'] },
+
+  { id: 'deposit', group: 'no', name: 'Safe deposit box', stop: true,
+    is: 'Two locks, guard and renter. The bank holds one, the customer the other.',
+    find: 'n/a',
+    path: 'A legal matter before it is a locksmith one. Access after a death, a default or a dispute runs through the bank and often a court order, with the bank contracting the drilling itself.',
+    auth: 'Refer to the bank. Never on a customer request, however sympathetic the story.',
+    bl: ['safe-deposit'] },
+  { id: 'atm', group: 'no', name: 'ATM and cash handling', stop: true,
+    is: 'Two compartments. The upper service box and the cash safe below are different problems with different owners.',
+    find: 'n/a',
+    path: 'The deploying operator and their armored carrier. Cash-in-transit rules and dual custody apply.',
+    auth: 'Refer to the operator.',
+    bl: ['atm-lock'] },
+  { id: 'pharm', group: 'no', name: 'Pharmacy and narcotics safe', stop: true,
+    is: 'Controlled-substance storage under DEA rules.',
+    find: 'n/a',
+    path: 'The pharmacy has a documented procedure with dual custody and a witness. Work happens with the pharmacist in charge present, on their paperwork.',
+    auth: 'Never on a verbal request, including from staff.',
+    bl: ['pharmacy-narcotics'] },
+  { id: 'lockbox', group: 'no', name: 'Real estate lockbox', stop: true,
+    is: 'Supra iBox and SentriLock are board-controlled electronic systems tied to a Realtor membership and an audit trail of who opened which listing when.',
+    find: 'n/a',
+    path: 'The listing agent or the local board. The plain mechanical combination boxes people also hang on doors are a different thing and are fair game.',
+    auth: 'Refer to the agent or the board.',
+    bl: ['realestate-lockbox'] }
+];
+
+if (typeof module !== 'undefined') module.exports = { SEED_VEHICLES, SEED_BLANKS, SEED_LISHI, SEED_SAFE, SAFE_GROUPS, WMI, VIN_YEAR, SEED_VERSION };

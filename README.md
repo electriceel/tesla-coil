@@ -28,6 +28,21 @@ models sit behind it, because picking a make is the first thing you do on a real
 Tap one to drill in; a link at the top comes back out. Searching or setting a year
 skips the index and goes straight to results across every make.
 
+**Tools > Safe keys** is the one section where the paperwork comes before the
+hardware. It reads in the order the call actually goes: work out what you are
+looking at, establish whether a key exists at all (most safes are a dial or a
+keypad and the key, where there is one, opens nothing on its own), assume there
+is a relocker, and only then decide whether you are allowed. Four rows are
+refusals grouped together at the bottom and badged so they do not look like
+jobs — safe deposit boxes, ATMs, pharmacy narcotics storage and Realtor
+lockboxes each belong to someone with their own process.
+
+Nothing in it is about defeating a safe. The route is the serial number and the
+manufacturer, which is cheaper for the customer and leaves the safe worth what
+it was, so the rows carry where the serial hides rather than a part number. Two
+tests enforce that: one that every refusal still refuses, and one that no row in
+the section or its blank category has drifted into explaining a way in.
+
 **Tools > Dealer only** answers the first question on a call: can you do this
 job at all. 150 of the 727 records carry a warning, in six tiers that are six
 different phone conversations — dealer only, bench or module work, needs the OEM
@@ -189,6 +204,11 @@ import platforms to get you going; your database becomes the real one. The same 
 for the blank directory — 226 keyways, all editable: automotive, powersports,
 fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
 residential and commercial.
+
+The **Safe & vault** category holds the key-operated side of safe work, and the
+five safe rows that used to sit awkwardly in Residential and Commercial moved
+into it — a gun safe was never residential door hardware. Almost none of these
+carry a catalog number, for the same reason the Tools section does not.
 
 The **Utility** category is the odds and ends: barrel and bayonet locks, meter and
 enclosure hardware, the padlock brands below Master and American, office casework,

@@ -8,8 +8,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
 /* ======================= routing ======================= */
-const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'lishi', 'dealer', 'master',
-               'bcm', 'quote', 'hex', 'jobs', 'settings'];
+const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'lishi', 'dealer', 'safe',
+               'master', 'bcm', 'quote', 'hex', 'jobs', 'settings'];
 let current = 'lookup';
 
 let vehShown = '';
@@ -834,7 +834,7 @@ function matchBlanks() {
 }
 
 /* Categories sort in the order you meet them on a working day, not A-Z. */
-const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial'];
+const BLANK_CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Utility', 'Residential', 'Commercial', 'Safe & vault'];
 const catRank = (c) => { const i = BLANK_CATS.indexOf(c); return i < 0 ? BLANK_CATS.length : i; };
 
 function groupBlanks(list) {
@@ -1934,6 +1934,61 @@ function RENDER_dealer() {
         this screen only lists the ones that need a warning.</span></div>`;
 }
 
+/* ======================= safe keys =======================
+   Ordered as the call actually goes: work out what you are looking at, then
+   whether a key exists, then whether you are allowed. The refusals are a group
+   of their own at the bottom rather than scattered, so "not yours to open" is
+   one place you can check in front of a customer. */
+let safeQ = '';
+let safeOpen = '';
+
+function safeRows() {
+  const q = squash(safeQ);
+  return SEED_SAFE.filter(r => !q || squash([r.name, r.is, r.find, r.path, r.auth].join(' ')).includes(q)
+    || (r.bl || []).some(id => {
+      const b = Store.blanks().find(x => x.id === id);
+      return b && squash([b.keyway, (b.makes || []).join(' ')].join(' ')).includes(q);
+    }));
+}
+
+function RENDER_safe() {
+  $('#safeTop').hidden = false;
+  const rows = safeRows();
+  $('#safeQ').value = safeQ;
+  $('#safeCount').textContent = safeQ
+    ? `${rows.length} match${rows.length === 1 ? '' : 'es'}`
+    : `${rows.length} to identify · ${rows.filter(r => r.stop).length} you refuse`;
+
+  $('#safeResults').innerHTML = rows.length
+    ? SAFE_GROUPS.map(([g, label]) => {
+        const list = rows.filter(r => r.group === g);
+        if (!list.length) return '';
+        return `<h2>${esc(label)}</h2>` + list.map(r => safeRowHtml(r)).join('');
+      }).join('')
+    : `<div class="empty">Nothing matches that.</div>`;
+}
+
+function safeRowHtml(r) {
+  const open = safeOpen === r.id || !!safeQ;
+  const blanks = (r.bl || []).map(id => Store.blanks().find(x => x.id === id)).filter(Boolean);
+  return `<div class="card${r.stop ? ' stopcard' : ''}" style="padding:0;overflow:hidden">
+    <button class="grp" data-safe="${esc(r.id)}">
+      <span class="grp-name">${r.stop ? '<span class="badge warn">REFER</span> ' : ''}${esc(r.name)}
+        <span class="grp-sub">${esc(r.is)}</span></span>
+      <span class="grp-x">${open ? '&minus;' : '+'}</span>
+    </button>
+    ${open ? `<div class="grp-body" style="padding:var(--s3)">
+      <dl class="spec">
+        ${r.find && r.find !== 'n/a' ? `<dt>Serial</dt><dd>${esc(r.find)}</dd>` : ''}
+        <dt>${r.stop ? 'Who owns it' : 'Route to a key'}</dt><dd>${esc(r.path)}</dd>
+        <dt>Before you touch it</dt><dd class="${/VERIFY|CONFIRM|Never|Refer|Decline|decline/.test(r.auth) ? 'warnval' : ''}">${esc(r.auth)}</dd>
+      </dl>
+      ${blanks.length ? `<div class="chips tight" style="margin-top:var(--s3)">${blanks.map(b =>
+        `<button class="chip" data-safeblank="${esc(b.id)}">${esc(b.keyway)}</button>`).join('')}</div>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
 const RENDER = {
   lookup: (...a) => RENDER_lookup(...a),
   moto: (...a) => RENDER_moto(...a),
@@ -1943,6 +1998,7 @@ const RENDER = {
   tools: (...a) => RENDER_tools(...a),
   lishi: (...a) => RENDER_lishi(...a),
   dealer: (...a) => RENDER_dealer(...a),
+  safe: (...a) => RENDER_safe(...a),
   jobs: (...a) => RENDER_jobs(...a),
   master: (...a) => RENDER_master(...a),
   bcm: (...a) => RENDER_bcm(...a),
@@ -1954,7 +2010,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier],[data-safe],[data-safeblank]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -1993,6 +2049,12 @@ document.addEventListener('click', (e) => {
     window.scrollTo(0, 0);
     return;
   }
+  if (t.dataset.safe) {
+    safeOpen = safeOpen === t.dataset.safe ? '' : t.dataset.safe;
+    RENDER_safe();
+    return;
+  }
+  if (t.dataset.safeblank) { blankUI.detail = t.dataset.safeblank; go('blanks'); return; }
   if (t.dataset.dtier) {
     const k = t.dataset.dtier;
     dealerOpen[k] = !dealerOpen[k];
@@ -2131,6 +2193,7 @@ function boot() {
   $('#addMotoBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null, { body: 'moto' }); });
   $('#lishiQ').addEventListener('input', (e) => { lishiQ = e.target.value; lishiOpen = ''; RENDER_lishi(); });
   $('#dealerQ').addEventListener('input', (e) => { dealerQ = e.target.value; RENDER_dealer(); });
+  $('#safeQ').addEventListener('input', (e) => { safeQ = e.target.value; safeOpen = ''; RENDER_safe(); });
 
   /* vin */
   $('#vinForm').addEventListener('submit', (e) => { e.preventDefault(); runVinDecode(); });
