@@ -1,6 +1,6 @@
 /* Data integrity, checked without a browser. These are the mistakes that are
    easy to make by hand and impossible to see by eye in a 300 KB seed file. */
-const { SEED_VEHICLES: V, SEED_BLANKS: B } = require('../assets/js/data.js');
+const { SEED_VEHICLES: V, SEED_BLANKS: B, SEED_LISHI: L } = require('../assets/js/data.js');
 
 let fail = 0;
 const check = (name, ok, detail) => {
@@ -68,6 +68,33 @@ const allMotoMakes = [...psMakes].filter(m => {
 const misfiled = allMotoMakes.flatMap(m => V.filter(v => v.make === m && v.body !== 'moto'));
 check('powersports-only makes are filed under moto', !misfiled.length,
   misfiled.map(v => v.id + ':' + v.body).join(', '));
+
+/* ---- Lishi guide ----
+   The guide credits a tool with a vehicle by finding "Lishi <TOOL>" in the
+   record. That only works while the two agree on the spelling, so a tool named
+   in a record with no row in the guide is a car you cannot reach from the tool
+   you are holding, and a row naming a tool no record mentions is a tool that
+   lists nothing. Both are silent failures without this check. */
+const lishiIds = new Set(L.map(r => r.id));
+check('lishi rows have unique ids', lishiIds.size === L.length);
+check('every lishi row has a tool, family, keyway and use',
+  L.every(r => r.tool && r.fam && r.kw && r.use));
+
+const NAMED = /\bLishi\s+([A-Z0-9][A-Z0-9.\-]*[A-Z0-9])/g;
+const mentioned = new Set();
+V.forEach(v => {
+  const hay = [(v.lock || {}).decode, v.doorUnlock, (v.programming || {}).notes].join(' ');
+  let m; NAMED.lastIndex = 0;
+  while ((m = NAMED.exec(hay))) mentioned.add(m[1].toUpperCase());
+});
+const haveTool = new Set(L.map(r => r.tool.toUpperCase()));
+/* A row may cover several tool names sold as one kit (TR47 / TOY40). */
+L.forEach(r => String(r.tool).split(/[\/,]/).forEach(t => haveTool.add(t.trim().toUpperCase())));
+const unlisted = [...mentioned].filter(t => !haveTool.has(t)).sort();
+check('every Lishi tool named in a record is in the guide', !unlisted.length, unlisted.join(', '));
+const orphan = L.filter(r => !String(r.tool).split(/[\/,]/)
+  .some(t => mentioned.has(t.trim().toUpperCase()))).map(r => r.tool);
+check('every guide row is named by at least one record', !orphan.length, orphan.join(', '));
 
 /* ---- categories ---- */
 const CATS = ['Automotive', 'Powersports', 'Fleet & equipment', 'Residential', 'Commercial'];

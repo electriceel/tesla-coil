@@ -8,8 +8,8 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
 /* ======================= routing ======================= */
-const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'master', 'bcm', 'quote',
-               'hex', 'jobs', 'settings'];
+const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'lishi', 'master', 'bcm',
+               'quote', 'hex', 'jobs', 'settings'];
 let current = 'lookup';
 
 let vehShown = '';
@@ -1751,6 +1751,128 @@ function pickFile(accept) {
 }
 
 /* ======================= wiring ======================= */
+/* ======================= Lishi guide =======================
+   A tool-first view of data that already exists elsewhere: the keyway's cut,
+   spaces, depths and catalog numbers come off the blank row, and the cars a
+   tool opens come off the vehicle records. Nothing here is a second copy, so
+   nothing here can drift out of agreement with the rest of the app. */
+let lishiOpen = '';
+let lishiQ = '';
+
+/* Tool names appear inside prose ("Lishi GM37, or impression"), so a word-
+   boundary match on the tool name is how a record is credited to a tool. */
+function lishiMentions(tool) {
+  const re = new RegExp('\\bLishi\\s+' + tool.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+  return Store.vehicles().filter(v => {
+    const l = v.lock || {};
+    return re.test(l.decode || '') || re.test(v.doorUnlock || '')
+        || re.test((v.programming || {}).notes || '');
+  });
+}
+
+/* The blank rows whose keyway the tool reads, so the guide can show what to cut
+   once you have the numbers. */
+function lishiBlanks(row) {
+  const want = new Set(String(row.kw).split(/[\/,]/).map(s => s.trim().toUpperCase()).filter(Boolean));
+  return Store.blanks().filter(b => String(b.keyway).split(/[\/,]/)
+    .some(k => want.has(k.trim().toUpperCase())));
+}
+
+function RENDER_lishi() {
+  $('#lishiTop').hidden = false;
+  const rows = SEED_LISHI.slice().sort((a, b) => a.tool.localeCompare(b.tool));
+  const q = squash(lishiQ);
+  const hits = !q ? rows : rows.filter(r => {
+    const hay = squash([r.tool, r.fam, r.kw, r.use].join(' '));
+    if (hay.includes(q)) return true;
+    /* Searching a make should find the tool, so the cars count as haystack too. */
+    return lishiMentions(r.tool).some(v => squash(v.make + ' ' + v.model).includes(q));
+  });
+
+  const byFam = new Map();
+  hits.forEach(r => {
+    if (!byFam.has(r.fam)) byFam.set(r.fam, []);
+    byFam.get(r.fam).push(r);
+  });
+  /* Ordered by how much of your database the family covers, so the tools your
+     hand reaches for most sit at the top rather than wherever the alphabet puts
+     them. Ties fall back to alphabetical. */
+  const famOrder = Array.from(byFam.entries()).map(([fam, list]) => ({
+    fam, list: list.slice().sort((a, b) => a.tool.localeCompare(b.tool)),
+    n: list.reduce((t, r) => t + lishiMentions(r.tool).length, 0)
+  })).sort((a, b) => b.n - a.n || a.fam.localeCompare(b.fam));
+
+  $('#lishiCount').textContent =
+    `${hits.length} tool${hits.length === 1 ? '' : 's'}${lishiQ ? ' matching' : ''}`;
+
+  $('#lishiResults').innerHTML = hits.length
+    ? famOrder.map(g => `<h2>${esc(g.fam)}</h2>` + g.list.map(r => lishiRowHtml(r)).join('')).join('')
+    : `<div class="empty">No tool matches that.</div>`;
+}
+
+function lishiRowHtml(r) {
+  const open = lishiOpen === r.id;
+  const cars = lishiMentions(r.tool);
+  const blanks = lishiBlanks(r);
+  /* Cut, spaces and depths are the keyway's facts, not the tool's — take them
+     from the blank row rather than restating them. */
+  const geo = blanks.map(b => [b.cut, b.spaces && b.depths ? `${b.spaces} spaces, ${b.depths} depths` : '']
+    .filter(Boolean).join(' · ')).filter(Boolean);
+  const byMake = new Map();
+  cars.forEach(v => {
+    if (!byMake.has(v.make)) byMake.set(v.make, 0);
+    byMake.set(v.make, byMake.get(v.make) + 1);
+  });
+
+  return `<div class="card" style="padding:0;overflow:hidden">
+    <button class="grp" data-lishi="${esc(r.id)}">
+      <span class="grp-name">${esc(r.tool)}
+        <span class="grp-sub">${esc(r.kw === r.tool ? r.use : r.kw)}</span></span>
+      <span class="grp-n">${cars.length}</span>
+      <span class="grp-x">${open ? '&minus;' : '+'}</span>
+    </button>
+    ${open ? `<div class="grp-body" style="padding:var(--s3)">
+      <dl class="spec">
+        <dt>Reads</dt><dd>${esc(r.kw)}</dd>
+        <dt>Works on</dt><dd>${esc(r.use)}</dd>
+        ${geo.length ? `<dt>Keyway</dt><dd>${esc(Array.from(new Set(geo)).join('  |  '))}</dd>` : ''}
+        ${blanks.length ? `<dt>Cut on</dt><dd>${esc(Array.from(new Set(blanks
+            .map(b => b.ilcoChip && b.ilcoChip !== '—' ? b.ilcoChip : b.ilco)
+            .filter(x => x && x !== '—'))).join(', ') || '—')}</dd>` : ''}
+      </dl>
+      ${r.note ? `<div class="tiny" style="margin:var(--s3) 0;line-height:1.6">${esc(r.note)}</div>` : ''}
+      ${blanks.length ? `<div class="chips tight">${blanks.map(b =>
+        `<button class="chip" data-lishiblank="${esc(b.id)}">${esc(b.keyway)}</button>`).join('')}</div>` : ''}
+
+      <div class="tiny muted" style="margin-top:var(--s3)">Opens in your database</div>
+      ${cars.length ? `<div class="chips" style="margin-top:6px">${Array.from(byMake.entries())
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .map(([mk, n]) => `<button class="chip" data-lishimake="${esc(r.tool)}|${esc(mk)}">${esc(mk)} ${n}</button>`).join('')}</div>`
+        : `<div class="tiny muted">No record names this tool yet.</div>`}
+    </div>` : ''}
+  </div>`;
+}
+
+/* Tapping a make on a tool lists just those records, so you can go from
+   "I am holding an HU101" to the actual car in two taps. */
+function lishiCarsHtml(tool, make) {
+  const cars = lishiMentions(tool).filter(v => v.make === make)
+    .sort((a, b) => a.model.localeCompare(b.model) || b.yearStart - a.yearStart);
+  return `
+    <button class="back" data-lishiback="1">&lsaquo; Back to the Lishi guide</button>
+    <h2>${esc(tool)} &middot; ${esc(make)}</h2>
+    <div class="countline">${cars.length} record${cars.length === 1 ? '' : 's'}</div>
+    ${cars.map(v => `
+      <div class="card tap vres" data-vid="${esc(v.id)}">
+        <div style="flex:1;min-width:0">
+          <div class="yr">${v.yearStart}${v.yearEnd !== v.yearStart ? '&ndash;' + v.yearEnd : ''}</div>
+          <div class="nm">${esc(v.model)}</div>
+          <div class="sub">${esc(nz(v.blanks && v.blanks.keyway))} &middot; ${esc(nz((v.lock || {}).decode))}</div>
+        </div>
+        <div class="go">&rsaquo;</div>
+      </div>`).join('')}`;
+}
+
 const RENDER = {
   lookup: (...a) => RENDER_lookup(...a),
   moto: (...a) => RENDER_moto(...a),
@@ -1758,6 +1880,7 @@ const RENDER = {
   vin: (...a) => RENDER_vin(...a),
   blanks: (...a) => RENDER_blanks(...a),
   tools: (...a) => RENDER_tools(...a),
+  lishi: (...a) => RENDER_lishi(...a),
   jobs: (...a) => RENDER_jobs(...a),
   master: (...a) => RENDER_master(...a),
   bcm: (...a) => RENDER_bcm(...a),
@@ -1769,7 +1892,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -1808,6 +1931,20 @@ document.addEventListener('click', (e) => {
     window.scrollTo(0, 0);
     return;
   }
+  if (t.dataset.lishi) {
+    lishiOpen = lishiOpen === t.dataset.lishi ? '' : t.dataset.lishi;
+    RENDER_lishi();
+    return;
+  }
+  if (t.dataset.lishimake) {
+    const [tool, mk] = t.dataset.lishimake.split('|');
+    $('#lishiTop').hidden = true;
+    $('#lishiResults').innerHTML = lishiCarsHtml(tool, mk);
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (t.hasAttribute('data-lishiback')) { RENDER_lishi(); window.scrollTo(0, 0); return; }
+  if (t.dataset.lishiblank) { blankUI.detail = t.dataset.lishiblank; go('blanks'); return; }
   if (t.dataset.mkmode)  {
     mkReadForm();
     mkUI.mode = t.dataset.mkmode; mkUI.result = null; mkUI.openSym = {};
@@ -1924,6 +2061,7 @@ function boot() {
   /* Adding from the Moto tab starts a moto record, so it lands back in the tab
      you added it from rather than disappearing into the car list. */
   $('#addMotoBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null, { body: 'moto' }); });
+  $('#lishiQ').addEventListener('input', (e) => { lishiQ = e.target.value; lishiOpen = ''; RENDER_lishi(); });
 
   /* vin */
   $('#vinForm').addEventListener('submit', (e) => { e.preventDefault(); runVinDecode(); });

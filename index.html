@@ -61,6 +61,35 @@
     <div id="vehicleBody"></div>
   </section>
 
+  <!-- ============ LISHI GUIDE ============ -->
+  <section class="view" id="view-lishi">
+    <button class="back" data-go="tools">&lsaquo; Back to tools</button>
+    <div id="lishiTop">
+      <h2>Lishi guide</h2>
+      <div class="notice info">Which 2-in-1 reads which lock, and every vehicle in your
+        database it opens. The counts come from the vehicle records themselves, so they
+        grow as you add cars.</div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="tiny" style="line-height:1.65">
+          <strong>Before you pick one up.</strong>
+          Read your numbers <em>before</em> you pull the tool &mdash; withdrawing it loses the reading.
+          Count the wafers first so you know when you have them all.
+          Light lubrication, never force: a lock full of grit misreads.
+          A decode on a two-key-era car gives you a <em>door</em> key, not necessarily an
+          ignition key &mdash; those are different codes.
+          On most cars since roughly 2010 the ignition is a knob or is shielded, so the
+          driver door is the lock you work.
+          Clone tools read loose, and a depth misread by one is a wasted blank and a second trip.
+        </div>
+      </div>
+      <div class="toolbar">
+        <input id="lishiQ" type="search" placeholder="Tool, keyway, make or model" aria-label="Search Lishi tools">
+      </div>
+      <div class="countline" id="lishiCount"></div>
+    </div>
+    <div id="lishiResults"></div>
+  </section>
+
   <!-- ============ MASTER KEYING ============ -->
   <section class="view" id="view-master">
     <button class="back" data-go="tools">&lsaquo; Back to tools</button>
@@ -102,6 +131,11 @@
   <section class="view" id="view-tools">
     <h2>Tools</h2>
     <div class="tiles">
+      <button class="tile" data-go="lishi">
+        <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5h11a2.5 2.5 0 012.5 2.5v2A2.5 2.5 0 0115 15.5H4z"/><path d="M4 6v12"/><path d="M7.5 8.5v7M11 8.5v7"/><path d="M19.5 12h2"/></svg></span>
+        <span class="tile-nm">Lishi guide</span>
+        <span class="tile-sub">Which tool reads which lock, and what it opens in your database.</span>
+      </button>
       <button class="tile" data-go="master">
         <span class="tile-ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3.2"/><path d="M9.4 9.4L19 19M16 16l2-2M13 13l1.6-1.6"/><circle cx="17.5" cy="6.5" r="1.8"/></svg></span>
         <span class="tile-nm">Master keying</span>
