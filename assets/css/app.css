@@ -77,7 +77,10 @@ h2:first-child{margin-top:var(--s1)}
   display:block;font-size:9.5px;font-weight:600;color:var(--fg3);
   letter-spacing:1.6px;text-transform:uppercase;margin-top:1px;
 }
-.logo{width:28px;height:28px;flex:none}
+/* The brand mark is a photographic square; a corner radius and a hairline
+   keep it from looking pasted onto the header in either theme. */
+.logo{width:28px;height:28px;flex:none;border-radius:7px;object-fit:cover;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--line) 70%,transparent)}
 .icon-btn{
   width:38px;height:38px;flex:none;border:1px solid var(--line);background:var(--surface);
   border-radius:var(--r2);display:grid;place-items:center;color:var(--fg2);cursor:pointer;

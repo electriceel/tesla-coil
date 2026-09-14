@@ -6,7 +6,9 @@ const ASSETS = [
   './assets/css/app.css',
   './assets/js/data.js', './assets/js/models.js', './assets/js/vin.js',
   './assets/js/dealer.js', './assets/js/master.js', './assets/js/store.js', './assets/js/app.js',
-  './assets/icons/icon.svg', './assets/icons/icon-192.png', './assets/icons/icon-512.png'
+  './assets/icons/icon-32.png', './assets/icons/icon-96.png', './assets/icons/icon-180.png',
+  './assets/icons/icon-192.png', './assets/icons/icon-512.png',
+  './assets/icons/icon-maskable-192.png', './assets/icons/icon-maskable-512.png'
 ];
 
 self.addEventListener('install', e => {
