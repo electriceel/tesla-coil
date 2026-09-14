@@ -1,6 +1,6 @@
 /* Cache-first for the shell so the app opens in a parking garage with no bars.
    Bump CACHE on every deploy or clients keep the old bundle. */
-const CACHE = 'keypro-v41';
+const CACHE = 'keypro-v42';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './assets/css/app.css',
@@ -8,7 +8,15 @@ const ASSETS = [
   './assets/js/dealer.js', './assets/js/master.js', './assets/js/store.js', './assets/js/app.js',
   './assets/icons/icon-32.png', './assets/icons/icon-96.png', './assets/icons/icon-180.png',
   './assets/icons/icon-192.png', './assets/icons/icon-512.png',
-  './assets/icons/icon-maskable-192.png', './assets/icons/icon-maskable-512.png'
+  './assets/icons/icon-maskable-192.png', './assets/icons/icon-maskable-512.png',
+  './assets/key-blanks/cat-cg16.png', './assets/key-blanks/cat-de6.png',
+  './assets/key-blanks/cat-kw10.png', './assets/key-blanks/cat-m12.png',
+  './assets/key-blanks/cat-m13.png', './assets/key-blanks/cat-m2.png',
+  './assets/key-blanks/cat-s1.png', './assets/key-blanks/cat-s10.png',
+  './assets/key-blanks/cat-sc22.png', './assets/key-blanks/cat-sc6.png',
+  './assets/key-blanks/cat-sc8.png', './assets/key-blanks/cat-sc9.png',
+  './assets/key-blanks/cat-wk2.png', './assets/key-blanks/cat-wr3.png',
+  './assets/key-blanks/cat-y2.png'
 ];
 
 self.addEventListener('install', e => {
