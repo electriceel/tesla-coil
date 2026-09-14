@@ -38,6 +38,12 @@ check('Kicks Play stays separate from the redesigned Kicks',
   redesignedKicks && !redesignedKicks.aliases.includes('Kicks Play'));
 check('every blank has a keyway and a category',
   B.every(b => b.keyway && b.cat));
+const catalogKeys = B.filter(b => b.id.startsWith('cat-'));
+check('residential and commercial catalog expansion stays complete', catalogKeys.length >= 100,
+  `${catalogKeys.length} catalog rows`);
+check('catalog expansion rows retain Ilco references and source notes',
+  catalogKeys.every(b => b.ilco && /Ilco Key Blank Directory/.test(b.notes || '')),
+  catalogKeys.filter(b => !b.ilco || !/Ilco Key Blank Directory/.test(b.notes || '')).map(b => b.id).join(', '));
 
 /* A make+model+years triple appearing twice means the same record was added
    twice under different ids, which is how the Hummer slipped in. */
