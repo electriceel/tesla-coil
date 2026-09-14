@@ -17,6 +17,25 @@ check('every vehicle has make, model and years',
   V.every(v => v.make && v.model && v.yearStart && v.yearEnd));
 check('vehicle aliases are arrays of non-empty strings',
   V.every(v => Array.isArray(v.aliases) && v.aliases.every(a => typeof a === 'string' && a.trim())));
+const CURRENT_GAP_ROWS = {
+  'ford-mustang-2024-2026': [2024, 2026], 'ford-ranger-2024-2026': [2024, 2026],
+  'ford-expedition-2025-2026': [2025, 2026], 'toyota-tacoma-2024-2026': [2024, 2026],
+  'toyota-4runner-2025-2026': [2025, 2026], 'toyota-camry-2025-2026': [2025, 2026],
+  'subaru-forester-2019-2024': [2019, 2024], 'subaru-forester-2025-2026': [2025, 2026],
+  'nissan-kicks-2025-2026': [2025, 2026], 'nissan-kicks-play-2025': [2025, 2025],
+  'chevy-equinox-2025-2026': [2025, 2026], 'chevy-traverse-2018-2023': [2018, 2023],
+  'chevy-traverse-limited-2024': [2024, 2024], 'chevy-traverse-2024-2026': [2024, 2026],
+  'gmc-terrain-2025-2026': [2025, 2026], 'gmc-acadia-2024-2026': [2024, 2026],
+  'lincoln-navigator-2018-2024': [2018, 2024], 'lincoln-navigator-2025-2026': [2025, 2026]
+};
+const currentGapWrong = Object.entries(CURRENT_GAP_ROWS).filter(([id, years]) => {
+  const row = V.find(v => v.id === id);
+  return !row || row.yearStart !== years[0] || row.yearEnd !== years[1];
+}).map(([id]) => id);
+check('current-generation gap audit rows keep exact year ranges', !currentGapWrong.length, currentGapWrong.join(', '));
+const redesignedKicks = V.find(v => v.id === 'nissan-kicks-2025-2026');
+check('Kicks Play stays separate from the redesigned Kicks',
+  redesignedKicks && !redesignedKicks.aliases.includes('Kicks Play'));
 check('every blank has a keyway and a category',
   B.every(b => b.keyway && b.cat));
 
