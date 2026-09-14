@@ -418,3 +418,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .blank-photo img{display:block;width:auto;height:auto;max-width:100%;max-height:320px;object-fit:contain}
 .blank-photo figcaption{font-size:10.5px;color:#58606e;text-align:center}
 .blank-photo figcaption a{color:#315f9b}
+
+/* Marks a directory row that is indexed by its Ilco number rather than by a
+   confirmed keyway, so scanning the list never reads the label as a keyway. */
+.kwq{color:var(--warn);font-weight:700;margin-left:3px;vertical-align:super;font-size:.72em}

@@ -177,9 +177,10 @@ rather than being made to agree on a number that could not be stood behind.
 **Tools** is a launcher, not a scroll — four tiles, each opening its own screen:
 master keying, Nissan BCM, the quote builder, and hex/decimal.
 
-**Blanks** — a browsable key blank directory. It opens on five categories —
-automotive, powersports, fleet & equipment, residential, commercial — because 226
-blanks across 200-odd makes is not a list you read on arrival. From there, regroup
+**Blanks** — a browsable key blank directory. It opens on eight categories —
+automotive, powersports, fleet & equipment, utility, residential, commercial,
+safe & vault, import & uncommon — because 1,157 blanks across 400-odd makes is
+not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
 the full cross-reference, cut spec (spaces, depths), every make it serves, notes,
@@ -201,9 +202,19 @@ marks it verified and stores your version on this device, overriding the seed.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 226 keyways, all editable: automotive, powersports,
-fleet & equipment (RV and trailer, heavy truck, forklift, golf cart, marine),
-residential and commercial.
+for the blank directory — 422 confirmed keyways, all editable: automotive,
+powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
+marine), utility, residential, commercial, safe & vault, and import & uncommon.
+
+Behind those sit 735 **blank-number rows**, marked `#` in the directory and
+"Blank number, not a keyway" on the record. Each one is a real Ilco number, and
+most carry the JMA equivalent, but the keyway designation was never confirmed —
+they arrived with the make and the number pasted into the keyway field, which
+reads the cross-reference backwards. Identify one by the number stamped on the
+blank, not by its label; a confirmed keyway always sorts ahead of them in a
+search. Their earlier "edition 13, section 2, pages 276-282" citations are gone:
+19 page ranges spread across 994 rows is a section range, not a citation, and
+precision you cannot check is worse than none because it invites trust.
 
 The **Import & uncommon** category is the cross reference for what is not on a
 US van by default: cruciform and cross keys, British lever locks, Euro profile
