@@ -44,6 +44,12 @@ check('residential and commercial catalog expansion stays complete', catalogKeys
 check('catalog expansion rows retain Ilco references and source notes',
   catalogKeys.every(b => b.ilco && /Ilco Key Blank Directory/.test(b.notes || '')),
   catalogKeys.filter(b => !b.ilco || !/Ilco Key Blank Directory/.test(b.notes || '')).map(b => b.id).join(', '));
+const jmaCatalogKeys = catalogKeys.filter(b => b.jma);
+check('JMA MX C13 cross-reference expansion stays complete', jmaCatalogKeys.length >= 740,
+  `${jmaCatalogKeys.length} JMA-mapped catalog rows`);
+check('JMA mappings retain their official catalog source note',
+  jmaCatalogKeys.every(b => /JMA Keys Catalogue MX C13/.test(b.notes || '')),
+  jmaCatalogKeys.filter(b => !/JMA Keys Catalogue MX C13/.test(b.notes || '')).map(b => b.id).join(', '));
 
 /* A make+model+years triple appearing twice means the same record was added
    twice under different ids, which is how the Hummer slipped in. */
