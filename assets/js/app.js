@@ -913,6 +913,11 @@ function renderBlankDetail(id) {
       </div>
     </div>
 
+    ${b.image ? `<figure class="blank-photo">
+      <img src="${esc(b.image)}" alt="${esc(b.imageAlt || `${b.keyway} key blank`)}" loading="lazy">
+      ${b.imageSource ? `<figcaption>Reference image: <a href="${esc(b.imageSource)}" target="_blank" rel="noopener">JMA e-catalogue</a></figcaption>` : ''}
+    </figure>` : ''}
+
     <h2>Catalog numbers</h2>
     <div class="card"><dl class="spec">
       <dt>Ilco</dt><dd class="mono">${dash(b.ilco)}</dd>

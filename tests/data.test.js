@@ -1,6 +1,8 @@
 /* Data integrity, checked without a browser. These are the mistakes that are
    easy to make by hand and impossible to see by eye in a 300 KB seed file. */
 const { SEED_VEHICLES: V, SEED_BLANKS: B, SEED_LISHI: L, SEED_SAFE: S, SAFE_GROUPS: SG } = require('../assets/js/data.js');
+const fs = require('fs');
+const path = require('path');
 
 let fail = 0;
 const check = (name, ok, detail) => {
@@ -50,6 +52,14 @@ check('JMA MX C13 cross-reference expansion stays complete', jmaCatalogKeys.leng
 check('JMA mappings retain their official catalog source note',
   jmaCatalogKeys.every(b => /JMA Keys Catalogue MX C13/.test(b.notes || '')),
   jmaCatalogKeys.filter(b => !/JMA Keys Catalogue MX C13/.test(b.notes || '')).map(b => b.id).join(', '));
+const picturedKeys = catalogKeys.filter(b => b.image);
+check('common service-call blanks retain their reference images', picturedKeys.length >= 15,
+  `${picturedKeys.length} pictured catalog rows`);
+check('pictured blanks retain accessible local files and JMA attribution',
+  picturedKeys.every(b => b.imageAlt && /^https:\/\/ecatalogo\.jma\.es\//.test(b.imageSource || '') &&
+    fs.existsSync(path.join(__dirname, '..', b.image))),
+  picturedKeys.filter(b => !b.imageAlt || !/^https:\/\/ecatalogo\.jma\.es\//.test(b.imageSource || '') ||
+    !fs.existsSync(path.join(__dirname, '..', b.image))).map(b => b.id).join(', '));
 
 /* A make+model+years triple appearing twice means the same record was added
    twice under different ids, which is how the Hummer slipped in. */
