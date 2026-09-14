@@ -814,9 +814,13 @@ const KEY_STOPWORDS = new Set([
   'AMERICAN', 'SWEDISH', 'SWISS', 'AUSTRIAN', 'INDIAN', 'ISRAELI', 'AUSTRALIAN',
   'SCANDINAVIAN', 'IMPORT', 'IMPORTED', 'DOMESTIC', 'FOREIGN', 'MARKET'
 ]);
+/* A single character is never evidence that two keyways are related. The E in
+   "Schlage 101-E-LFIC" matched the E in Can-Am's "D.E.S.S." and put a
+   commercial mortise blank on a Sea-Doo. tests/data.test.js has always had
+   this guard; the app did not, and the two matchers drifted. */
 const keyWords = (s) => String(s || '')
   .replace(/\(.*?\)/g, ' ').toUpperCase().split(/[^A-Z0-9]+/)
-  .filter(w => w && !KEY_STOPWORDS.has(w));
+  .filter(w => w.length > 1 && !KEY_STOPWORDS.has(w));
 const bareTokens = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase())
   .filter(Boolean);
@@ -824,7 +828,10 @@ const bareTokens = (s) => String(s || '').split(/[\/,]/)
 /* Vehicles in the user's database that take this blank: the keyway names the
    same word, or the vehicle cites this blank's Ilco number. */
 function vehiclesForBlank(b) {
-  const keys = new Set(keyWords(b.keyway));
+  /* A kwUnknown row's label is a make plus a blank number, not a keyway, so
+     matching a vehicle on its words would link on the manufacturer's name.
+     Those rows join on the catalog number alone. */
+  const keys = new Set(b.kwUnknown ? [] : keyWords(b.keyway));
   const cats = new Set([b.ilco, b.ilcoChip].flatMap(bareTokens));
   return Store.vehicles().filter(v => {
     const vb = v.blanks || {};
@@ -855,11 +862,24 @@ function groupBlanks(list) {
     else if (blankUI.group === 'cut') push(b.cut || 'Other', b);
     else push((b.keyway || '?')[0].toUpperCase(), b);
   });
-  const order = blankUI.group === 'cat'
+  const base = blankUI.group === 'cat'
     ? (a, b) => catRank(a[0]) - catRank(b[0]) || a[0].localeCompare(b[0])
     : (a, b) => a[0].localeCompare(b[0]);
+  /* Browsing keeps the working-day order. Searching puts the groups holding a
+     confirmed keyway first: a brand search used to bury the one Lockwood
+     keyway record under 41 Lockwood blank numbers, because Commercial comes
+     before Import & uncommon on an ordinary day and the long tail lives there. */
+  const searching = String(blankUI.q || '').trim().length > 0;
+  const confirmedIn = (e) => e[1].some(b => !b.kwUnknown) ? 0 : 1;
+  const order = searching
+    ? (a, b) => confirmedIn(a) - confirmedIn(b) || base(a, b)
+    : base;
+  /* A confirmed keyway outranks a blank-number row inside its group: searching
+     a brand should land on the row you can actually identify from a lock,
+     with the catalog's long tail behind it. */
   return new Map(Array.from(g.entries()).sort(order)
-    .map(([k, v]) => [k, v.sort((x, y) => x.keyway.localeCompare(y.keyway))]));
+    .map(([k, v]) => [k, v.sort((x, y) => (x.kwUnknown ? 1 : 0) - (y.kwUnknown ? 1 : 0)
+      || x.keyway.localeCompare(y.keyway))]));
 }
 
 function RENDER_blanks() {
@@ -873,8 +893,14 @@ function RENDER_blanks() {
   const groups = groupBlanks(hits);
   $('#blankCount').textContent = `${hits.length} blank${hits.length === 1 ? '' : 's'} in ${groups.size} group${groups.size === 1 ? '' : 's'}`;
 
-  /* A search narrow enough to be readable opens everything; browsing starts collapsed. */
-  const autoOpen = blankUI.q.trim().length > 0 && hits.length <= 12;
+  /* A search narrow enough to be readable opens everything; browsing starts
+     collapsed. Blank-number rows do not spend that budget: 41 "Lockwood
+     A1015xx" rows sit behind the one Lockwood keyway record, and counting them
+     pushed a brand search past the limit so it rendered nothing but collapsed
+     headers -- the answer was there and invisible. The absolute cap still keeps
+     a query that matches half the catalog from opening all of it. */
+  const confirmedHits = hits.filter(b => !b.kwUnknown).length;
+  const autoOpen = blankUI.q.trim().length > 0 && confirmedHits <= 12 && hits.length <= 120;
 
   $('#blankDir').innerHTML = groups.size ? Array.from(groups.entries()).map(([name, items]) => {
     const open = autoOpen || blankUI.open[name];
@@ -886,7 +912,8 @@ function RENDER_blanks() {
       </button>
       ${open ? `<div class="grp-body">${items.map(b => `
         <button class="brow" data-bid="${esc(b.id)}">
-          <span class="brow-key mono">${esc(b.keyway)}</span>
+          <span class="brow-key mono">${esc(b.keyway)}${b.kwUnknown
+            ? '<span class="kwq" title="Blank number, not a keyway">#</span>' : ''}</span>
           <span class="brow-sub mono">${[b.ilco, b.silca, b.jma].filter(x => x && x !== '\u2014').map(esc).join(' &middot; ')}</span>
           <span class="brow-cut">${esc(b.cut)}</span>
         </button>`).join('')}</div>` : ''}
@@ -909,8 +936,13 @@ function renderBlankDetail(id) {
         <span class="badge info">${esc(b.cut)}</span>
         ${b.spaces ? `<span class="badge dim">${esc(b.spaces)} spaces</span>` : ''}
         ${b.depths ? `<span class="badge dim">${esc(b.depths)} depths</span>` : ''}
+        ${b.kwUnknown ? '<span class="badge warn">Blank number, not a keyway</span>' : ''}
         ${b.custom ? '<span class="badge ok">Your record</span>' : ''}
       </div>
+      ${b.kwUnknown ? `<div class="tiny muted" style="margin-top:8px">This row is indexed by its
+      Ilco number. The keyway designation is not confirmed, so match it against the number stamped
+      on the blank &mdash; do not go looking for <span class="mono">${esc(b.keyway)}</span> on a
+      lock.</div>` : ''}
     </div>
 
     ${b.image ? `<figure class="blank-photo">

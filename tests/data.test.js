@@ -41,17 +41,24 @@ check('Kicks Play stays separate from the redesigned Kicks',
 check('every blank has a keyway and a category',
   B.every(b => b.keyway && b.cat));
 const catalogKeys = B.filter(b => /^(cat-|cat13-)/.test(b.id));
-check('residential and commercial catalog expansion stays complete', catalogKeys.length >= 990,
+/* These four checks used to assert the row count before the cleanup and the
+   exact wording of a citation nobody could verify -- "Ilco Key Blank Directory,
+   edition 13, section 2, pages 276-282" on 124 different rows. Asserting that
+   text made the pasted page ranges load-bearing: correcting them failed the
+   run, which is backwards. What matters is that the rows are still here, that
+   every one carries the Ilco number it is indexed by, and that the JMA
+   cross-references survived -- not how they were captioned. */
+check('the catalog rows are still here', catalogKeys.length >= 860,
   `${catalogKeys.length} catalog rows`);
-check('catalog expansion rows retain Ilco references and source notes',
-  catalogKeys.every(b => b.ilco && /Ilco Key Blank Directory/.test(b.notes || '')),
-  catalogKeys.filter(b => !b.ilco || !/Ilco Key Blank Directory/.test(b.notes || '')).map(b => b.id).join(', '));
-const jmaCatalogKeys = catalogKeys.filter(b => b.jma);
-check('JMA MX C13 cross-reference expansion stays complete', jmaCatalogKeys.length >= 740,
+check('every catalog row carries an Ilco number',
+  catalogKeys.every(b => b.ilco && b.ilco !== '—'),
+  catalogKeys.filter(b => !b.ilco || b.ilco === '—').map(b => b.id).join(', '));
+const jmaCatalogKeys = catalogKeys.filter(b => b.jma && b.jma !== '—');
+check('the JMA cross-references are still here', jmaCatalogKeys.length >= 630,
   `${jmaCatalogKeys.length} JMA-mapped catalog rows`);
-check('JMA mappings retain their official catalog source note',
-  jmaCatalogKeys.every(b => /JMA Keys Catalogue MX C13/.test(b.notes || '')),
-  jmaCatalogKeys.filter(b => !/JMA Keys Catalogue MX C13/.test(b.notes || '')).map(b => b.id).join(', '));
+check('a row that cites a JMA equivalent says where it came from',
+  jmaCatalogKeys.every(b => /JMA/.test(b.notes || '')),
+  jmaCatalogKeys.filter(b => !/JMA/.test(b.notes || '')).map(b => b.id).slice(0, 6).join(', '));
 const picturedKeys = catalogKeys.filter(b => b.image);
 check('common service-call blanks retain their reference images', picturedKeys.length >= 15,
   `${picturedKeys.length} pictured catalog rows`);
@@ -182,11 +189,12 @@ check('every blank sits in a known category', !badCat.length,
    caught a warehouse roll-up door claiming an Isuzu box truck, and a trailer
    reefer unit claiming an office cam lock. */
 const STOP = require('./stopwords.js');
-/* A single character is never evidence that two keyways are related. Without
-   this, the S and the G in "S&G" matched the S in Can-Am's "D.E.S.S." and put a
-   safe lock on a Sea-Doo. */
-const words = (s) => String(s || '').replace(/\(.*?\)/g, ' ').toUpperCase()
-  .split(/[^A-Z0-9]+/).filter(w => w.length > 1 && !STOP.has(w));
+/* A single character is never evidence that two keyways are related: the S and
+   the G in "S&G" matched the S in Can-Am's "D.E.S.S." and put a safe lock on a
+   Sea-Doo. This used to be a private copy of app.js's tokenizer, which is how
+   the app kept shipping without the guard while this file passed. It is the
+   app's own function now. */
+const words = require('./stopwords.js').keyWords;
 const bare = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).filter(Boolean);
 
@@ -204,6 +212,60 @@ B.filter(b => NON_AUTO.includes(b.cat)).forEach(b => {
 });
 check('no door, utility or padlock blank matches a vehicle', !crossLinks.length,
   crossLinks.slice(0, 6).join('\n     '));
+
+/* ---- blank-number rows ---- */
+/* 854 records arrived with the make and the Ilco number pasted into the keyway
+   field -- "Sargent 1007HE" for blank 1007HE -- which runs the cross-reference
+   backwards: you read a keyway off a lock and it should hand you a blank
+   number, not repeat itself. Those rows keep their verified catalog numbers but
+   must declare that the keyway is not confirmed, so nothing in the UI presents
+   the label as something to look for on a lock. */
+/* Equality is not the tell. HU101, H92 and B111 are real keyway designations
+   whose Ilco blank happens to carry the same name, and 34 rows are legitimately
+   like that. Nor is a keyway that lists alternatives -- "HD106/HO05" and
+   "B1 / 1098" name two ways to ask for the same profile, one of which is the
+   blank number. The tell is a manufacturer's name bolted onto the front of the
+   number with no alternative offered, which is what turns the keyway field into
+   a restatement of the Ilco column. */
+const flat = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const restates = (b) => {
+  const i = flat(b.ilco);
+  if (!i || b.ilco === '—') return false;
+  const alts = String(b.keyway || '').split(/[\/,]/).map(flat).filter(Boolean);
+  if (alts.some(a => a === i)) return false;
+  return flat(b.keyway).endsWith(i) && flat(b.keyway).length > i.length;
+};
+const unflagged = B.filter(b => restates(b) && !b.kwUnknown);
+check('a keyway that only restates the Ilco number is flagged kwUnknown',
+  !unflagged.length, unflagged.slice(0, 6).map(b => `${b.id} (${b.keyway} = ${b.ilco})`).join('\n     '));
+check('every kwUnknown row still carries the Ilco number it is indexed by',
+  B.filter(b => b.kwUnknown).every(b => b.ilco && b.ilco !== '—'));
+
+/* 19 distinct page ranges spread across 994 records is a section range pasted
+   onto everything in the section, not a citation. Precision that cannot be
+   checked is worse than no citation at all, because it invites trust. */
+const fakeCite = B.filter(b => /pages? \d/.test(b.notes || ''));
+check('no blank record cites a page number', !fakeCite.length,
+  fakeCite.slice(0, 4).map(b => b.id).join(', '));
+
+/* One blank is one row. These seven pairs predate the cleanup and each needs a
+   call I cannot make from inside the file -- 1054WB is claimed by WK2 and WR3
+   at once while cat-wk2 puts WK2 on 1175N, so at least one of the three is
+   wrong. Listed so they stay visible and so a new collision fails the run. */
+const KNOWN_ILCO_COLLISIONS = {
+  '1145': ['sc1', 'schlage-l'], '1176': ['builder-grade', 'kw1'],
+  'Y164': ['cy24', 'y164'], 'VW1': ['hu49', 'vw1'], 'TR47': ['toy2', 'tr47'],
+  '1054WB': ['cat-wr3', 'we1'], '1A1A1': ['best-sfic', 'cat-best-a2-a'],
+};
+const byIlco = {};
+B.forEach(b => {
+  const i = String(b.ilco || '').toUpperCase();
+  if (i && i !== '—') (byIlco[i] = byIlco[i] || []).push(b.id);
+});
+const newCollisions = Object.entries(byIlco).filter(([i, ids]) => ids.length > 1
+  && String(KNOWN_ILCO_COLLISIONS[i] || []) !== String(ids.slice().sort()));
+check('no new Ilco number lands on two blank records', !newCollisions.length,
+  newCollisions.map(([i, ids]) => `${i}: ${ids.join(', ')}`).join('\n     '));
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
