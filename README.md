@@ -200,6 +200,32 @@ until you confirm it. Confirm the blank and chip against the vehicle or your mac
 own database before you cut or program. Edit any record (Vehicle → Edit) and saving it
 marks it verified and stores your version on this device, overriding the seed.
 
+### FCC IDs are the exception — those are checked
+
+The one part of the seed that is not "confirm it yourself" is the fob. Every FCC ID
+the app shows has been checked against the public FCC equipment-authorization record,
+and `assets/js/fcc.js` holds what the FCC actually certifies for each one: the grant
+holder, the equipment class, the operating frequency and the original grant date. The
+vehicle detail joins those in, so a fob shows its frequency before you reach for a
+sniffer, and its grantee tells an OEM part from a clone.
+
+An FCC ID that is **not** in that file renders with a warning rather than a blank
+field, because an unchecked ID is exactly the one you should not order against. That
+applies to fobs you type in yourself too. `tests/fcc.test.js` fails the build if any
+ID in the seed is missing from the verified list, so an unchecked one cannot ship.
+
+Checking found two that would have cost money at the counter. `LGQ25LR`, listed on the
+1999-2006 Silverado, is a PAX payment terminal on 13.56 MHz — it is now `ABO1502T`
+(General Motors, 315 MHz) for 1999-2002 and `LHJ011` (Continental, 315 MHz) for
+2003-2006. And `YG0G21TB2` on five GM trucks was `YGOG21TB2` with the letter O typed
+as a zero.
+
+Fitment is not FCC data and is not treated as such. The FCC certifies a radio, not a
+model year; the "fits 2012-2017 Camry" line on a lookup site is a marketplace listing.
+Four records still name one fob for a span that used several — the 2004-2023 Maxima
+and 2004-2024 Armada among them — and those are listed in the test rather than guessed
+at, because splitting them by year needs the bench.
+
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
 for the blank directory — 422 confirmed keyways, all editable: automotive,

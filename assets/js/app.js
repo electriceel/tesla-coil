@@ -436,6 +436,14 @@ function RENDER_vehicle(id) {
   if (gen) gen.addEventListener('change', () => go('vehicle', gen.value));
 }
 
+/* The FCC grant behind a fob, or null when the ID has not been checked against
+   the public record. A missing entry is not a blank field: the record says so,
+   because an unverified FCC ID is the one you should not order against. */
+function fccGrant(fcc) {
+  const k = String(fcc || '').trim().toUpperCase();
+  return (k && typeof FCC_GRANTS !== 'undefined' && FCC_GRANTS[k]) || null;
+}
+
 /* ---- tab 1: overview ---- */
 function vehOverviewHtml(v) {
   const b = v.blanks || {}, t = v.transponder || {}, l = v.lock || {}, r = v.remotes || [];
@@ -469,9 +477,19 @@ function vehOverviewHtml(v) {
 
     <h2>The remotes</h2>
     ${r.length
-      ? r.map(x => specList([['Type', x.type], ['FCC ID', x.fcc, 'mono'],
-                             ['Part no.', x.pn, 'mono'], ['Buttons', x.buttons]],
-                            { empty: 'Fob details not recorded.' })).join('')
+      ? r.map(x => {
+          /* Frequency and grantee are joined from the FCC grant record rather
+             than stored per vehicle: the same fob is on eight Fords, and one
+             row cannot disagree with itself. */
+          const g = fccGrant(x.fcc);
+          return specList([['Type', x.type], ['FCC ID', x.fcc, 'mono'],
+                           ['Frequency', g && g.freq, 'mono'],
+                           ['Grant holder', g && g.mfr],
+                           ['Part no.', x.pn, 'mono'], ['Buttons', x.buttons]],
+                          { empty: 'Fob details not recorded.' })
+            + (x.fcc && !g ? `<div class="card muted tiny" style="margin-top:-6px">This FCC ID
+               is not in the verified grant list. Confirm it before ordering.</div>` : '');
+        }).join('')
       : '<div class="card muted tiny">No fob data on file.</div>'}
 
     <h2>Decoders</h2>

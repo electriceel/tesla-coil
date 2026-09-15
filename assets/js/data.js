@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.09.14.6';
+const SEED_VERSION = '2026.09.15';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -251,7 +251,7 @@ const SEED_VEHICLES = [
        b: 'moto', kw: 'HD103 / HD106', il: 'HD103', oem: 'varies by model',
        chip: 'None on most — HFSM fob is separate',
        sys: 'Hands-free security fob (not a transponder key)', clone: 'n/a',
-       rem: [['fob', 'varies', 'varies', 'HFSM proximity fob']], sp: 6, dp: 4, cut: 'Edge cut',
+       rem: [['fob', '', '', 'HFSM proximity fob — FCC ID varies by year and market']], sp: 6, dp: 4, cut: 'Edge cut',
        dec: 'Impression or decode the ignition; saddlebag locks often share a code', obd: 'n/a',
        on: 'Security fob pairing via the odometer menu',
        akl: 'Cut by code / impression; fob pairing separate',
@@ -1064,13 +1064,13 @@ const SEED_VEHICLES = [
   /* ===== GM ===== */
   V({ id: 'chevy-silverado-1999-2006', mk: 'Chevrolet', md: 'Silverado 1500', y0: 1999, y1: 2006, b: 'truck',
       kw: 'B102 / B106', il: 'B106-PT', chip: 'PK3 transponder',
-      sys: 'Passlock / PK3', clone: 'Yes', rem: [['fob', 'LGQ25LR', '', '4B']],
+      sys: 'Passlock / PK3', clone: 'Yes', rem: [['fob', 'ABO1502T', '', '3B / 4B (1999-2002)'], ['fob', 'LHJ011', '', '3B / 4B (2003-2006)']],
       sp: 6, dp: 4, cut: 'Edge cut', dec: 'Lishi GM37 or impression',
       obd: 'Limited', on: '10-min relearn on PK3', akl: '30-min x3 relearn',
       note: 'Passlock trims have no chip at all — the resistor is in the lock cylinder.', entry: 'Lishi GM37' }),
   V({ id: 'chevy-silverado-2020-2024', mk: 'Chevrolet', md: 'Silverado 1500', y0: 2020, y1: 2024, b: 'truck',
       kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / newer AES',
-      sys: 'Passive entry / push start', clone: 'No', rem: [['prox', 'YG0G21TB2', '', '5B / 6B']],
+      sys: 'Passive entry / push start', clone: 'No', rem: [['prox', 'YGOG21TB2', '', '5B / 6B']],
       sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
       obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
       note: 'Newest generation — confirm tool coverage before committing.', entry: 'Lishi HU100' }),
@@ -1086,7 +1086,7 @@ const SEED_VEHICLES = [
       note: 'Free but slow — budget 35 minutes on site.', entry: 'Lishi GM37' }),
   V({ id: 'gmc-sierra-2020-2024', mk: 'GMC', md: 'Sierra 1500', y0: 2020, y1: 2024, b: 'truck',
       kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / newer AES',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'YG0G21TB2', '', '5B / 6B']],
+      sys: 'Passive entry', clone: 'No', rem: [['prox', 'YGOG21TB2', '', '5B / 6B']],
       sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
       obd: 'Yes with a current tool', on: 'Add-a-fob', akl: 'OBD + security relearn', entry: 'Lishi HU100' }),
   V({ id: 'chevy-tahoe-2000-2006', mk: 'Chevrolet', md: 'Tahoe / Suburban', y0: 2000, y1: 2006, b: 'suv',
@@ -1100,7 +1100,7 @@ const SEED_VEHICLES = [
       obd: 'Yes', on: '30-min x3 relearn', akl: '30-min x3 relearn', entry: 'Lishi GM37' }),
   V({ id: 'chevy-tahoe-2021-2024', mk: 'Chevrolet', md: 'Tahoe / Suburban', y0: 2021, y1: 2024, b: 'suv',
       kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM 46E / newer AES',
-      sys: 'Passive entry', clone: 'No', rem: [['prox', 'YG0G21TB2', '', '6B']],
+      sys: 'Passive entry', clone: 'No', rem: [['prox', 'YGOG21TB2', '', '6B']],
       sp: 10, dp: 4, cut: 'Edge cut', dec: 'Lishi HU100',
       obd: 'Yes with a current tool', on: 'Add-a-fob', akl: 'OBD + security relearn', entry: 'Lishi HU100' }),
   V({ id: 'chevy-equinox-2005-2009', mk: 'Chevrolet', md: 'Equinox', y0: 2005, y1: 2009, b: 'suv',
@@ -3145,7 +3145,7 @@ const SEED_VEHICLES = [
   V({ id: 'cadillac-escalade-2021-2024', mk: 'Cadillac', md: 'Escalade', y0: 2021, y1: 2024, b: 'suv',
       kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
       sys: 'Passive entry / push start', clone: 'No',
-      rem: [['prox', 'YG0G21TB2', '', '6B with power-hatch and remote start']],
+      rem: [['prox', 'YGOG21TB2', '', '6B with power-hatch and remote start']],
       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
       obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
       note: 'Shares the fob and the blade with the 2021-on Tahoe and Yukon.',
@@ -3162,7 +3162,7 @@ const SEED_VEHICLES = [
   V({ id: 'gmc-yukon-2021-2024', mk: 'GMC', md: 'Yukon / Yukon XL', y0: 2021, y1: 2024, b: 'suv',
       kw: 'B119 (emergency blade)', il: 'B119-PT', chip: 'GM AES',
       sys: 'Passive entry / push start', clone: 'No',
-      rem: [['prox', 'YG0G21TB2', '', '5B / 6B']],
+      rem: [['prox', 'YGOG21TB2', '', '5B / 6B']],
       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HU100',
       obd: 'Yes with a current tool', on: 'Add-a-fob with a working fob', akl: 'OBD + security relearn',
       note: 'Same platform and same key as the 2021-on Tahoe, Suburban and Escalade.',
