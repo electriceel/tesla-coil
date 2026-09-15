@@ -267,5 +267,46 @@ const newCollisions = Object.entries(byIlco).filter(([i, ids]) => ids.length > 1
 check('no new Ilco number lands on two blank records', !newCollisions.length,
   newCollisions.map(([i, ids]) => `${i}: ${ids.join(', ')}`).join('\n     '));
 
+/* ---- how people actually name a car ---- */
+/* Nobody says "Chevrolet" and nobody says "Crown Victoria Police Interceptor".
+   They say Chevy and P71, and every one of these came back empty before the
+   nickname map and the per-record aliases went in. Encoded as the queries
+   themselves so a refactor of the haystack cannot quietly break them again. */
+const appSrc = fs.readFileSync(path.join(__dirname, '../assets/js/app.js'), 'utf8');
+const nickBlock = appSrc.match(/const MAKE_NICKNAMES = \{([\s\S]*?)\n\};/);
+check('the make-nickname map is still in app.js', !!nickBlock);
+const NICK = {};
+if (nickBlock) {
+  for (const m of nickBlock[1].matchAll(/'([^']+)':\s*'([^']*)'/g)) NICK[m[1]] = m[2];
+}
+/* A nickname on a make no record carries is a nickname that does nothing. */
+const seedMakes = new Set(V.map(v => v.make));
+const deadNicks = Object.keys(NICK).filter(m => !seedMakes.has(m));
+check('every nicknamed make exists in the seed', !deadNicks.length, deadNicks.join(', '));
+
+const squash = (x) => String(x == null ? '' : x).toLowerCase().replace(/[^a-z0-9]+/g, '');
+const hay = (v) => [v.make, NICK[v.make] || '', v.model, (v.aliases || []).join(' '),
+  v.blanks.keyway, v.blanks.ilco, v.blanks.silca, v.blanks.jma, v.blanks.oem,
+  v.transponder.chip, v.transponder.system,
+  (v.remotes || []).map(r => `${r.fcc} ${r.pn}`).join(' ')].join(' ').toLowerCase();
+const finds = (q) => V.filter(v => {
+  const h = hay(v), hs = squash(h);
+  return q.toLowerCase().split(/\s+/).filter(Boolean)
+    .every(w => h.includes(w) || hs.includes(squash(w)));
+}).length;
+const VOCAB = ['chevy', 'bimmer', 'beemer', 'vw', 'benz', 'mopar', 'subie', 'caddy', 'olds',
+  'z71', 'denali', 'king ranch', 'tacoma trd', 'hellcat', 'panther', 'p71', 'vette', 'c8',
+  'rubicon', 'obs', 'squarebody', 'dually', 'e250', 'escalade esv', 'prius v', 'bronco raptor'];
+const silent = VOCAB.filter(q => finds(q) === 0);
+check('the words customers actually use all find something', !silent.length, silent.join(', '));
+
+/* ---- bench guidance ---- */
+/* The empty case is the dangerous one: a record with no note reads as "nothing
+   to know here", when what it usually meant was that nobody had written down
+   the ten-minute timed access or the PIN-by-VIN call that decides the quote. */
+const noNote = V.filter(v => v.body !== 'moto' && !String(v.programming.notes || '').trim());
+check('every car record says what to expect at the bench', !noNote.length,
+  `${noNote.length} with no note: ` + noNote.slice(0, 6).map(v => v.id).join(', '));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);

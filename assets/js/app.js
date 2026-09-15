@@ -82,9 +82,42 @@ function allMakes() {
    "TOY44H-PT". */
 const squash = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+/* Nobody walks up and says "Chevrolet". They say Chevy, and before this the
+   search came back empty for it across all 58 Chevrolet records. One map, read
+   into the haystack, rather than the same nickname copied onto every record of
+   that make -- the same reason Silca and JMA live only on the blank row. */
+const MAKE_NICKNAMES = {
+  'Chevrolet': 'chevy chev',
+  'Volkswagen': 'vw dub',
+  'Mercedes-Benz': 'merc benz mercedes',
+  'BMW': 'bimmer beemer',
+  'Mitsubishi': 'mitsu',
+  'Subaru': 'subie',
+  'Volvo': 'volvo',
+  'Cadillac': 'caddy',
+  'Lincoln': 'linc',
+  'Oldsmobile': 'olds',
+  'Pontiac': 'poncho',
+  'Land Rover': 'landrover rover',
+  'Harley-Davidson': 'harley hd',
+  'Porsche': 'porsche',
+  'Chrysler': 'chrysler mopar',
+  'Dodge': 'dodge mopar',
+  'Ram': 'ram dodge mopar',
+  'Plymouth': 'plymouth mopar',
+  'Jeep': 'jeep mopar',
+  'Toyota': 'toyota',
+  'Nissan': 'nissan datsun',
+  'Infiniti': 'infiniti nissan',
+  'Acura': 'acura honda',
+  'Lexus': 'lexus toyota',
+  'Genesis': 'genesis hyundai',
+};
+
 function vehicleHaystack(v) {
   return [
-    v.make, v.model, (v.aliases || []).join(' '), v.blanks && v.blanks.keyway, v.blanks && v.blanks.ilco,
+    v.make, MAKE_NICKNAMES[v.make] || '',
+    v.model, (v.aliases || []).join(' '), v.blanks && v.blanks.keyway, v.blanks && v.blanks.ilco,
     v.blanks && v.blanks.silca, v.blanks && v.blanks.jma, v.blanks && v.blanks.oem,
     v.transponder && v.transponder.chip, v.transponder && v.transponder.system,
     (v.remotes || []).map(r => `${r.fcc} ${r.pn}`).join(' ')
@@ -455,6 +488,10 @@ function vehOverviewHtml(v) {
     ${v.verified ? '' : `<div class="notice warn"><strong>Verify before you cut.</strong>
       This came with the app as starter data. Confirm the blank and chip against the vehicle or
       your machine's database, then mark it verified in Edit so it stops nagging you.</div>`}
+
+    ${(v.aliases || []).length ? `<div class="card muted tiny">Also called
+      ${v.aliases.map(a => `<span class="mono">${esc(a)}</span>`).join(', ')} &mdash; the badge or
+      platform name a customer is likely to give you on the phone.</div>` : ''}
 
     <h2>The basics</h2>
     ${basicsHtml(l)}

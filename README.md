@@ -337,7 +337,22 @@ Records are written in a compact form and expanded by `V()` at the top of
 the same shape the app has always read.
 
 Combined or alternate nameplates can also carry an `aka` array. Those aliases
-are searchable and editable without changing the display name of the record.
+are searchable and editable without changing the display name of the record, and
+the record shows them as "Also called …" so you can confirm you have the right
+car when the customer names a badge rather than a model.
+
+Aliases are for names that identify a **specific** record — Denali, Z71, Panther,
+Hellcat, Rubicon, OBS, Dually, ESV, P71. Make-wide nicknames are not repeated
+onto every record of that make; `MAKE_NICKNAMES` in `app.js` holds them in one
+place, which is what makes "chevy" find all 68 Chevrolet records and "bimmer"
+find the BMWs. Before that map existed, searching "chevy" returned nothing at
+all — nobody walks up and says Chevrolet.
+
+Every car record also carries a programming note, because the empty case was
+the dangerous one: a record with nothing in that field reads as "nothing to know
+here", when what it usually meant was that nobody had written down the ten
+minutes of Ford timed access or the PIN-by-VIN phone call that decides whether
+the job is worth quoting.
 
 Where a fob's FCC ID or OEM part number was not something the data could state
 confidently, the field is left blank rather than filled with a plausible guess — an empty field costs you a lookup, a wrong
