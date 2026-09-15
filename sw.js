@@ -1,11 +1,11 @@
 /* Cache-first for the shell so the app opens in a parking garage with no bars.
    Bump CACHE on every deploy or clients keep the old bundle. */
-const CACHE = 'keypro-v43';
+const CACHE = 'keypro-v44';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './assets/css/app.css',
   './assets/js/data.js', './assets/js/models.js', './assets/js/vin.js',
-  './assets/js/dealer.js', './assets/js/master.js', './assets/js/store.js', './assets/js/app.js',
+  './assets/js/fcc.js', './assets/js/dealer.js', './assets/js/master.js', './assets/js/store.js', './assets/js/app.js',
   './assets/icons/icon-32.png', './assets/icons/icon-96.png', './assets/icons/icon-180.png',
   './assets/icons/icon-192.png', './assets/icons/icon-512.png',
   './assets/icons/icon-maskable-192.png', './assets/icons/icon-maskable-512.png',
