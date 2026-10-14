@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.10.14.1';
+const SEED_VERSION = '2026.10.14.2';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -6011,6 +6011,34 @@ const SEED_BLANKS = [
   { id:'warded-bit', cat:'Residential', keyway:'Warded / bit / skeleton', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Other', spaces:'', depths:'', makes:['Antique','Mortise','Furniture'],
     notes:'Interior doors and furniture in pre-war houses. No pins — a ward plate the key has to clear, which is why a skeleton set opens most of them. Sold as blanks you file to fit rather than cut on a machine. Low security by design; say so before the customer pays for a rekey that buys nothing.' },
+
+  /* ---- bit keys: covered by application in five rows, never as a family ---- */
+  { id:'bit-sizing', cat:'Residential', keyway:'Bit key blanks — sizing and selection', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Bit — filed, not machine cut', spaces:'', depths:'', makes:['Bit key','Warded','Antique','Mortise'],
+    notes:'The row to read before quoting any bit job. You do not cut these to a code, you select a blank by its dimensions and file the bit to clear the wards. Four measurements decide the blank: shank diameter, the distance from the shank shoulder to the bit, bit height and bit thickness. Get the shank wrong and it will not enter; get the shoulder distance wrong and the bit lands in the wrong plane and turns against nothing. Measure the old key if you have one, or measure the keyhole depth and the door thickness if you do not. A bit blank costs almost nothing, so take three sizes to the job rather than one.' },
+  { id:'bit-barrel-pipe', cat:'Residential', keyway:'Barrel and pipe bit key (hollow shank)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Bit on a hollow shank', spaces:'', depths:'', makes:['Antique','Furniture','Import','Mortise'],
+    notes:'Same bit, different shank: hollow instead of solid, so it slides over a post inside the lock rather than bottoming on a shoulder. Common on European furniture, French and British mortise locks and a lot of clock cases. The post sets the bore, so measure the inside diameter, not the outside — a solid-shank blank will not go on a post lock and a pipe blank rattles in a solid one. This is the distinction the utility barrel-lock record is NOT about; that one is a spring latch on a meter.' },
+  { id:'bit-clock-winding', cat:'Residential', keyway:'Clock, music box and winding key', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Not a lock key — a square socket', spaces:'', depths:'', makes:['Clock','Music box','Antique'],
+    notes:'Worth separating because customers call these keys and they are not lock keys at all. A winding key is a socket that fits the square arbor on a movement, sized by a numbered taper series, and nothing about it is cut or filed. The clock CASE door is usually a real bit or pipe lock and that part is yours. Take the winding question to a clock repairer — forcing an arbor is expensive in a way a lock never is.' },
+  { id:'bit-gate-ornamental', cat:'Commercial', keyway:'Gate, garden and ornamental bit lock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Bit — often oversized', spaces:'', depths:'', makes:['Gate','Ornamental','Church','Institutional'],
+    notes:'Big cast bit locks on garden gates, churchyards, courtyard doors and old institutional buildings. The bits run much larger than furniture sizes and the blanks come from the antique and reproduction trade rather than the usual bins. These are decorative and weatherbeaten rather than secure, so if the customer wants actual security the answer is a modern lock alongside, not a better bit key.' },
+
+  /* ---- flat steel: appeared only as a cut qualifier on ten rows, never as a family ---- */
+  { id:'flat-steel-family', cat:'Utility', keyway:'Flat steel key blanks — the family', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat steel', spaces:'', depths:'', makes:['Flat steel','Cabinet','Padlock','Locker'],
+    notes:'A flat key has no milled groove: it is a stamped steel blade where the cuts are notches in the edge or edges and the blade thickness does the work a keyway normally does. That changes how you hold it — a flat clamp or a flat-key jaw, not a standard cylinder-key clamp, and a cutter that will not wander on sheet steel. Enormous range: cabinet locks, warded padlocks, lockers, farm implements, older vending and a good deal of pre-war hardware. Most carry a stamped code, which makes a code cut faster and more accurate than trying to duplicate a worn one.' },
+  { id:'flat-warded-padlock', cat:'Utility', keyway:'Warded padlock flat key (Master / Yale / Corbin)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat steel — warded', spaces:'', depths:'', makes:['Master Lock','Yale','Corbin','Eagle'],
+    notes:'The flat steel key with a couple of notches that came with every barn and shed padlock for fifty years. Warded, not pinned: the notches clear wards and a small number of patterns covers an enormous number of locks, which is why one old key often opens a neighbour\'s lock too. Blanks are still made. Say the security part out loud — a customer paying to key these alike should know they were never secure, and that is useful information rather than a lost sale.' },
+  { id:'flat-double-bitted', cat:'Utility', keyway:'Double-bitted flat key', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat — cut on both edges', spaces:'', depths:'', makes:['Safe deposit','Cabinet','Industrial'],
+    notes:'Cuts on both edges of a flat blade, usually symmetric so the key works either way up. Turns up on safe deposit noses, some cabinet and industrial locks, and the key-changeable safe locks that have their own record. Both edges have to be cut and indexed to each other, so a machine that only references one edge will produce a key that enters and will not turn. Check which edge the machine is reading before you cut.' },
+  { id:'flat-prewar-auto', cat:'Automotive', keyway:'Pre-war and early automotive flat key', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat steel', spaces:'', depths:'', makes:['Briggs & Stratton','Hudson','Yale','Antique'],
+    notes:'Before the edge-cut era, cars used flat steel keys, often with a code stamped on the lock face, the glovebox or the ignition bezel. That code is the whole job: read it and cut to it rather than trying to copy a key that has been worn round for eighty years. Expect a two-key car — ignition and door or trunk on different codes — and expect the locks themselves to be worn enough that a correctly cut key still needs coaxing. Classic-car work is a real trade in this county; the blanks come from the antique and restoration suppliers, not the usual wholesaler.' },
   { id:'privacy-bed-bath', cat:'Residential', keyway:'Privacy / bed-bath (no key)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Other', spaces:'', depths:'', makes:['Kwikset','Schlage','Weiser','Defiant'],
     notes:'There is no key. The emergency release is a pin, a flat blade or a slot in the outside knob, and the whole call is usually a child or a confused lock, not a lockout. Two minutes and no parts. Charge the trip, not a rekey.' },
