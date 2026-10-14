@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,200 blanks across 500-odd makes is
+safe & vault, import & uncommon — because 1,208 blanks across 520-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 465 confirmed keyways, all editable: automotive,
+for the blank directory — 473 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -365,6 +365,18 @@ budget was set when the directory was a third of this size and had started
 hiding ordinary searches — "toyota" matched 14 rows and showed a bare header.
 `tests/data.test.js` now pins it from both ends: twelve everyday searches have
 to open, and six broad ones have to stay shut.
+
+**Bit keys and flat steel** were the same story as dimple, one step further on:
+present by application — warded interior doors, antique safes, British levers,
+luggage, boat hatches — but never as a family, so nothing explained how you pick
+a bit blank or hold a flat key. Flat appeared only as a cut qualifier on ten rows
+and had no row of its own at all. Both now have one, including the four
+measurements that decide a bit blank (shank diameter, shoulder distance, bit
+height, bit thickness, since you file these rather than cut to a code), the
+hollow-shank pipe keys that are a different blank from a solid one, and a
+pre-war automotive flat-key row for the classic-car work. The clock row exists to
+say the thing customers get wrong: a winding key is a socket on an arbor, not a
+lock key, and the case door is the only part of that job that is yours.
 
 **Dimple** was in the data from early on but spread across four categories with
 nothing explaining the method, so searching for it returned fragments. One

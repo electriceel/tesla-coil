@@ -374,5 +374,43 @@ check('no dimple row claims an Ilco number',
   B.filter(b => /dimple/i.test(b.cut || '')).every(b => !b.ilco || b.ilco === '—'),
   B.filter(b => /dimple/i.test(b.cut || '') && b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
 
+/* ---- bit and flat steel ---- */
+/* Both were in the directory by application -- warded interior doors, antique
+   safes, British levers, luggage, boat hatches -- but neither existed as a
+   family, so there was nowhere that explained how you pick a bit blank or hold
+   a flat key. Flat appeared only as a cut qualifier on ten rows and had no row
+   of its own at all. */
+const bitFamily = blankFinds('bit key');
+check('one search gathers the bit key family', bitFamily.length >= 6, `${bitFamily.length} rows`);
+check('the bit family includes the sizing row and the warded row',
+  ['bit-sizing', 'warded-bit'].every(id => bitFamily.some(b => b.id === id)),
+  bitFamily.map(b => b.id).join(', '));
+const flatFamily = blankFinds('flat');
+check('one search gathers the flat steel family', flatFamily.length >= 8, `${flatFamily.length} rows`);
+check('the flat family includes its own family row',
+  flatFamily.some(b => b.id === 'flat-steel-family'), flatFamily.map(b => b.id).join(', '));
+
+/* A bit key is filed to dimensions, so the sizing row is useless unless it
+   names all four. This is the row someone reads before driving out. */
+const sizing = B.find(b => b.id === 'bit-sizing');
+check('the bit sizing row names every measurement you need',
+  sizing && ['shank diameter', 'shoulder', 'bit height', 'bit thickness']
+    .every(t => new RegExp(t, 'i').test(sizing.notes || '')),
+  sizing ? sizing.notes.slice(0, 80) : 'row missing');
+
+/* Customers call a clock winding key a key. It is a socket on an arbor and
+   there is no lock in it, and the row has to say so or it misleads. */
+const clock = B.find(b => b.id === 'bit-clock-winding');
+check('the clock row says a winding key is not a lock key',
+  clock && /not a lock key|not lock keys/i.test(clock.notes || ''),
+  clock ? clock.notes.slice(0, 80) : 'row missing');
+
+/* Same rule as the dimple rows: Ilco does not number most bit and flat blanks
+   by a keyway, and a number here would be a parts order rather than a lookup. */
+const bitFlatRows = B.filter(b => /^(bit|flat)-/.test(b.id));
+check('no bit or flat row claims an Ilco number',
+  bitFlatRows.every(b => !b.ilco || b.ilco === '—'),
+  bitFlatRows.filter(b => b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
