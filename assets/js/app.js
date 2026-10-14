@@ -872,7 +872,11 @@ const KEY_STOPWORDS = new Set([
      car" put a car-wash coin box on a Lincoln, and "Golf cart ignition" put a
      hospital crash cart on a golf cart. Neither word has ever been part of a
      keyway name; both turn up in descriptions constantly. */
-  'CAR', 'CARS', 'CART', 'CARTS', 'BAY', 'COIN'
+  'CAR', 'CARS', 'CART', 'CARTS', 'BAY', 'COIN',
+  /* In a key blank directory, "blank" is the one word every row has in common.
+     A vintage exotic whose keyway reads "usually a European blank" matched a
+     row about sourcing dimple blanks on it. The hedges beside it are prose too. */
+  'BLANK', 'BLANKS', 'VARIES', 'USUALLY', 'OFTEN', 'SOMETIMES'
 ]);
 /* A single character is never evidence that two keyways are related. The E in
    "Schlage 101-E-LFIC" matched the E in Can-Am's "D.E.S.S." and put a
@@ -967,10 +971,16 @@ function RENDER_blanks() {
      collapsed. Blank-number rows do not spend that budget: 41 "Lockwood
      A1015xx" rows sit behind the one Lockwood keyway record, and counting them
      pushed a brand search past the limit so it rendered nothing but collapsed
-     headers -- the answer was there and invisible. The absolute cap still keeps
-     a query that matches half the catalog from opening all of it. */
+     headers -- the answer was there and invisible.
+
+     The budget was 12, which was sized for a directory a third of this one and
+     turned out to hide ordinary searches: "toyota" matches 14 rows, "dimple"
+     17, "safe" 20, and every one of them came back as a bare header. 40 keeps
+     those open and still closes the queries that match most of the file --
+     "edge" has 347 confirmed hits, "key" 285, a bare letter 465. The absolute
+     cap keeps a 900-row brand search from opening all of it. */
   const confirmedHits = hits.filter(b => !b.kwUnknown).length;
-  const autoOpen = blankUI.q.trim().length > 0 && confirmedHits <= 12 && hits.length <= 120;
+  const autoOpen = blankUI.q.trim().length > 0 && confirmedHits <= 40 && hits.length <= 150;
 
   $('#blankDir').innerHTML = groups.size ? Array.from(groups.entries()).map(([name, items]) => {
     const open = autoOpen || blankUI.open[name];

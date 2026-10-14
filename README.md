@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,189 blanks across 490-odd makes is
+safe & vault, import & uncommon — because 1,200 blanks across 500-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 454 confirmed keyways, all editable: automotive,
+for the blank directory — 465 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -358,6 +358,23 @@ The directory search matches your words independently, in any order, so "horse
 trailer" finds the row called "Horse and livestock trailer" and "scissor lift"
 finds "Scissor and boom lift". It used to match the whole query as one literal
 substring, which meant guessing a row's exact wording.
+
+A search that matches a readable number of rows opens them; one that matches
+most of the file stays collapsed so the page does not render 1,200 rows. That
+budget was set when the directory was a third of this size and had started
+hiding ordinary searches — "toyota" matched 14 rows and showed a bare header.
+`tests/data.test.js` now pins it from both ends: twelve everyday searches have
+to open, and six broad ones have to stay shut.
+
+**Dimple** was in the data from early on but spread across four categories with
+nothing explaining the method, so searching for it returned fragments. One
+search now gathers the family: Mul-T-Lock and the Kaba/Keso line that were
+already there, plus ABUS, the Italian and Turkish armoured-door systems, EVVA,
+the German, Austrian, Czech, Polish and French makers, dimple padlocks, and two
+rows that are the practical part — what machine, clamp and cutter the job needs,
+and how you identify and order a blank Ilco does not make. Several of those
+manufacturers sell a conventional pin line beside the dimple one, so the rows
+say to read the key in hand rather than the badge on the door.
 
 Where a fob's FCC ID or OEM part number was not something the data could state
 confidently, the field is left blank rather than filled with a plausible guess — an empty field costs you a lookup, a wrong

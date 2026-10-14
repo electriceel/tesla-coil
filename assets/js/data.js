@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.10.14';
+const SEED_VERSION = '2026.10.14.1';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -6333,6 +6333,41 @@ const SEED_BLANKS = [
   { id:'dimple-euro', cat:'Import & uncommon', keyway:'Dimple (Kaba / Keso / DOM / Wilka)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Dimple — drilled, not milled', spaces:'', depths:'', makes:['Kaba','Keso','DOM','Wilka','Kaba Gemini'],
     notes:'RESTRICTED on most. Pins read dimples drilled into the flats of the blade rather than cuts on the edge, often from two or three directions at once — Keso reads four rows. Cutting needs a dimple machine, not a standard duplicator. Mul-T-Lock is the dimple system most US shops already know; these are the German and Swiss equivalents.' },
+
+  /* ---- dimple, which was scattered across four categories and never explained ---- */
+  { id:'dimple-method', cat:'Import & uncommon', keyway:'Dimple keys — method and tooling', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple — drilled on the flats', spaces:'', depths:'', makes:['Dimple','Silca','Keyline','Triax'],
+    notes:'Read this before quoting any of the dimple rows. A dimple key is drilled into the flat faces of the blade, not milled along the edge, so depth is measured as a hole bottom and position is measured in two axes instead of one. A standard duplicator cannot hold it or cut it: you need a dimple-capable machine with a dimple clamp and a ball-end cutter, and most shops that own one bought it for Mul-T-Lock. Many systems read from two, three or four faces, so the key has to be re-clamped between rows and a machine that cannot index the jaw will not finish the key. Decoding is by gauge or by a system-specific decoder rather than by eye.' },
+  { id:'dimple-sourcing', cat:'Import & uncommon', keyway:'Dimple blank identification and sourcing', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple', spaces:'', depths:'', makes:['Dimple','Import'],
+    notes:'Ilco largely does not make these, which is why the Ilco column is empty on every dimple row here rather than guessed at. Silca and Keyline do carry a European dimple range, and the profile card in the system catalogue is how you identify one — the bow stamp plus the blade cross-section, not the brand on the door. Most of these systems are patented and card-controlled, so the realistic order is the manufacturer distributor against the end user on file, with a lead time. Quote the lead time, not just the key.' },
+  { id:'dimple-abus', cat:'Import & uncommon', keyway:'ABUS dimple (Bravus / XP)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple — reversible', spaces:'', depths:'', makes:['ABUS'],
+    notes:'ABUS sells both kinds and the badge will not tell you which: Bravus and the XP line are reversible dimple, while the EC range is a conventional pin-tumbler euro cylinder. Identify the key in hand before ordering. The higher Bravus grades are card-controlled. ABUS is the dimple maker most likely to turn up on a US job because it arrives on padlocks and bike locks as well as doors.' },
+  { id:'dimple-evva', cat:'Import & uncommon', keyway:'EVVA dimple (DPI / ICS / 4KS)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple or slider', spaces:'', depths:'', makes:['EVVA'],
+    notes:'RESTRICTED. EVVA runs several families that are not interchangeable — dimple on some, a sliding-element system on others, and MCS is magnetic with no cuts at all and has its own record. Austrian, card-controlled, dealer-ordered. Work out which family the key belongs to before promising anything, because the machine and the blank differ for each.' },
+  { id:'dimple-italian', cat:'Import & uncommon', keyway:'Italian dimple (CISA / Mottura / Iseo)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple on the high-security lines', spaces:'', depths:'', makes:['CISA','Mottura','Iseo','Securemme'],
+    notes:'All three makers sell a conventional pin line alongside a dimple one, so read the key rather than the brand. These come in on armoured residential doors — the Italian pattern is a single central cylinder driving a bolt array top, bottom and sides, so the cylinder is doing the whole door and a seized one leaves the customer locked out of everything at once. Replacement cylinders are usually easier to source than cut blanks.' },
+  { id:'dimple-armored-door', cat:'Import & uncommon', keyway:'Armoured door cylinder (Dierre / Securemme)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple or euro profile', spaces:'', depths:'', makes:['Dierre','Securemme','Gardesa','Oikos'],
+    notes:'The door is the product and the cylinder is a module in it. On an imported armoured door the plate, the escutcheon and the cylinder length are all proprietary, so measure before you order and expect the cylinder to be a special length. Defeating the cylinder gets you nothing if the bolt array is still thrown — these doors are designed so the cylinder is the cheap part.' },
+  { id:'dimple-turkish', cat:'Import & uncommon', keyway:'Turkish steel door (Kale Kilit)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple on the high-security lines', spaces:'', depths:'', makes:['Kale Kilit','Kale'],
+    notes:'Kale is the volume name on imported Turkish steel security doors and it turns up wherever those doors were sold. Multipoint, central dimple cylinder on the better grades, conventional pin on the cheaper ones. Blanks come through the importer rather than any US wholesaler, so the honest answer on a lost-key job is often a cylinder swap to something you can actually service.' },
+  { id:'dimple-german-austrian', cat:'Import & uncommon', keyway:'German and Austrian dimple (Winkhaus / GEGE / DOM)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple', spaces:'', depths:'', makes:['Winkhaus','GEGE','DOM','Kaba'],
+    notes:'RESTRICTED on the current lines. These sit alongside Kaba and Keso in the same market and arrive the same way — on a euro cylinder in an imported door or window unit. Winkhaus also makes the multipoint gearbox behind many of those doors, so a Winkhaus key and a Winkhaus gearbox on the same door are two separate parts and two separate suppliers.' },
+  { id:'dimple-eastern-europe', cat:'Import & uncommon', keyway:'Czech and Polish dimple (Tokoz / Gerda / Lob)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple', spaces:'', depths:'', makes:['Tokoz','Gerda','Lob','Kostka'],
+    notes:'Uncommon in the US and worth recognising rather than stocking. Dimple euro cylinders and some proprietary multipoint sets. Sourcing is an import order measured in weeks, so on a lockout the practical route is a euro cylinder swap to a profile you can get locally — the body dimension is standardised even when the key is not.' },
+  { id:'dimple-french', cat:'Import & uncommon', keyway:'French dimple and radial (Vachette / Bricard)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple or radial', spaces:'', depths:'', makes:['Vachette','Bricard','Fichet','JPM'],
+    notes:'France runs its own standards: radial and bar keys as well as dimple, and door hardware that is not euro profile. Fichet has its own record. Vachette and Bricard turn up on imported apartment hardware. A radial key is not a dimple key and will not clamp in a dimple machine, so identify which you have before you book the job.' },
+  { id:'dimple-padlock', cat:'Utility', keyway:'Dimple padlock (ABUS Granit / Mul-T-Lock / Kaba)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Dimple', spaces:'', depths:'', makes:['ABUS','Mul-T-Lock','Kaba','Granit'],
+    notes:'A high-security padlock is usually the door cylinder in a shackle, so a dimple padlock needs the same machine and the same dealer route as the door it matches. Worth saying out loud on a site visit: a customer who put dimple padlocks on a gate has bought a key they cannot get copied locally, which is either exactly what they wanted or a surprise, and better found out now than when they lose one.' },
   { id:'magnetic-key', cat:'Import & uncommon', keyway:'Magnetic (EVVA MCS)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'No cuts at all', spaces:'', depths:'', makes:['EVVA'],
     notes:'RESTRICTED. There are no cuts and no pins: rotating magnetic rotors in the key align rotors in the cylinder by polarity. A blank key and a cut key look identical. Nothing mechanical to read, nothing to impression, and factory-only production. If you meet one, the answer is the system dealer.' },
