@@ -486,5 +486,45 @@ const crossNoise = B.filter(b => /cross-reference/i.test(b.notes || ''));
 check('the bulk notes do not bury the word cross', crossNoise.length <= 5,
   `${crossNoise.length} rows still say cross-reference`);
 
+/* ---- safe deposit ---- */
+/* The directory said RESTRICTED and stopped, which is right for a box still in
+   service and useless for the ex-bank nest someone buys at an auction. Both now
+   exist, and the whole value is that they stay told apart: a renter key is never
+   yours, a decommissioned box always is. */
+const sdFamily = blankFinds('safe deposit');
+check('one search gathers the safe deposit family', sdFamily.length >= 5, `${sdFamily.length} rows`);
+check('the safe deposit family covers renter, guard, ex-bank and private vault',
+  ['safe-deposit', 'sd-renter-key', 'sd-guard-key', 'sd-exbank', 'sd-private-vault']
+    .every(id => sdFamily.some(b => b.id === id)),
+  sdFamily.map(b => b.id).join(', '));
+
+/* The safety-critical pair. An edit that softened either of these would be the
+   dangerous regression, so both directions are asserted: the in-service rows
+   must keep saying RESTRICTED, and the out-of-service one must NOT, or it reads
+   as refused and the legitimate job gets turned away. */
+const IN_SERVICE = ['safe-deposit', 'sd-renter-key', 'sd-guard-key', 'sd-private-vault'];
+const unmarked = IN_SERVICE.filter(id => {
+  const row = B.find(b => b.id === id);
+  return !row || !/RESTRICTED/.test(row.notes || '');
+});
+check('every in-service safe deposit row still says RESTRICTED', !unmarked.length, unmarked.join(', '));
+const exbank = B.find(b => b.id === 'sd-exbank');
+check('the out-of-service row is not marked restricted',
+  exbank && !/RESTRICTED/.test(exbank.notes || '') && /IS yours/i.test(exbank.notes || ''),
+  exbank ? exbank.notes.slice(0, 70) : 'row missing');
+
+/* A bank box is a refusal and has to stay one, in the group that means it. */
+const sdSafe = S.find(r => r.id === 'deposit');
+check('the bank safe deposit box stays in the refusal group',
+  sdSafe && sdSafe.group === 'no' && sdSafe.stop === true && /the bank/i.test(sdSafe.auth || ''),
+  sdSafe ? `group=${sdSafe.group} stop=${sdSafe.stop}` : 'row missing');
+/* And its legitimate counterpart must demand proof of ownership rather than
+   inheriting the refusal or waving the job through. */
+const exSafe = S.find(r => r.id === 'exbank');
+check('the ex-bank safe row asks for proof of ownership',
+  exSafe && !exSafe.stop && /bill of sale|receipt|estate inventory/i.test(exSafe.auth || '')
+    && /in-service bank box/i.test(exSafe.auth || ''),
+  exSafe ? exSafe.auth.slice(0, 70) : 'row missing');
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);

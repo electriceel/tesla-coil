@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,215 blanks across 530-odd makes is
+safe & vault, import & uncommon — because 1,219 blanks across 530-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 480 confirmed keyways, all editable: automotive,
+for the blank directory — 484 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -365,6 +365,17 @@ budget was set when the directory was a third of this size and had started
 hiding ordinary searches — "toyota" matched 14 rows and showed a bare header.
 `tests/data.test.js` now pins it from both ends: twelve everyday searches have
 to open, and six broad ones have to stay shut.
+
+**Safe deposit** was a single RESTRICTED row and a refusal in the safe section,
+which is correct for a box still in service and no help at all for the ex-bank
+nest somebody buys at an auction and brings to the shop. Both now exist and the
+value is that they stay told apart: renter, guard and private-vault rows keep
+saying RESTRICTED and keep pointing at the institution, while the
+out-of-service row says plainly that it is yours and asks for a bill of sale.
+The renter row also answers "can you cut me a spare" with the reason rather than
+just a no — the bank keeps no copy of either renter key by design, so there is
+no code on file anywhere to work from. Tests assert both directions, because
+softening the refusal and over-restricting the legitimate job are both wrong.
 
 **Cruciform** had one row naming the cross key; it now has a method row (count
 the pin *rows*, not the blades — a four-bladed key often has a plain guide wing
