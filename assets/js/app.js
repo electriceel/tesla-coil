@@ -867,7 +867,12 @@ const KEY_STOPWORDS = new Set([
      matched the same car on the word European. */
   'BRITISH', 'EUROPEAN', 'GERMAN', 'ITALIAN', 'FRENCH', 'JAPANESE', 'KOREAN', 'CHINESE',
   'AMERICAN', 'SWEDISH', 'SWISS', 'AUSTRIAN', 'INDIAN', 'ISRAELI', 'AUSTRALIAN',
-  'SCANDINAVIAN', 'IMPORT', 'IMPORTED', 'DOMESTIC', 'FOREIGN', 'MARKET'
+  'SCANDINAVIAN', 'IMPORT', 'IMPORTED', 'DOMESTIC', 'FOREIGN', 'MARKET',
+  /* Prose, not designations. A vehicle keyway that reads "HU101 on the 2017
+     car" put a car-wash coin box on a Lincoln, and "Golf cart ignition" put a
+     hospital crash cart on a golf cart. Neither word has ever been part of a
+     keyway name; both turn up in descriptions constantly. */
+  'CAR', 'CARS', 'CART', 'CARTS', 'BAY', 'COIN'
 ]);
 /* A single character is never evidence that two keyways are related. The E in
    "Schlage 101-E-LFIC" matched the E in Can-Am's "D.E.S.S." and put a
@@ -899,9 +904,19 @@ function vehiclesForBlank(b) {
 function matchBlanks() {
   const q = blankUI.q.trim().toLowerCase();
   if (!q) return Store.blanks();
-  return Store.blanks().filter(b =>
-    [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.cat, b.notes]
-      .concat(b.makes || []).join(' ').toLowerCase().includes(q));
+  /* Terms matched independently, in any order, the way the vehicle lookup has
+     always worked. As one literal substring this box missed "horse trailer" on
+     a row called "Horse and livestock trailer" and "scissor lift" on "Scissor
+     and boom lift" -- you had to guess the row's exact wording, which is the
+     opposite of a search. squash() keeps "toy51" finding "TOY51" and
+     "hu100r" finding "HU100R-PT". */
+  const terms = q.split(/\s+/).filter(Boolean);
+  return Store.blanks().filter(b => {
+    const hay = [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.cat, b.notes]
+      .concat(b.makes || []).join(' ').toLowerCase();
+    const flat = squash(hay);
+    return terms.every(t => hay.includes(t) || flat.includes(squash(t)));
+  });
 }
 
 /* Categories sort in the order you meet them on a working day, not A-Z. */

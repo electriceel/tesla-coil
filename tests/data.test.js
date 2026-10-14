@@ -308,5 +308,34 @@ const noNote = V.filter(v => v.body !== 'moto' && !String(v.programming.notes ||
 check('every car record says what to expect at the bench', !noNote.length,
   `${noNote.length} with no note: ` + noNote.slice(0, 6).map(v => v.id).join(', '));
 
+/* ---- the blank directory has to be searchable the way you talk ---- */
+/* This box used to match the whole query as one literal substring, so "horse
+   trailer" found nothing on a row called "Horse and livestock trailer" and you
+   had to guess the row's exact wording. Terms are matched independently now,
+   like the vehicle lookup always did. Asserted against the real haystack
+   fields so a change to either the rows or the matcher has to keep these
+   working. */
+const blankHay = (b) => [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec,
+  b.cut, b.cat, b.notes].concat(b.makes || []).join(' ').toLowerCase();
+const flatten = (x) => String(x == null ? '' : x).toLowerCase().replace(/[^a-z0-9]+/g, '');
+const blankFinds = (q) => B.filter(b => {
+  const h = blankHay(b), f = flatten(h);
+  return q.toLowerCase().split(/\s+/).filter(Boolean)
+    .every(t => h.includes(t) || f.includes(flatten(t)));
+});
+const BLANK_QUERIES = ['horse trailer', 'scissor lift', 'well pump', 'cluster box',
+  'vineyard', 'marina', 'roof hatch', 'royal enfield', 'hy15', 'toy51',
+  'medical cart', 'car wash', 'ranch gate', 'solar inverter', 'parcel locker'];
+const blankSilent = BLANK_QUERIES.filter(q => blankFinds(q).length === 0);
+check('the blank directory answers multi-word searches', !blankSilent.length,
+  blankSilent.join(', '));
+
+/* app.js must actually do it that way -- the data passing this test while the
+   shipped matcher stayed substring-only is exactly how the last one hid. */
+check('the blanks matcher splits the query into terms',
+  /const terms = q\.split\(\/\\s\+\/\)/.test(appSrc)
+  && /terms\.every\(/.test(appSrc.slice(appSrc.indexOf('function matchBlanks'),
+       appSrc.indexOf('function matchBlanks') + 900)));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
