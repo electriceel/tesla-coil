@@ -456,5 +456,35 @@ B.forEach(b => {
 check('no row contradicts its own notes about the cut', !contradictions.length,
   contradictions.join('\n     '));
 
+/* ---- cruciform ---- */
+/* One row named the cross key and said the tooling exists. Nothing said how you
+   identify one, hold it, or decode it, which is the part that decides the job. */
+const cruci = blankFinds('cruciform');
+check('one search gathers the cruciform family', cruci.length >= 5, `${cruci.length} rows`);
+check('the cruciform family includes the method row and the original',
+  ['cruciform', 'cruciform-method', 'cruciform-security', 'cruciform-padlock-bike', 'cruciform-auto']
+    .every(id => cruci.some(b => b.id === id)),
+  cruci.map(b => b.id).join(', '));
+const cm = B.find(b => b.id === 'cruciform-method');
+check('the cruciform method row says to count pin rows, not blades',
+  cm && /pin ROWS, not the blades/i.test(cm.notes || '') && /guide/i.test(cm.notes || ''),
+  cm ? cm.notes.slice(0, 80) : 'row missing');
+check('no cruciform row claims an Ilco number',
+  B.filter(b => /^cruciform/.test(b.id)).every(b => !b.ilco || b.ilco === '—'),
+  B.filter(b => /^cruciform/.test(b.id) && b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
+
+/* "Cross key" is what a customer calls a cruciform, and it used to return 657
+   rows -- the word "cross" was buried in a cross-reference note on 637 of them,
+   so the term was useless. The notes say catalogue and equivalence now. If
+   "cross-reference" creeps back into the bulk notes this goes straight back to
+   unusable, so the search itself is the assertion. */
+const crossKey = blankFinds('cross key');
+check('"cross key" finds the cruciform rows and not the whole catalogue',
+  crossKey.length <= 40 && ['cruciform', 'cruciform-method'].every(id => crossKey.some(b => b.id === id)),
+  `${crossKey.length} rows: ` + crossKey.slice(0, 8).map(b => b.id).join(', '));
+const crossNoise = B.filter(b => /cross-reference/i.test(b.notes || ''));
+check('the bulk notes do not bury the word cross', crossNoise.length <= 5,
+  `${crossNoise.length} rows still say cross-reference`);
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);

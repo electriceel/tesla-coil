@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,211 blanks across 525-odd makes is
+safe & vault, import & uncommon — because 1,215 blanks across 530-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 476 confirmed keyways, all editable: automotive,
+for the blank directory — 480 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -365,6 +365,17 @@ budget was set when the directory was a third of this size and had started
 hiding ordinary searches — "toyota" matched 14 rows and showed a bare header.
 `tests/data.test.js` now pins it from both ends: twelve everyday searches have
 to open, and six broad ones have to stay shut.
+
+**Cruciform** had one row naming the cross key; it now has a method row (count
+the pin *rows*, not the blades — a four-bladed key often has a plain guide wing
+and still reads only three), a padlock-and-bike-lock row for how US shops
+actually meet one, an automotive row for the pre-1990s Fiat/Lada/Zastava era, and
+a row that answers "can you cut another" and "is this a good lock" differently,
+because the honest answers are yes and no. Adding it also exposed that **"cross
+key"**, the term a customer actually uses, returned 657 rows: the word *cross*
+was buried inside a "cross-reference" note on 637 of them. That wording was mine
+and said no more than "equivalent", so it is gone and the search works — a test
+holds it there.
 
 **Tubular** had the Ace pattern and its variants but nothing on how you work one,
 so it gained a method row — pin count, shank diameter, post diameter, and whether
