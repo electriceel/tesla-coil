@@ -876,7 +876,17 @@ const KEY_STOPWORDS = new Set([
   /* In a key blank directory, "blank" is the one word every row has in common.
      A vintage exotic whose keyway reads "usually a European blank" matched a
      row about sourcing dimple blanks on it. The hedges beside it are prose too. */
-  'BLANK', 'BLANKS', 'VARIES', 'USUALLY', 'OFTEN', 'SOMETIMES'
+  'BLANK', 'BLANKS', 'VARIES', 'USUALLY', 'OFTEN', 'SOMETIMES',
+  /* Negation is not evidence. Four vehicle keyways read "not recorded" or
+     "not Ford H-series", and they matched a row titled "...and are not" on the
+     word NOT alone. The rest are the pronouns and copulas that only appear when
+     a field has been written as a sentence instead of a label. */
+  'NOT', 'WHAT', 'THEY', 'ARE', 'THAT', 'THIS', 'IS', 'IT', 'AN', 'AS',
+  /* ACCESS describes what a lock is for, never which keyway it is. It collided
+     once between a gate operator and a reefer panel and was fixed by rewording
+     the row; it came back and matched a reefer against a quick-access safe. The
+     second time is the signal to fix it here instead of renaming another row. */
+  'ACCESS', 'QUICK', 'PANEL'
 ]);
 /* A single character is never evidence that two keyways are related. The E in
    "Schlage 101-E-LFIC" matched the E in Can-Am's "D.E.S.S." and put a

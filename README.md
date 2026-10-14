@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,219 blanks across 530-odd makes is
+safe & vault, import & uncommon — because 1,224 blanks across 540-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 484 confirmed keyways, all editable: automotive,
+for the blank directory — 489 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -365,6 +365,15 @@ budget was set when the directory was a third of this size and had started
 hiding ordinary searches — "toyota" matched 14 rows and showed a bare header.
 `tests/data.test.js` now pins it from both ends: twelve everyday searches have
 to open, and six broad ones have to stay shut.
+
+**Magnetic** had the EVVA MCS row and nothing else, which missed the two that
+actually cost time. A key can carry a magnet *alongside* ordinary cuts, so a
+duplicate comes out dimensionally perfect, enters cleanly and does nothing —
+that reads exactly like a bad cut and is not one. And the childproof cabinet
+latch whose "key" is a magnet puck is an ordinary residential call that was
+nowhere in the directory. The method row also separates three words people use
+interchangeably on the phone: a magnet, a transponder and a radio fob are three
+different jobs.
 
 **Safe deposit** was a single RESTRICTED row and a refusal in the safe section,
 which is correct for a box still in service and no help at all for the ex-bank

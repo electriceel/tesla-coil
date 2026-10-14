@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.10.14.5';
+const SEED_VERSION = '2026.10.14.6';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -6438,6 +6438,23 @@ const SEED_BLANKS = [
   { id:'magnetic-key', cat:'Import & uncommon', keyway:'Magnetic (EVVA MCS)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'No cuts at all', spaces:'', depths:'', makes:['EVVA'],
     notes:'RESTRICTED. There are no cuts and no pins: rotating magnetic rotors in the key align rotors in the cylinder by polarity. A blank key and a cut key look identical. Nothing mechanical to read, nothing to impression, and factory-only production. If you meet one, the answer is the system dealer.' },
+
+  /* ---- magnetic: one row covered EVVA MCS; the rest of the family was absent ---- */
+  { id:'magnetic-method', cat:'Import & uncommon', keyway:'Magnetic keys — identification and limits', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'No cuts to read', spaces:'', depths:'', makes:['Magnetic','EVVA','Import'],
+    notes:'Read this before quoting anything magnetic, because the usual tools do nothing. There is no profile to gauge, no depth to measure, nothing to impression and nothing to decode: the code is polarity and position in a magnet or a set of rotors, and a blank and a working key are indistinguishable by eye or by caliper. That means no machine in your van makes one, and the honest route is always the manufacturer or its dealer against the end user. Also worth separating in your own head: a magnetic key is not a transponder and not an RFID fob. A transponder is a chip that answers a radio challenge, a fob is a radio; a magnetic key is a passive magnet aligning a mechanical element. People use the three words interchangeably on the phone and they are three different jobs.' },
+  { id:'magnetic-assisted', cat:'Import & uncommon', keyway:'Magnetically assisted mechanical key', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge or dimple, plus a magnet', spaces:'', depths:'', makes:['Import','European','Magnetic'],
+    notes:'The trap worth knowing about. Some makers put a small magnet in the bow or the blade alongside ordinary cuts, and the cylinder will not turn unless the magnet is present and oriented correctly. A copy cut on a standard machine comes out dimensionally perfect, enters cleanly, and does nothing — which reads exactly like a bad cut and is not one. If a duplicate you are confident in will not turn, look at the original under a light for a sunk plug or a disc in the bow before you re-cut it. Several European makers have used the idea on their higher lines; identify the key in hand rather than trusting the brand, because the same maker usually sells plain mechanical cylinders too.' },
+  { id:'magnetic-childproof', cat:'Residential', keyway:'Childproof magnetic cabinet latch', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Not a key — a magnet', spaces:'', depths:'', makes:['Tot Lok','Safety 1st','Magnetic latch','Child safety'],
+    notes:'A real residential call and an easy one. The latch lives inside the door with nothing visible outside; the "key" is a magnet puck you hold against the face to release it. Parents lose the puck constantly. Replacements come from the maker and a sufficiently strong magnet of the right shape generally works, so this is usually a five-minute answer rather than a job — say so and charge for the trip, not for a lock service. Worth asking whether the house has several: they are normally installed as a set and one magnet opens all of them.' },
+  { id:'magnetic-shutter', cat:'Powersports', keyway:'Magnetic ignition shutter (bike and scooter)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Blade plus a separate magnet', spaces:'', depths:'', makes:['Honda','Yamaha','Kymco','Vespa','Piaggio'],
+    notes:'Two separate things on one ignition and customers only ever mention one. A hinged steel shutter covers the keyway and a magnet opens it; the blade then goes in and turns the lock. The magnet is sometimes built into the key head and sometimes a separate puck on the ring, which is the part that gets lost. Cutting a perfect blade is useless if the shutter will not open, so establish on the phone whether the customer has the magnet before you load the van for a bike job.' },
+  { id:'magnetic-gunsafe', cat:'Safe & vault', keyway:'Magnetic key quick-access safe', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Not a key — a shaped magnet', spaces:'', depths:'', makes:['Quick access','Pistol safe','Magnetic'],
+    notes:'VERIFY OWNERSHIP IN WRITING, same standard as any gun safe. Small bedside and vehicle safes that open to a shaped magnet rather than a cut key. The manufacturer will sell a replacement against proof of purchase, which is the route. Say the security part plainly if a firearm is in it: this class has been widely demonstrated to open without its key, and a customer who thinks it is secured deserves to hear that from you rather than find out another way. The useful recommendation is a better safe, not a spare magnet.' },
   { id:'radial-fichet', cat:'Import & uncommon', keyway:'Radial & Fichet', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Radial / bar', spaces:'', depths:'', makes:['Fichet','Pollux','Mottura'],
     notes:'RESTRICTED. French and Italian high-security door systems, often on an armored door with multiple bolts. The key is a bar with radial cuts or a stepped tube. Specialist and dealer-controlled; the door is usually worth more than the lock.' },
