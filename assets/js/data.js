@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.09.15.2';
+const SEED_VERSION = '2026.10.14';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -6397,6 +6397,116 @@ const SEED_BLANKS = [
      against the Ilco Key Blank Directory, edition 13, section 2. The broader
      job-family rows remain because they carry field guidance; these exact rows
      make the keyway and Ilco/EZ cross-reference searchable. */
+
+  /* ---- keyways the vehicle records cite but the directory never carried ---- */
+  { id:'hy15', cat:'Automotive', keyway:'HY15', ilco:'HY15-PT', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Hyundai','Kia'],
+    notes:'The Hyundai edge-cut key either side of HY20, and six vehicle records name it. Sits between HY14 and HY18 in the same family, so if the blade will not enter, try its neighbours before deciding the lock is worn.' },
+  { id:'hy6', cat:'Automotive', keyway:'HY6', ilco:'HY6', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:8, depths:4, makes:['Hyundai'],
+    notes:'Early Hyundai, pre-immobiliser. No chip to worry about: cut by code or impression and it starts.' },
+  { id:'toy51', cat:'Automotive', keyway:'TOY51', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Laser / sidewinder', spaces:'', depths:'', makes:['Toyota','Lexus'],
+    notes:'The emergency blade inside the smart key on the newest Toyota and Lexus platforms. The Ilco equivalent is deliberately blank here — confirm it at the counter rather than ordering against a guess. Decode the door, not the ignition, because there is no cylinder in the column.' },
+
+  /* ---- powersports the bike records reach past ---- */
+  { id:'gy6-scooter', cat:'Powersports', keyway:'GY6 universal scooter pattern', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['Taotao','Jonway','Znen','Scooter'],
+    notes:'The GY6 engine family is cloned by dozens of importers and the ignition pattern came along with it. Lock sets are cheap and often shipped with two keys and no code. Impression it, or replace the whole switch for less than the labour of cutting one.' },
+  { id:'kymco-taiwan', cat:'Powersports', keyway:'Taiwanese scooter (Kymco / SYM)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['Kymco','SYM','Lance'],
+    notes:'Better built than the GY6 clones and keyed to a real pattern, often with a shutter lock on the ignition face. The magnetic shutter key is a separate part from the blade — ask whether the customer has lost one or both.' },
+  { id:'royal-enfield', cat:'Powersports', keyway:'Royal Enfield', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge', spaces:'', depths:'', makes:['Royal Enfield'],
+    notes:'Indian-built and increasingly common. Two-key bike on most models: ignition plus a separate seat or toolbox key. Blanks come from the dealer network rather than the usual aftermarket bins.' },
+  { id:'zero-electric-moto', cat:'Powersports', keyway:'Electric motorcycle (Zero / LiveWire)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge or none', spaces:'', depths:'', makes:['Zero','LiveWire','Energica'],
+    notes:'A simple wafer ignition on the earlier bikes and nothing at all on the newest, which wake to a fob or a phone. Establish on the phone whether the bike even has a cylinder before you load the van.' },
+
+  /* ---- ranch, vineyard and agricultural, which is most of this county ---- */
+  { id:'ag-tractor', cat:'Fleet & equipment', keyway:'Agricultural tractor ignition', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Edge or flat', spaces:'', depths:'', makes:['Kubota','New Holland','Massey Ferguson','Case IH','Mahindra'],
+    notes:'Mostly a short common key per manufacturer rather than a coded one, and a yard full of tractors often shares it. That cuts both ways: easy for you, and worth telling the owner their fleet is keyed alike if they think otherwise.' },
+  { id:'vineyard-equipment', cat:'Fleet & equipment', keyway:'Vineyard and orchard equipment', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Sprayer','Harvester','Orchard','Agricultural'],
+    notes:'Sprayers, harvesters, bin trailers and the gate at the end of the row. Ignition keys follow the base tractor; the padlocks are whatever the ranch bought in bulk. Ask whether the block is keyed as a set before you rekey one lock out of it.' },
+  { id:'well-pump-panel', cat:'Utility', keyway:'Well pump and irrigation panel', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often a cam lock', spaces:'', depths:'', makes:['Agricultural','Municipal','Irrigation'],
+    notes:'The pump house door, the control panel and the pressure tank cage. Live three-phase behind some of these, so if the panel is the lock, get the pump switched off before you start drilling anything.' },
+  { id:'livestock-gate', cat:'Utility', keyway:'Livestock and ranch gate', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Ranch','Agricultural','Gate'],
+    notes:'Chain-and-padlock on most ranch gates, often a long run of them keyed alike so one key opens the whole property. Cut a set, not a single, and label them — a rancher with one key for nine gates will lose a day to it.' },
+  { id:'grain-bin-silo', cat:'Fleet & equipment', keyway:'Grain bin, silo and feed store', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Agricultural','Feed','Storage'],
+    notes:'Ladder cages, roof hatches and the feed room. The hatch locks exist to keep children out of a confined space that kills, so if a customer wants one left unsecured, say no and explain why.' },
+
+  /* ---- the coast ---- */
+  { id:'marina-dock', cat:'Utility', keyway:'Marina slip gate and dock box', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Marina','Harbor','Dock'],
+    notes:'Gangway gates, dock boxes and the shore-power pedestal. Salt air destroys cheap cylinders in a season, so the honest recommendation is usually brass or marine stainless rather than another rekey of the same rusted lock.' },
+  { id:'boat-hatch', cat:'Fleet & equipment', keyway:'Boat hatch, cabin and outboard lock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat or wafer', spaces:'', depths:'', makes:['Marine','Perko','Boat'],
+    notes:'Companionway hatch, cabin door, fuel fill and the outboard clamp lock. Flat keys with a code stamped on the lock face more often than not, which makes a code cut faster than a decode.' },
+
+  /* ---- residential and tenant work that was not in the directory ---- */
+  { id:'parcel-locker', cat:'Utility', keyway:'Parcel locker and package room', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often electronic', spaces:'', depths:'', makes:['Luxer One','Package Concierge','Amazon Hub','Parcel Pending'],
+    notes:'Mostly electronic with a mechanical override behind a cover plate, and the override is held by the property manager under contract with the vendor. Route it to the manager rather than opening it for a resident.' },
+  { id:'sliding-patio-lock', cat:'Residential', keyway:'Sliding glass and patio door', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Milgard','Andersen','Pella','Arcadia'],
+    notes:'Mortise hook or a keyed thumb-latch, and on older aluminium frames the lock is often obsolete. A secondary foot bolt or a track block solves the security problem for a fraction of sourcing a discontinued cylinder — offer that first.' },
+  { id:'pool-spa-gate', cat:'Residential', keyway:'Pool and spa safety gate', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Pool','Spa','Gate','Magna-Latch'],
+    notes:'Code work, not just lock work. A pool gate has to self-close and self-latch above a set height, and defeating that to make it convenient puts a child and your licence at risk. Fix the latch, keep the compliance.' },
+
+  /* ---- building services ---- */
+  { id:'roof-hatch-ladder', cat:'Commercial', keyway:'Roof hatch and ladder cage', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Bilco','Roof','Access'],
+    notes:'Has to be openable from the inside without a key in every jurisdiction worth working in. If you find one that is not, that is the finding to report, not a chance to sell a better padlock.' },
+  { id:'electrical-data-room', cat:'Commercial', keyway:'Electrical room and data cage', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Electrical','Data','Telecom'],
+    notes:'Usually in the building master system, sometimes on its own restricted key because the tenants must not reach it. Confirm which before you key it into the master — putting a data cage on the janitor key is a finding against the building.' },
+  { id:'solar-inverter', cat:'Utility', keyway:'Solar inverter and battery enclosure', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often a cam lock', spaces:'', depths:'', makes:['SolarEdge','Enphase','Tesla','Generac'],
+    notes:'Combiner boxes, rapid-shutdown enclosures and battery cabinets. DC on the roof side stays live in daylight whatever the breaker says, so this is a call for the installer rather than a drill-out.' },
+  { id:'generator-transfer', cat:'Utility', keyway:'Generator and transfer switch', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Generac','Kohler','Cummins','Onan'],
+    notes:'Enclosure doors and the transfer-switch cabinet. These start themselves on a weekly test cycle, so assume the machine can crank while your hands are in it unless somebody has disabled the exerciser.' },
+  { id:'fuel-island-propane', cat:'Fleet & equipment', keyway:'Fuel island, cardlock and propane cage', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Cardlock','Fleet','Propane','Fuel'],
+    notes:'Dispenser cabinets, the cardlock reader housing and the propane exchange cage. Fire code governs the cage and the fuel operator governs the dispenser — neither is the site manager\'s to authorize alone.' },
+  { id:'septic-vault-lid', cat:'Utility', keyway:'Septic and utility vault lid', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Pentahead or bolt', spaces:'', depths:'', makes:['Municipal','Septic','Vault'],
+    notes:'Pentahead bolts and lid locks on tanks and valve vaults. A confined space with no oxygen below the lid: open it for access and walk away, never enter.' },
+
+  /* ---- rental and construction fleet ---- */
+  { id:'aerial-lift', cat:'Fleet & equipment', keyway:'Scissor and boom lift', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat or edge', spaces:'', depths:'', makes:['Genie','JLG','Skyjack','Terex'],
+    notes:'Platform selector keys and the ground-control cabinet, usually one common key per manufacturer across a rental yard. Rental fleets lose these constantly, so a yard call is often twenty cuts rather than one.' },
+  { id:'horse-livestock-trailer', cat:'Fleet & equipment', keyway:'Horse and livestock trailer', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Featherlite','Sundowner','4-Star','Trailer'],
+    notes:'Tack room, escape door, feed bay and the coupler lock, frequently four different locks on one trailer and rarely keyed alike. Quote per lock after you have looked, not over the phone.' },
+  { id:'parking-pay-station', cat:'Commercial', keyway:'Parking pay station and kiosk', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular or cam', spaces:'', depths:'', makes:['IPS','Flowbird','T2','Parking'],
+    notes:'Collection door and service door are separate locks on purpose, and the collection side is a cash compartment the operator controls under audit. Service the housing, refer the cash door to the operator.' },
+  { id:'carwash-coin', cat:'Commercial', keyway:'Car wash bay and coin box', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular or cam', spaces:'', depths:'', makes:['Car wash','Coin','Vacuum'],
+    notes:'Bay timers, vacuum heads and the coin vault. Everything in a wash bay lives in spray and detergent, so expect seized cylinders and price the lock, not the rekey.' },
+  { id:'cemetery-funeral', cat:'Commercial', keyway:'Cemetery, church and funeral facility', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Cemetery','Church','Funeral'],
+    notes:'Chapels, columbarium niches, mausoleum doors and gate chains. Niche and crypt access is a family-records matter for the office, not something to open on a visitor\'s word, however sympathetic the story.' },
+  { id:'park-restroom-municipal', cat:'Commercial', keyway:'Park restroom and municipal facility', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Municipal','Parks','Beach'],
+    notes:'Restrooms, beach showers, ranger storage and the fee station. Usually one municipal system across a whole parks department, so a rekey is a department decision rather than a site one.' },
+  { id:'medical-cart', cat:'Commercial', keyway:'Medical and crash cart', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies — often a cam lock', spaces:'', depths:'', makes:['Harloff','Waterloo','Armstrong','Medical'],
+    notes:'Breakaway seals on a crash cart and cam locks on the supply drawers — ordinary work for the facility. Any drawer holding controlled drugs is not: that is the pharmacy narcotics record, and it goes through the pharmacist in charge.' },
+  { id:'emergency-apparatus', cat:'Fleet & equipment', keyway:'Ambulance and fire apparatus compartment', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Ambulance','Fire','EMS','Apparatus'],
+    notes:'Compartment and cab locks on an agency-owned vehicle, so the fleet manager authorizes it, not the crew on shift. Drug boxes aboard are controlled and sealed — those stay with EMS, whatever is urgent that day.' },
+  { id:'ebike-share-dock', cat:'Utility', keyway:'Bike share dock and e-bike battery', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Varies', spaces:'', depths:'', makes:['Bike share','E-bike','Battery'],
+    notes:'Dock housings and the battery mount on the bike. The battery lock is what actually gets cut, and a lithium pack that has been pried at is a fire risk the customer should be told about rather than handed back.' },
   { id:'cat-kw5', cat:'Residential', keyway:'KW5', ilco:'A1176', jma:'KWI-9D', cut:'Edge', makes:['Kwikset'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor cross-reference; section 2; EZ reference KW5.' },
   { id:'cat-kw10', cat:'Residential', keyway:'KW10', ilco:'A1176ST', jma:'KWI-2D', image:'assets/key-blanks/cat-kw10.png', imageAlt:'JMA KWI-2D key blank', imageSource:'https://ecatalogo.jma.es/en/KWI-2D/1/imprimir_jma/', cut:'Edge', makes:['Kwikset'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor cross-reference; section 2; EZ reference KW10.' },
   { id:'cat-kw11', cat:'Residential', keyway:'KW11', ilco:'A1176KT', jma:'KWI-5D', cut:'Edge', makes:['Kwikset'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor cross-reference; section 2; EZ reference KW11.' },

@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,157 blanks across 400-odd makes is
+safe & vault, import & uncommon — because 1,189 blanks across 490-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 422 confirmed keyways, all editable: automotive,
+for the blank directory — 454 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -353,6 +353,11 @@ the dangerous one: a record with nothing in that field reads as "nothing to know
 here", when what it usually meant was that nobody had written down the ten
 minutes of Ford timed access or the PIN-by-VIN phone call that decides whether
 the job is worth quoting.
+
+The directory search matches your words independently, in any order, so "horse
+trailer" finds the row called "Horse and livestock trailer" and "scissor lift"
+finds "Scissor and boom lift". It used to match the whole query as one literal
+substring, which meant guessing a row's exact wording.
 
 Where a fob's FCC ID or OEM part number was not something the data could state
 confidently, the field is left blank rather than filled with a plausible guess — an empty field costs you a lookup, a wrong
