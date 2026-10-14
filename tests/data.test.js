@@ -526,5 +526,45 @@ check('the ex-bank safe row asks for proof of ownership',
     && /in-service bank box/i.test(exSafe.auth || ''),
   exSafe ? exSafe.auth.slice(0, 70) : 'row missing');
 
+/* ---- magnetic ---- */
+/* One row covered EVVA MCS. The rest of the family was absent, including the
+   two that actually cost time: a key that carries a magnet alongside ordinary
+   cuts, and the childproof latch whose key is a magnet puck. */
+const mag = blankFinds('magnetic');
+check('one search gathers the magnetic family', mag.length >= 6, `${mag.length} rows`);
+check('the magnetic family covers the method, the assisted key and the latch',
+  ['magnetic-key', 'magnetic-method', 'magnetic-assisted', 'magnetic-childproof',
+   'magnetic-shutter', 'magnetic-gunsafe'].every(id => mag.some(b => b.id === id)),
+  mag.map(b => b.id).join(', '));
+
+/* The clarification the row exists for: three words people use interchangeably
+   on the phone are three different jobs. */
+const magMethod = B.find(b => b.id === 'magnetic-method');
+check('the magnetic method row separates magnet, transponder and fob',
+  magMethod && /not a transponder/i.test(magMethod.notes || '')
+    && /not an RFID fob|not and RFID|RFID/i.test(magMethod.notes || ''),
+  magMethod ? magMethod.notes.slice(0, 80) : 'row missing');
+
+/* The trap: a magnetically assisted key duplicates dimensionally perfectly and
+   still will not turn, which reads as a bad cut and is not one. If that
+   sentence ever goes, the row has lost its only reason to exist. */
+const assisted = B.find(b => b.id === 'magnetic-assisted');
+check('the assisted-key row warns that a good copy still will not turn',
+  assisted && /enters cleanly, and does nothing/i.test(assisted.notes || '')
+    && /reads exactly like a bad cut/i.test(assisted.notes || ''),
+  assisted ? assisted.notes.slice(0, 80) : 'row missing');
+
+/* Same standard as every other gun safe row, and no method in it. */
+const magGun = B.find(b => b.id === 'magnetic-gunsafe');
+check('the magnetic gun safe row keeps the ownership standard',
+  magGun && /VERIFY OWNERSHIP IN WRITING/.test(magGun.notes || ''),
+  magGun ? magGun.notes.slice(0, 70) : 'row missing');
+check('and names no way to open one without its key',
+  magGun && !/rare earth|neodymium|hold a magnet|slide a magnet|strong magnet against/i.test(magGun.notes || ''));
+
+check('no magnetic row claims an Ilco number',
+  B.filter(b => /^magnetic/.test(b.id)).every(b => !b.ilco || b.ilco === '—'),
+  B.filter(b => /^magnetic/.test(b.id) && b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
