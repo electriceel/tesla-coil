@@ -337,5 +337,42 @@ check('the blanks matcher splits the query into terms',
   && /terms\.every\(/.test(appSrc.slice(appSrc.indexOf('function matchBlanks'),
        appSrc.indexOf('function matchBlanks') + 900)));
 
+/* ---- the directory has to open what you searched for ---- */
+/* A search that matches a readable number of rows renders them; one that
+   matches most of the file stays collapsed. The budget was 12, sized for a
+   directory a third of this one, and it had quietly started hiding ordinary
+   searches -- "toyota" matched 14 rows and showed a bare header. Both ends are
+   asserted, because raising the limit far enough to fix that would otherwise be
+   free to keep rising until a one-letter query renders 1200 rows. */
+const budget = appSrc.match(/confirmedHits <= (\d+) && hits\.length <= (\d+)/);
+check('the auto-open budget is still in app.js', !!budget);
+const [maxConf, maxHits] = budget ? [Number(budget[1]), Number(budget[2])] : [0, 0];
+const opens = (q) => {
+  const hits = blankFinds(q);
+  return hits.filter(b => !b.kwUnknown).length <= maxConf && hits.length <= maxHits;
+};
+const SHOULD_OPEN = ['dimple', 'toyota', 'ford', 'safe', 'padlock', 'euro',
+  'high security', 'schlage', 'lockwood', 'restricted', 'vineyard', 'marina'];
+const SHOULD_STAY_SHUT = ['edge', 'key', 'ilco', 'commercial', 'a', 'e'];
+const shut = SHOULD_OPEN.filter(q => !opens(q));
+check('an ordinary search opens its results', !shut.length,
+  shut.map(q => `${q} (${blankFinds(q).filter(b => !b.kwUnknown).length} confirmed)`).join(', '));
+const flung = SHOULD_STAY_SHUT.filter(q => opens(q));
+check('a search matching most of the file stays collapsed', !flung.length,
+  flung.map(q => `${q} would open ${blankFinds(q).length} rows`).join(', '));
+
+/* ---- dimple ---- */
+/* It was in the data all along but spread over four categories with nothing
+   explaining the method, so one search had to gather it. */
+const dimple = blankFinds('dimple');
+check('one search gathers the dimple family', dimple.length >= 14, `${dimple.length} rows`);
+check('the dimple family includes the method and sourcing rows',
+  ['dimple-method', 'dimple-sourcing', 'dimple-euro', 'multlock'].every(id => dimple.some(b => b.id === id)),
+  dimple.map(b => b.id).join(', '));
+/* Ilco does not make most of these. An invented number here is a parts order. */
+check('no dimple row claims an Ilco number',
+  B.filter(b => /dimple/i.test(b.cut || '')).every(b => !b.ilco || b.ilco === '—'),
+  B.filter(b => /dimple/i.test(b.cut || '') && b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
