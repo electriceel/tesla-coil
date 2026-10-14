@@ -179,7 +179,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,208 blanks across 520-odd makes is
+safe & vault, import & uncommon — because 1,211 blanks across 525-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
@@ -228,7 +228,7 @@ at, because splitting them by year needs the bench.
 
 Adding vehicles is the intended workflow. The seed covers the common domestic and
 import platforms to get you going; your database becomes the real one. The same goes
-for the blank directory — 473 confirmed keyways, all editable: automotive,
+for the blank directory — 476 confirmed keyways, all editable: automotive,
 powersports, fleet & equipment (RV and trailer, heavy truck, forklift, golf cart,
 marine), utility, residential, commercial, safe & vault, and import & uncommon.
 
@@ -365,6 +365,16 @@ budget was set when the directory was a third of this size and had started
 hiding ordinary searches — "toyota" matched 14 rows and showed a bare header.
 `tests/data.test.js` now pins it from both ends: twelve everyday searches have
 to open, and six broad ones have to stay shut.
+
+**Tubular** had the Ace pattern and its variants but nothing on how you work one,
+so it gained a method row — pin count, shank diameter, post diameter, and whether
+the post is centred or offset — plus the row that stops a wasted trip: "tubular"
+names both the round Ace key *and* a door prep, and a tubular deadbolt almost
+always takes an ordinary edge-cut key. Checking that also turned up four rows
+whose `cut` field contradicted their own notes (a vending T-handle filed as Edge
+while its text said "usually tubular"), which matters because `cut` is what
+decides the machine and clamp that go in the van. A test now refuses any row that
+argues with itself about the cut.
 
 **Bit keys and flat steel** were the same story as dimple, one step further on:
 present by application — warded interior doors, antique safes, British levers,

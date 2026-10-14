@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.10.14.2';
+const SEED_VERSION = '2026.10.14.3';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -5786,7 +5786,7 @@ const SEED_BLANKS = [
     cut:'Edge', spaces:5, depths:4, makes:['RV','Trailer'],
     notes:'Global Link and Fastec (FIC) entry and compartment locks, common on late-model towables.' },
   { id:'trailer-hitch', cat:'Fleet & equipment', keyway:'Trailer coupler / hitch locks', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
-    cut:'Edge', spaces:5, depths:4, makes:['Trailer','Fleet'],
+    cut:'Wafer', spaces:5, depths:4, makes:['Trailer','Fleet'],
     notes:'Master, Reese, CURT and Blaylock coupler and receiver locks. Mostly wafer; most are drilled faster than picked, so confirm ownership first.' },
 
   /* ---- HEAVY TRUCK ---- */
@@ -5855,7 +5855,7 @@ const SEED_BLANKS = [
     cut:'Edge', spaces:5, depths:6, makes:['American Lock'],
     notes:'American padlocks, including the shrouded-shackle series people put on storage units and trailers.' },
   { id:'na-cabinet', cat:'Residential', keyway:'National / cabinet & mailbox', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
-    cut:'Edge', spaces:4, depths:4, makes:['National','Hudson','HON','Steelcase'],
+    cut:'Wafer', spaces:4, depths:4, makes:['National','Hudson','HON','Steelcase'],
     notes:'Desk, file cabinet, mailbox and locker wafer locks. Most carry a stamped code (a 3-4 character number) that a code book turns straight into cuts. Faster than picking almost every time.' },
 
 
@@ -6096,7 +6096,7 @@ const SEED_BLANKS = [
     cut:'Edge', spaces:'', depths:'', makes:['Elevator','Fire service'],
     notes:'FEO-K1 is the standardized fire-service key required by code in most jurisdictions; 2642 and the CH751 family cover a lot of control cabinets. Sale is restricted in some states — check yours before stocking them.' },
   { id:'display-case', cat:'Commercial', keyway:'Display case / showcase & vending', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
-    cut:'Edge', spaces:4, depths:4, makes:['Illinois','CompX','Chicago','Vending'],
+    cut:'Tubular / wafer', spaces:4, depths:4, makes:['Illinois','CompX','Chicago','Vending'],
     notes:'Retail showcase, vending and pop-machine tubular and wafer locks. Almost always coded on the plug face; a code book and a code machine finish these in minutes.' },
 
   /* ---- COMMERCIAL, second pass ---- */
@@ -6125,7 +6125,7 @@ const SEED_BLANKS = [
     cut:'Edge', spaces:4, depths:4, makes:['Master Lock','Hudson','Penco','American Locker'],
     notes:'Built-in locker locks, gym and school. Master 1652 and 1653 are the common ones and carry a stamped code; a code book and a code machine beat picking a whole bank of them.' },
   { id:'vending-t', cat:'Commercial', keyway:'Vending T-handle', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
-    cut:'Edge', spaces:5, depths:4, makes:['Eagle','Kaba','Vending','Amusement'],
+    cut:'Tubular', spaces:5, depths:4, makes:['Eagle','Kaba','Vending','Amusement'],
     notes:'The plunger T-handle on vending, amusement and car-wash equipment. Usually tubular, often keyed alike across an operator route — which is why the operator, not the location, is the one who authorizes work on it.' },
   { id:'safe-deposit', cat:'Safe & vault', keyway:'Safe deposit (dual key)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','Bank'],
@@ -6239,6 +6239,17 @@ const SEED_BLANKS = [
   { id:'ace-tubular', cat:'Utility', keyway:'Ace / Chicago tubular', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Tubular', spaces:7, depths:'', makes:['Chicago Lock','Ace','Vending','Amusement'],
     notes:'Seven pins in a circle around a hollow post. Vending, amusement, bar coolers, gun cabinets and older coin equipment. A tubular pick opens most of them in seconds, which is the whole reason nothing valuable should be behind one — worth telling a customer who is about to store cash behind one.' },
+
+  /* ---- tubular: two rows existed, neither said how you work one ---- */
+  { id:'tubular-method', cat:'Utility', keyway:'Tubular keys — sizing, cutting and decoding', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular — cut around a hollow shank', spaces:'', depths:'', makes:['Tubular','Chicago Lock','Ace','HPC'],
+    notes:'Read this before quoting a tubular job. Four things identify the key: how many pins it reads, the outside diameter of the shank, the diameter of the post it rides on, and whether the post is centred or offset. Seven-pin centred is the common Ace pattern and the one everything assumes; eight-pin and offset-post exist and will not read on a tool set for a seven. Cutting needs a tubular machine — the cuts run around the end of a hollow shank at fixed radial positions, which a standard duplicator has no way to hold or index. Most tubular locks are code-stamped on the plug face, so read the code and cut to it rather than duplicating a worn key.' },
+  { id:'tubular-vs-latch', cat:'Utility', keyway:'"Tubular" the key vs tubular the latch', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Not a cut — a naming clash', spaces:'', depths:'', makes:['Tubular','Terminology'],
+    notes:'The word means two unrelated things and the wrong one gets ordered constantly. A tubular KEY is the round Ace-pattern key with cuts around a hollow shank. A tubular LATCH or tubular deadbolt is a bore type: the standard two-hole residential prep, a 2-1/8 inch cross bore with a 1 inch edge bore, and it has nothing to do with the key — a tubular deadbolt almost always takes an ordinary edge-cut key. If a customer or a supplier says tubular, establish which one before you quote: one is a specialty machine, the other is the most ordinary door prep in the country.' },
+  { id:'tubular-padlock-cam', cat:'Utility', keyway:'Tubular padlock and cam lock', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Tubular', spaces:'', depths:'', makes:['Chicago Lock','Ace','Abus','CompX'],
+    notes:'The tubular cylinder turns up in a shackle and in casework as well as in vending. Cheap tubular padlocks are the ones the bicycle trade learned about the hard way, and a tubular cam lock on a cabinet is the same cylinder in a different body. Treat the security as near zero and say so: the useful service is usually replacing it with a pinned cam or a decent padlock, not cutting another key for it.' },
   { id:'file-cabinet', cat:'Utility', keyway:'Office file cabinet (HON / Steelcase / Herman Miller)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Wafer', spaces:'', depths:'', makes:['HON','Steelcase','Herman Miller','Anderson Hickey','Global'],
     notes:'The single most common office call, and the easiest: the code is nearly always stamped on the plug face or the lock body, and the manufacturer will sell a key by code. Pull the drawer above and read the back of the cylinder before you set up to pick anything.' },

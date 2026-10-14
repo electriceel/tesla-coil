@@ -412,5 +412,49 @@ check('no bit or flat row claims an Ilco number',
   bitFlatRows.every(b => !b.ilco || b.ilco === '—'),
   bitFlatRows.filter(b => b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
 
+/* ---- tubular ---- */
+/* Two rows already named the Ace pattern and its variants, but neither said how
+   you work one: what identifies the key, what machine holds it, how you read a
+   code off it. */
+const tubular = blankFinds('tubular');
+check('one search gathers the tubular family', tubular.length >= 12, `${tubular.length} rows`);
+check('the tubular family includes the method row and the naming-clash row',
+  ['tubular-method', 'tubular-vs-latch', 'ace-tubular', 'tubular-variants']
+    .every(id => tubular.some(b => b.id === id)),
+  tubular.map(b => b.id).join(', '));
+const tubeMethod = B.find(b => b.id === 'tubular-method');
+check('the tubular method row names what identifies the key',
+  tubeMethod && [/how many pins/i, /outside diameter/i, /diameter of the post/i, /centred or offset/i]
+    .every(r => r.test(tubeMethod.notes || '')),
+  tubeMethod ? tubeMethod.notes.slice(0, 80) : 'row missing');
+/* "Tubular" names a key and a door prep and they are unrelated. Ordering the
+   wrong one is a wasted trip, so the row has to keep saying which is which. */
+const clash = B.find(b => b.id === 'tubular-vs-latch');
+check('the naming-clash row still explains both meanings',
+  clash && /tubular key/i.test(clash.notes || '') && /bore/i.test(clash.notes || '')
+    && /edge-cut/i.test(clash.notes || ''),
+  clash ? clash.notes.slice(0, 80) : 'row missing');
+
+/* ---- the cut field has to agree with the row's own notes ---- */
+/* The cut field is what decides which machine and clamp go in the van, and four
+   rows contradicted themselves on it: a vending T-handle whose notes said
+   "usually tubular" was filed as Edge, and so were two wafer families and a
+   showcase row that names tubular in its own text. A reference that sends you
+   out with the wrong clamp is worse than a blank field. */
+const CUT_FAMILIES = ['tubular', 'dimple', 'bit', 'warded', 'flat', 'wafer', 'barrel', 'lever'];
+const contradictions = [];
+B.forEach(b => {
+  const cut = String(b.cut || '').toLowerCase();
+  const notes = String(b.notes || '').toLowerCase();
+  CUT_FAMILIES.forEach(f => {
+    const asserts = new RegExp(`(usually|almost always|mostly|nearly always|are) (a |an )?${f}\\b|\\b${f} (and \\w+ )?locks\\b`);
+    if (asserts.test(notes) && !cut.includes(f)) {
+      contradictions.push(`${b.id}: cut="${b.cut}" but notes say ${f}`);
+    }
+  });
+});
+check('no row contradicts its own notes about the cut', !contradictions.length,
+  contradictions.join('\n     '));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
