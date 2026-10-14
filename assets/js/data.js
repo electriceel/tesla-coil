@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.10.14.4';
+const SEED_VERSION = '2026.10.14.5';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
@@ -6130,6 +6130,20 @@ const SEED_BLANKS = [
   { id:'safe-deposit', cat:'Safe & vault', keyway:'Safe deposit (dual key)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Edge', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','Bank'],
     notes:'RESTRICTED, and a legal matter before it is a locksmith one. Two locks, guard and renter, and drilling one is done for the institution under its own procedure with documentation. Never on a walk-in request.' },
+
+  /* ---- safe deposit: the existing row says RESTRICTED and stops there ---- */
+  { id:'sd-renter-key', cat:'Safe & vault', keyway:'Safe deposit renter key', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat, often double-bitted', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','LeFebure','Yale'],
+    notes:'RESTRICTED. The key the customer holds: a small flat blade, often double-bitted, usually stamped with the box number and sometimes the bank name. Two are issued per box and the bank keeps no copy of either — that is deliberate, so the bank cannot reach the box alone. It is why "can you cut me a spare" is not a refusal but an impossibility: there is no code on file anywhere you can reach, and the nose will not accept a key the lock was not changed to. The answer is the bank, every time.' },
+  { id:'sd-guard-key', cat:'Safe & vault', keyway:'Safe deposit guard key', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat or lever', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','LeFebure'],
+    notes:'RESTRICTED. The bank\'s half of the pair, one key covering a nest or a whole range of boxes, and it never leaves the branch. Both keys have to turn for the nose to open, which is the entire security model: neither party can get in without the other. If a guard key reaches your bench it has almost certainly left the institution improperly, and the right move is to hand it back to the bank rather than to whoever brought it in.' },
+  { id:'sd-exbank', cat:'Safe & vault', keyway:'Ex-bank safe deposit box and nest (out of service)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat, often double-bitted', spaces:'', depths:'', makes:['Diebold','Mosler','Hamilton','LeFebure','Estate'],
+    notes:'This one IS yours, and the directory used to have nowhere to say so. Branches close and their nests get sold off, so ex-bank boxes turn up in estates, antique shops and garages, bought for home storage. No bank, no guard key, no legal chain — it is a lock on a box the customer owns, same as any other. They almost always arrive with no keys at all. The honest route is a replacement nose from the safe trade, or a safe technician to open it; identify it by the maker and the serial on the door edge first, because the manufacturer may still supply by serial.' },
+  { id:'sd-private-vault', cat:'Safe & vault', keyway:'Private vault box (non-bank)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
+    cut:'Flat, often double-bitted', spaces:'', depths:'', makes:['Private vault','Diebold','Mosler'],
+    notes:'RESTRICTED, and a different chain from a bank. Private safe deposit companies rent boxes outside the banking system, usually with the same dual-key nose. They are not covered by banking regulation, which changes who authorizes what but not your answer: the operator authorizes work on its own boxes, in writing, and a box holder standing at your counter does not. Confirm the company actually operates the vault before you take the job, because this is a sector with some short-lived businesses in it.' },
   { id:'cliq', cat:'Commercial', keyway:'Electromechanical (CLIQ / XT / eCylinder)', ilco:'—', ilcoChip:'—', silca:'—', jma:'—', strattec:'—',
     cut:'Other', spaces:'', depths:'', makes:['ASSA','Medeco','Abloy','Mul-T-Lock'],
     notes:'RESTRICTED. A mechanical key with a chip and an audit trail. Access is granted and revoked in software, so a lost key is a database change, not a rekey — which is the answer the customer usually wants to hear. Needs the dealer and the system owner.' },
@@ -7686,6 +7700,12 @@ const SEED_SAFE = [
     auth: 'CONFIRM NOBODY IS INSIDE before anything else. Then the institution, through its own process.',
     bl: ['vault-door'] },
 
+  { id: 'exbank', group: 'comm', name: 'Ex-bank safe deposit box, out of service',
+    is: 'A safe deposit box or a whole nest sold off when a branch closed, bought for home or estate storage. Same dual-key nose as the bank version, but no bank, no guard key and no legal chain attached to it.',
+    find: 'Maker and serial on the door edge or the nest frame. Box numbers stamped on the individual doors.',
+    path: 'Manufacturer by serial first, because some will still supply. Otherwise a replacement nose from the safe trade, or a safe technician to open it. Replacing the lock is usually cheaper than recovering the original keys.',
+    auth: 'Proof the customer owns the box: a bill of sale, an auction receipt or an estate inventory. An in-service bank box is a different record and the answer there is the bank.',
+    bl: ['sd-exbank', 'safe-deposit'] },
   { id: 'deposit', group: 'no', name: 'Safe deposit box', stop: true,
     is: 'Two locks, guard and renter. The bank holds one, the customer the other.',
     find: 'n/a',
