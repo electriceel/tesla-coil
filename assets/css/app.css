@@ -374,6 +374,12 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .pinchart td.bot{background:var(--surface2)}
 .pinchart td.mas{background:var(--acc);color:var(--acc-fg)}
 .pinchart td.none{color:var(--fg3)}
+/* The two SFIC-only rows. They are the half of the stack that sits above the
+   operating shear line, so they read as a separate band rather than as more
+   master pins -- loading a control pin where a master pin goes builds a core
+   that assembles, passes the key and will not come out of the housing. */
+.pinchart td.ctl{background:color-mix(in srgb,var(--info) 18%,transparent);color:var(--info)}
+.pinchart td.topp{background:color-mix(in srgb,var(--fg3) 14%,transparent)}
 .allocrow{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s2)}
 .allocname{
   flex:0 0 92px;font-size:10.5px;font-weight:700;color:var(--fg2);

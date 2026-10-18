@@ -120,7 +120,7 @@ position 10, ISO 3779 check digit. Tap the NHTSA button when you have signal for
 make/model/trim/engine/plant off the free federal vPIC database. Either way it then
 lists matching vehicles from your own database.
 
-**Master keying** — under Tools, in two shapes.
+**Master keying** — under Tools, in four shapes.
 
 *Single master* progresses a run of change keys under one master, by rotating constant
 (holds one chamber at the master depth, so no change key can turn into an unintended
@@ -148,6 +148,49 @@ Then it audits itself. Every key in the system is tried against every lock in it
 any key that opens a door above its level is reported by name — because "the allocation
 should prevent that" is not the same as having checked. The suite includes a
 deliberately broken system to prove the audit can fail, so a clean one means something.
+
+*SFIC core* is BEST's small format interchangeable core, which is a different animal
+because it has two shear lines. The operating one, between plug and sleeve, is what an
+ordinary key lifts to. The control one, between sleeve and shell, is what pulls the core
+out of the housing. So the chart grows two rows: a **control pin** spanning from the
+deepest operating cut up to the control shear line, and a **top pin** filling what is
+left to a constant stack height.
+
+Give it whichever of the three keys you have — control, master, operating, any one, any
+two, or all three — and it charts what they allow and says plainly what they cannot
+tell you:
+
+- **A control key cannot be worked out from operating keys.** Its cuts are an independent
+  bitting. The only ways to learn an existing core's control key are to be handed it or
+  to pull the core and read the stack. Leave the field blank and the tool proposes one,
+  centring both pins it governs so neither comes out thin — and labels it PROPOSED
+  everywhere it appears, because it has no way to know what control keys the building
+  already uses.
+- **Operating keys with no master generate no new change keys.** Which barrels a system
+  holds constant is the master's business; with only change keys in hand there is no way
+  to tell a held barrel from one that happens to match, so a new key would be a guess at
+  whether it cross-keys. It charts what you gave it and says why it stopped.
+- **One key reads the whole pattern in A2** — a two-step system keeps each barrel's
+  odd/even pattern, so any key in it reads the depths that barrel can use. A4 is single
+  step with no pattern, so it reads nothing, which is why BEST says to scramble A4 codes
+  rather than progress them.
+
+It also reports the things that are easy to miss: that every core on one control key
+takes the same top pins (a top pin is the stack height less the control code, so it
+depends on the control key and nothing else); that the control key *also turns the plug*
+when its cut happens to be an operating depth at every barrel; and that no operating key
+can reach the control shear line, which holds because the control lug is thicker than the
+depth range spans — proved for the system in use rather than asserted.
+
+A2 and A4 ship, 6-pin and 7-pin, with their published specifications: A2 depths 0-9 two
+step, lug 10, stack 23; A4 depths 0-5 single step, lug 6, stack 14. Those are shown
+rather than offered as fields — change a stack height and every chart below it is wrong
+in a way that still looks like a chart. **A3 is deliberately absent**: the trade
+literature gives its lug as 7 and its stack as 16, but nothing citable states its depth
+range, and a chart built on a guessed depth range is confidently and uniformly wrong.
+
+The arithmetic is checked against BEST's own two worked examples, reproduced barrel for
+barrel and segment for segment — `node tests/sfic.test.js`.
 
 Schlage and Kwikset ship with their published depth range and MACS, and every one of
 those is editable for the cylinder in your hand; switching maker resets the range to

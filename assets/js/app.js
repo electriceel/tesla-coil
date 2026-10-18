@@ -1127,9 +1127,11 @@ function editBlank(id) {
 const mkUI = {
   sysId: 'schlage', chambers: 6, min: 0, max: 9, macs: 7, step: 2,
   tmk: '', method: 'rc', count: 12,
-  mode: 'single',            // 'single' | 'full' | 'extend'
+  mode: 'single',            // 'single' | 'full' | 'extend' | 'sfic'
   existing: '',              // change keys already in the field, one per line
   levels: 3, alloc: null, counts: [3, 4], openSym: {},
+  sficSysId: 'a2-7',         // SFIC runs on its own systems, not MK_SYSTEMS
+  control: '', opKeys: '', sficCount: 0,
   label: '', result: null, openKey: null, loadedId: null
 };
 
@@ -1252,6 +1254,225 @@ function mkExtendText(r) {
   out.push('');
   out.push(`${r.conflicts.length} combination(s) rejected for cross-keying with the field.`);
   out.push('Verify against your pinning kit before you load a plug.');
+  return out.join('\n');
+}
+
+/* ---- SFIC: BEST small format interchangeable core ---- */
+/* A figure-8 core is pinned for two shear lines, so its system is defined by
+   the core family rather than by the manufacturer dropdown the other modes
+   use. Depth range, control-lug thickness and total stack are the published
+   A2/A4 specifications and are shown rather than offered: change the stack
+   height and every chart below it is wrong in a way that still looks like a
+   chart. Barrel count is the one real choice, so it picks the 6- or 7-pin
+   system instead of editing a field. */
+function sficSys() {
+  return SFIC_SYSTEMS[mkUI.sficSysId] || SFIC_SYSTEMS['a2-7'];
+}
+
+function sficOpLines() {
+  return String(mkUI.opKeys || '').split(/[\n;]+/).map(l => l.trim()).filter(Boolean);
+}
+
+function mkSficFormHtml() {
+  const s = sficSys();
+  const eg = Array(s.chambers).fill(0).map((_, i) => s.min + ((i * 2) % (s.max - s.min + 1))).join('-');
+  return `
+    <div class="field"><label>Core</label>
+      <select name="sficSysId">${Object.values(SFIC_SYSTEMS).map(x =>
+        `<option value="${x.id}"${mkUI.sficSysId === x.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+    </div>
+    <div class="tiny muted" style="margin:-4px 0 10px">${esc(s.note)}</div>
+
+    <div class="card" style="margin:0 0 14px;padding:10px 12px">
+      <dl class="spec" style="margin:0">
+        <dt>Barrels</dt><dd>${s.chambers}</dd>
+        <dt>Depths</dt><dd>${s.min}&ndash;${s.max}, step ${s.step}${s.increment ? ` &middot; ${esc(s.increment)} per increment` : ''}</dd>
+        <dt>Control lug</dt><dd>${s.controlAdd} increments &mdash; added to every control key cut</dd>
+        <dt>Total stack</dt><dd>${s.totalStack} in every barrel</dd>
+      </dl>
+    </div>
+
+    <div class="field"><label>Control key <span class="tiny muted">optional</span></label>
+      <input name="control" class="mono" inputmode="numeric" autocomplete="off"
+        placeholder="${eg}" value="${esc(mkUI.control)}"></div>
+    <div class="tiny muted" style="margin:-4px 0 12px">The key that pulls the core out of the
+      housing. It is not a key that opens a door, and it cannot be worked out from one &mdash; leave
+      it blank and the tool proposes one and says so, which is fine for a new system and wrong for
+      cores joining a building that already has its own.</div>
+
+    <div class="field"><label>Master key <span class="tiny muted">optional</span></label>
+      <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
+        placeholder="${eg}" value="${esc(mkUI.tmk)}"></div>
+
+    <div class="field"><label>Operating keys <span class="tiny muted">one per line, optional</span></label>
+      <textarea name="opKeys" rows="4" class="mono" inputmode="numeric"
+        placeholder="${eg}">${esc(mkUI.opKeys)}</textarea></div>
+    <div class="tiny muted" style="margin:-4px 0 12px">Change keys already cut. Each one gets its
+      own core charted, and they are all tried against each other for cross-keying.</div>
+
+    <div class="field"><label>New change keys wanted</label>
+      <input name="sficCount" type="number" inputmode="numeric" min="0" max="60" value="${mkUI.sficCount}"></div>
+    <div class="tiny muted" style="margin:-4px 0 4px">Needs the master &mdash; without it there is no
+      way to tell which barrels the system holds, so a new key would be a guess at whether it
+      cross-keys. Leave it at 0 to just chart the keys you gave.</div>`;
+}
+
+/* The chart laid out the way BEST's own code page is: codes down the column,
+   stack height at the top, then the segments those differences produce. */
+function sficChartHtml(core, r) {
+  const s = r.system;
+  const ctl = r.effectiveControl;
+  const cell = (v) => `<td>${v}</td>`;
+  return `<div class="tumwrap"><table class="pinchart">
+      <tr><th>Barrel</th>${core.barrels.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+      ${core.keys.map(k => `<tr><th>${esc(k.symbol)} cut</th>${k.bitting.map(cell).join('')}</tr>`).join('')}
+      ${ctl ? `<tr><th>Control cut${r.control ? '' : ' *'}</th>${ctl.map(cell).join('')}</tr>
+        <tr><th>+ ${s.controlAdd} lug</th>${core.barrels.map(b => cell(b.controlCode)).join('')}</tr>
+        <tr><th>Total stack</th>${core.barrels.map(() => cell(s.totalStack)).join('')}</tr>` : ''}
+      <tr class="sep"><th>Bottom pin</th>${core.barrels.map(b => `<td class="bot">${b.bottom}A</td>`).join('')}</tr>
+      <tr><th>Master pins</th>${core.barrels.map(b =>
+        `<td class="${b.masters.length ? 'mas' : 'none'}">${b.masters.length
+          ? b.masters.map(m => m + 'B').join('+') : '&mdash;'}</td>`).join('')}</tr>
+      ${ctl ? `<tr><th>Control pin</th>${core.barrels.map(b => `<td class="ctl">${b.control}B</td>`).join('')}</tr>
+        <tr><th>Top pin</th>${core.barrels.map(b => `<td class="topp">${b.top}B</td>`).join('')}</tr>` : ''}
+    </table></div>
+    <div class="tiny muted" style="margin-top:8px">${ctl
+      ? `Loads bottom up, every barrel totalling ${s.totalStack}. The A segment is the bottom pin and
+         rides the key; every B segment above it is flat at both ends. The control pin spans from the
+         deepest operating cut to the control shear line, and the top pin fills what is left.`
+      : `Only the operating half of the stack. Without a control key there is no control pin and no
+         top pin &mdash; the core cannot be loaded from this.`}</div>
+    ${core.warnings.length ? `<div class="notice warn tiny" style="margin-top:8px">
+      ${core.warnings.map(esc).join('<br>')}</div>` : ''}`;
+}
+
+function sficCoreHtml(core, r) {
+  const open = mkUI.openKey === core.symbol;
+  return `<div class="card" style="padding:0;overflow:hidden">
+    <button class="grp" data-mkopen="${esc(core.symbol)}">
+      <span class="grp-name mono">${esc(core.symbol)} &nbsp; ${esc(formatBitting(core.bitting))}
+        <span class="grp-sub">${core.source === 'new' ? 'new' : 'given'} &middot;
+          ${core.keys.length} key${core.keys.length === 1 ? '' : 's'} turn${core.keys.length === 1 ? 's' : ''} it
+          &middot; also passes ${core.incidental}</span></span>
+      ${core.warnings.length ? '<span class="badge err">THIN</span>' : ''}
+      <span class="grp-x">${open ? '&minus;' : '+'}</span>
+    </button>
+    ${open ? `<div class="grp-body" style="padding:10px">${sficChartHtml(core, r)}</div>` : ''}
+  </div>`;
+}
+
+function mkSficResultHtml(r) {
+  if (!r.ok) {
+    return `<div class="notice err"><strong>Cannot chart that.</strong><ul style="margin:6px 0 0 18px">
+      ${r.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul></div>`;
+  }
+  const s = r.system;
+  const a = r.audit;
+
+  return `
+    <h2>What the keys say</h2>
+    ${r.read.known.map(n => `<div class="notice ok tiny">${esc(n)}</div>`).join('')}
+    ${r.read.unknown.map(n => `<div class="notice warn tiny">${esc(n)}</div>`).join('')}
+
+    ${r.proposedControl ? `<div class="card">
+      <dl class="spec" style="margin:0">
+        <dt>Control key *</dt>
+        <dd class="mono" style="font-size:17px;font-weight:700">${esc(formatBitting(r.proposedControl))}
+          <span class="badge warn" style="margin-left:6px">PROPOSED</span></dd>
+      </dl>
+      <div class="tiny muted" style="margin-top:8px">Chosen, not read &mdash; it centres the control
+        and top pins so neither comes out thin. The app has no way to know what control keys this
+        building already uses. Cut cores to this and they will not come out with the facility's
+        control key, and the facility's may well pull yours.</div>
+    </div>` : ''}
+
+    ${r.parity ? `<div class="card">
+      <div class="tiny muted" style="margin-bottom:6px">Depths each barrel can use, read off the
+        two-step pattern in the keys you gave:</div>
+      <div class="tumwrap"><table class="pinchart">
+        <tr><th>Barrel</th>${r.parity.map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+        <tr><th>Depths</th>${r.parity.map(ds => `<td>${ds.join(' ')}</td>`).join('')}</tr>
+      </table></div>
+    </div>` : ''}
+
+    ${r.topPins ? `<div class="notice info tiny"><strong>Top pins
+      ${r.topPins.map(t => t + 'B').join(' ')} &mdash; the same in every core on this control key.</strong>
+      A top pin is the stack height less the control code, so it depends on the control key and
+      nothing else. Count them out once for the whole job.</div>` : ''}
+
+    ${a.violations.length
+      ? `<div class="notice err"><strong>${a.violations.length} key${a.violations.length === 1 ? '' : 's'}
+          open${a.violations.length === 1 ? 's' : ''} a core ${a.violations.length === 1 ? 'it' : 'they'}
+          should not.</strong> Do not cut this.
+          <ul style="margin:6px 0 0 18px">${a.violations.slice(0, 8).map(v =>
+            `<li class="mono tiny">${esc(v.key)} ${esc(formatBitting(v.keyBitting))}
+              opens core ${esc(v.core)}</li>`).join('')}</ul></div>`
+      : (r.cores.length > 1 ? `<div class="notice ok tiny"><strong>Cross-key audit clean.</strong>
+          All ${a.checked} key/core pairs tried. No key opens a core it was not cut for.</div>` : '')}
+
+    ${a.controlAlsoOperates.length ? `<div class="notice warn tiny">
+      <strong>The control key also turns the plug on ${a.controlAlsoOperates.join(', ')}.</strong>
+      Its cut matches an operating depth at every barrel, so the stack breaks at both shear lines.
+      It still pulls the core; it now opens the door as well. Legal, and almost never what was
+      intended &mdash; change one cut of the control key and it stops.</div>` : ''}
+
+    ${a.canPull ? `<div class="notice err"><strong>This system's control lug is not thicker than
+      its depth range.</strong> An operating key could be cut that reaches the control shear line
+      and pulls cores. Check the specs before cutting anything.</div>`
+      : `<div class="notice ok tiny">No operating key can reach the control shear line in this
+          system: the smallest control code a legal key produces (${s.min} + ${s.controlAdd}) sits
+          above the deepest legal operating cut (${s.max}), so no change key can pull a core.</div>`}
+
+    ${r.extend && r.extend.ok && r.extend.conflicts.length ? `<div class="notice ok tiny">
+      <strong>${r.extend.conflicts.length}${r.extend.conflicts.length >= 12 ? '+' : ''}
+      combination${r.extend.conflicts.length === 1 ? ' was' : 's were'} rejected for cross-keying</strong>
+      before the new keys below were accepted.</div>` : ''}
+
+    ${r.extend && r.extend.ok && r.extend.exhausted ? `<div class="notice warn tiny">The master ran
+      out of safe change keys before reaching the number asked for.</div>` : ''}
+
+    <h2>${r.cores.length ? `${r.cores.length} core${r.cores.length === 1 ? '' : 's'}` : 'No core to chart'}</h2>
+    ${r.cores.length ? r.cores.map(c => sficCoreHtml(c, r)).join('')
+      : `<div class="notice info tiny">A control key on its own has nothing to be charted against.
+          Add the master or an operating key and the stacks below it can be worked out.</div>`}
+
+    ${r.cores.length ? `<div class="stack" style="margin-top:16px">
+      <button class="btn" data-mksave="1">Save this system</button>
+      <button class="btn ghost" data-mkcopy="1">Copy the whole schedule</button>
+    </div>` : ''}`;
+}
+
+function mkSficText(r) {
+  const s = r.system;
+  const out = [];
+  out.push(`${mkUI.label || 'SFIC core pinning'} — ${s.name}`);
+  out.push(`${s.chambers} barrels, depths ${s.min}-${s.max}, control lug +${s.controlAdd}, total stack ${s.totalStack}`);
+  if (r.effectiveControl) {
+    out.push(`CONTROL  ${formatBitting(r.effectiveControl)}${r.control ? '' : '   *** PROPOSED, not read from a core ***'}`);
+  } else {
+    out.push('CONTROL  not given — the operating half only, this cannot be loaded');
+  }
+  if (r.master) out.push(`MASTER   ${formatBitting(r.master)}`);
+  out.push('');
+  r.cores.forEach(c => {
+    out.push(`${c.symbol}  ${formatBitting(c.bitting)}   (${c.keys.map(k => k.symbol).join(' + ')} turn it)`);
+    out.push(`   bottom   ${c.barrels.map(b => b.bottom + 'A').join(' ')}`);
+    out.push(`   master   ${c.barrels.map(b => b.masters.length ? b.masters.map(m => m + 'B').join('+') : '-').join(' ')}`);
+    if (r.effectiveControl) {
+      out.push(`   control  ${c.barrels.map(b => b.control + 'B').join(' ')}`);
+      out.push(`   top      ${c.barrels.map(b => b.top + 'B').join(' ')}`);
+    }
+    c.warnings.forEach(w => out.push(`   ! ${w}`));
+  });
+  out.push('');
+  out.push(r.audit.violations.length
+    ? `WARNING: ${r.audit.violations.length} cross-key violation(s) — do not cut this.`
+    : `Cross-key audit clean over ${r.audit.checked} key/core pairs.`);
+  if (r.audit.controlAlsoOperates.length) {
+    out.push(`WARNING: the control key also turns the plug on ${r.audit.controlAlsoOperates.join(', ')}.`);
+  }
+  out.push('A segment = bottom pin, rides the key. B segments are flat both ends.');
+  out.push('Verify against your pinning kit before you load a core.');
   return out.join('\n');
 }
 
@@ -1425,13 +1646,16 @@ function RENDER_master() {
           <button type="button" class="chip${mkUI.mode === 'single' ? ' on' : ''}" data-mkmode="single">Single master</button>
           <button type="button" class="chip${mkUI.mode === 'full' ? ' on' : ''}" data-mkmode="full">Full system</button>
           <button type="button" class="chip${mkUI.mode === 'extend' ? ' on' : ''}" data-mkmode="extend">Existing master</button>
+          <button type="button" class="chip${mkUI.mode === 'sfic' ? ' on' : ''}" data-mkmode="sfic">SFIC core</button>
         </div>
       </div>
       <div class="tiny muted" style="margin:6px 0 12px">${
         mkUI.mode === 'single' ? 'One master over a run of change keys, progressed by rotating constant or total position.'
         : mkUI.mode === 'full' ? 'A hierarchy — grand master over masters over change keys — with each level owning its own chambers.'
+        : mkUI.mode === 'sfic' ? 'A BEST figure-8 interchangeable core, pinned for both shear lines. Give it any of the control, master and operating keys — any one, any two, or all three — and it charts what those allow and says what they cannot tell you.'
         : 'A master already in the field. Give it the keys you know about and it works out the layout, then adds changes that will not open a door already out there.'}</div>
 
+      ${mkUI.mode === 'sfic' ? '' : `
       <div class="field"><label>Manufacturer</label>
         <select name="sysId">${Object.values(MK_SYSTEMS).map(s =>
           `<option value="${s.id}"${mkUI.sysId === s.id ? ' selected' : ''}>${esc(s.name)} &mdash; ${esc(s.keyway)}</option>`).join('')}</select>
@@ -1449,9 +1673,10 @@ function RENDER_master() {
           <input name="min" type="number" inputmode="numeric" min="0" max="9" value="${sys.min}"></div>
         <div class="field"><label>Deepest depth</label>
           <input name="max" type="number" inputmode="numeric" min="0" max="9" value="${sys.max}"></div>
-      </div>
+      </div>`}
 
-      ${mkUI.mode === 'full' ? mkFullFormHtml(sys)
+      ${mkUI.mode === 'sfic' ? mkSficFormHtml()
+        : mkUI.mode === 'full' ? mkFullFormHtml(sys)
         : mkUI.mode === 'extend' ? mkExtendFormHtml(sys) : `
         <div class="field"><label>Top master key (TMK)</label>
           <input name="tmk" class="mono" inputmode="numeric" autocomplete="off"
@@ -1475,13 +1700,19 @@ function RENDER_master() {
 
       <button class="btn primary" type="submit">${
         mkUI.mode === 'full' ? 'Build the system'
+        : mkUI.mode === 'sfic' ? 'Chart the cores'
         : mkUI.mode === 'extend' ? 'Add to this master' : 'Build the schedule'}</button>
     </form>
 
     ${mkUI.result
-      ? (mkUI.mode === 'full' ? mkFullResultHtml(mkUI.result)
+      ? (mkUI.mode === 'sfic' ? mkSficResultHtml(mkUI.result)
+         : mkUI.mode === 'full' ? mkFullResultHtml(mkUI.result)
          : mkUI.mode === 'extend' ? mkExtendResultHtml(mkUI.result)
          : mkResultHtml(mkUI.result))
+      : mkUI.mode === 'sfic' ? `<div class="notice info tiny">
+      Give whichever of the three keys you have. A control key alone fixes the top of every
+      stack; a master or an operating key alone fixes the bottom. Two of them chart a core
+      outright, and the tool says in plain words which half it had to choose rather than read.</div>`
       : `<div class="notice info tiny">
       Enter the master bitting you want the system built around. Everything below is
       computed from it &mdash; nothing is looked up, so nothing is guessed. The depth
@@ -1492,18 +1723,31 @@ function RENDER_master() {
       <div class="card tap vres" data-mkload="${esc(s.id)}">
         <div style="flex:1;min-width:0">
           <div class="nm">${esc(s.label || 'Untitled system')}</div>
-          <div class="sub mono">${esc(s.tmk)} &middot; ${esc((MK_SYSTEMS[s.sysId] || {}).name || s.sysId)}
+          <div class="sub mono">${s.mode === 'sfic'
+            ? `${esc((SFIC_SYSTEMS[s.sficSysId] || {}).name || s.sficSysId)}
+               &middot; control ${esc(s.control || 'proposed')}`
+            : `${esc(s.tmk)} &middot; ${esc((MK_SYSTEMS[s.sysId] || {}).name || s.sysId)}
             &middot; ${s.mode === 'full'
               ? `${s.levels}-level system`
               : s.mode === 'extend'
               ? `existing master, +${s.count}`
-              : `${s.count} change key${s.count === 1 ? '' : 's'}`}</div>
+              : `${s.count} change key${s.count === 1 ? '' : 's'}`}`}</div>
         </div>
         <div class="go">&rsaquo;</div>
       </div>`).join('')}` : ''}`;
 
   const form = $('#mkForm');
-  form.elements.sysId.addEventListener('change', (e) => { mkPickSystem(e.target.value); RENDER_master(); });
+  if (form.elements.sysId) {
+    form.elements.sysId.addEventListener('change', (e) => { mkPickSystem(e.target.value); RENDER_master(); });
+  }
+  if (form.elements.sficSysId) {
+    form.elements.sficSysId.addEventListener('change', (e) => {
+      mkReadForm();
+      mkUI.sficSysId = e.target.value;
+      mkUI.result = null;
+      RENDER_master();
+    });
+  }
   if (form.elements.method) {
     form.elements.method.addEventListener('change', (e) => { mkUI.method = e.target.value; RENDER_master(); });
   }
@@ -1526,12 +1770,23 @@ function mkReadForm() {
     mkUI.counts = mkAlloc().map((_, g) => i('count' + g, (mkUI.counts && mkUI.counts[g]) || 3));
   }
   if (mkUI.mode === 'extend') mkUI.existing = v('existing');
+  if (mkUI.mode === 'sfic') {
+    Object.assign(mkUI, {
+      sficSysId: v('sficSysId') || mkUI.sficSysId,
+      control: v('control'), opKeys: v('opKeys'),
+      sficCount: i('sficCount', mkUI.sficCount)
+    });
+  }
 }
 
 /* One place that knows how each mode builds, so building and reloading a saved
    system can never drift apart. */
 function mkBuildResult() {
   const system = mkSystem();
+  if (mkUI.mode === 'sfic') {
+    return buildSFIC({ system: sficSys(), control: mkUI.control, master: mkUI.tmk,
+                       operating: sficOpLines(), count: mkUI.sficCount });
+  }
   if (mkUI.mode === 'full') {
     return buildFullSystem({ system, tmk: mkUI.tmk, levels: mkUI.levels,
                              alloc: mkAlloc(), counts: mkUI.counts });
@@ -1544,7 +1799,7 @@ function mkBuildResult() {
 
 function mkBuild() {
   mkReadForm();
-  if (mkUI.min >= mkUI.max) {
+  if (mkUI.mode !== 'sfic' && mkUI.min >= mkUI.max) {
     mkUI.result = { ok: false, errors: ['The shallowest depth has to be less than the deepest.'] };
     RENDER_master();
     return;
@@ -1640,10 +1895,13 @@ function mkSave() {
     chambers: mkUI.chambers, min: mkUI.min, max: mkUI.max, macs: mkUI.macs, step: mkUI.step,
     tmk: mkUI.mode === 'full' ? formatBitting(mkUI.result.top)
        : mkUI.mode === 'extend' ? formatBitting(mkUI.result.master)
+       : mkUI.mode === 'sfic' ? mkUI.tmk
        : formatBitting(mkUI.result.tmk),
     method: mkUI.method, count: mkUI.count,
     mode: mkUI.mode, levels: mkUI.levels, alloc: mkAlloc(), counts: mkUI.counts,
     existing: mkUI.existing,
+    sficSysId: mkUI.sficSysId, control: mkUI.control,
+    opKeys: mkUI.opKeys, sficCount: mkUI.sficCount,
     savedAt: new Date().toISOString()
   };
   Store.saveMkSystem(rec);
@@ -1661,7 +1919,9 @@ function mkLoad(id) {
     count: rec.count, label: rec.label, loadedId: rec.id, openKey: null,
     mode: rec.mode || 'single', levels: rec.levels || 3,
     alloc: rec.alloc || null, counts: rec.counts || [3, 4], openSym: {},
-    existing: rec.existing || ''
+    existing: rec.existing || '',
+    sficSysId: rec.sficSysId || 'a2-7', control: rec.control || '',
+    opKeys: rec.opKeys || '', sficCount: rec.sficCount || 0
   });
   /* Rebuild rather than store the schedule: a saved system is its inputs, so
      the keys can never drift from the math that produced them. */
@@ -1673,7 +1933,8 @@ function mkLoad(id) {
 
 function mkCopy() {
   if (!mkUI.result || !mkUI.result.ok) return;
-  const text = mkUI.mode === 'full' ? mkFullText(mkUI.result)
+  const text = mkUI.mode === 'sfic' ? mkSficText(mkUI.result)
+    : mkUI.mode === 'full' ? mkFullText(mkUI.result)
     : mkUI.mode === 'extend' ? mkExtendText(mkUI.result)
     : mkScheduleText(mkUI.result);
   const done = () => alert('Schedule copied.');
@@ -2238,7 +2499,11 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (t.dataset.mkopen)  {
-    const n = parseInt(t.dataset.mkopen, 10);
+    /* A conventional change key is numbered; an SFIC core is named, because
+       the cores in one job come from two places and CK03 has to mean the same
+       row whether it was given or generated. */
+    const raw = t.dataset.mkopen;
+    const n = mkUI.mode === 'sfic' ? raw : parseInt(raw, 10);
     mkUI.openKey = mkUI.openKey === n ? null : n;
     RENDER_master();
     return;
