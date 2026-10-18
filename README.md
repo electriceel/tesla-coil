@@ -205,6 +205,20 @@ the stack sit lower, so the bottom pin is sized to the shallower of the two cuts
 master pin makes up the difference. The math has its own test suite separate from the UI — `node tests/master.test.js`.
 The seed data has two — `node tests/data.test.js` and `node tests/crossref.test.js`.
 
+**FCC IDs** are kept in `assets/js/fcc.js`, one row per ID, joined to the vehicle at render
+time — 100 verified grants across 241 vehicles. Only what the FCC certifies is stored: the
+grant holder, the equipment class, the frequency and the **original** grant date. Original
+matters: a grant accumulates Class II permissive changes and a lookup page leads with the
+most recent one, which makes a 2002-granted fob read as 2012 and an ordinary 2004 car look
+impossible. Fitment is deliberately *not* in that file — the FCC certifies a radio, not a
+model year, so the "fits 2012-2017 Camry" line on a lookup site is a marketplace listing
+and lives on the vehicle record where the bench can correct it.
+
+`node tests/fcc.test.js` refuses to let an unchecked ID ship: every ID in the seed must have
+a grant row, every grant row must be attached to a vehicle, no fob may be certified after
+its car stopped being built, and a record naming one fob for a span that plainly had several
+is listed by name rather than quietly accepted.
+
 The first checks the mistakes that are easy to make by hand and impossible to see by eye
 in a 300 KB file: duplicate ids, a record entered twice, backwards or implausible years,
 HTML entities that would render as literal `&amp;`, stray non-ASCII characters, and

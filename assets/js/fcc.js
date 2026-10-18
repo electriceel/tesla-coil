@@ -23,10 +23,25 @@
    Worth having because the frequency tells you what to expect on a sniffer
    before you cut anything, and the grantee tells an OEM fob from a clone.
 
-   Checked 2026-09-15. An FCC ID absent from this file has not been verified, and
+   Checked 2026-09-15; twelve more added and the four that overlapped re-checked
+   2026-10-18. The re-check matched the existing rows exactly, grantee, class,
+   frequency and original grant date -- which is the point of storing the original.
+   An FCC ID absent from this file has not been verified, and
    tests/fcc.test.js fails the build rather than let an unchecked one ship.
    ============================================================================ */
 const FCC_GRANTS = {
+  'BAB237131-022': { mfr:'DENSO TEN Limited', klass:'Vehicle Alarm System Transmitter', freq:'303.875 MHz', granted:'1995-07-06' },
+  'BAB237131-056': { mfr:'DENSO TEN Limited', klass:'Security Transmitter', freq:'303.89 MHz', granted:'1999-06-16' },
+  'NBG010206T': { mfr:'Hella KGaA Hueck & Co.', klass:'Keyless Car Entry', freq:'315 MHz', granted:'2009-08-26' },
+  'NT8TX9': { mfr:'Visteon Corporation', klass:'Transmitter for Remote Keyless Entry System', freq:'315 MHz', granted:'2006-12-19' },
+  'OSLOKA-221T': { mfr:'Omron Automotive Electronics Korea Co., Ltd.', klass:'Remote Keyless Entry System', freq:'307.9 MHz', granted:'2002-03-07' },
+  'OUCD6000022': { mfr:'NIDEC MOBILITY CORPORATION', klass:'RKE Transmitter', freq:'315 MHz', granted:'2005-02-22' },
+  'RX2TRF198': { mfr:'Marelli Europe S.p.A.', klass:'Remote Keyless Entry System Transmitter', freq:'433.92 MHz', granted:'2012-06-04' },
+  'SY55WY8212': { mfr:'Continental Automotive Systems Corporation', klass:'Remote Keyless Entry System (Transmitter)', freq:'315 MHz', granted:'2005-02-15' },
+  'WAZSKE13D02': { mfr:'Mitsubishi Electric Corporation Himeji works', klass:'Keyless System Hand Unit', freq:'315 MHz', granted:'2015-12-15' },
+  '2AEIM-1048598': { mfr:'Tesla, Inc', klass:'Keyfob with BLE functionality', freq:'2402-2480 MHz', granted:'2015-11-05' },
+  '2AEIM-1133148': { mfr:'Tesla, Inc', klass:'Car Key Fob with BLE', freq:'2402-2480 MHz', granted:'2018-08-06' },
+  '2AEIM-1614285': { mfr:'Tesla, Inc', klass:'Key Fob', freq:'2402-2480 MHz', granted:'2021-05-31' },
   'ABO1502T': { mfr:'General Motors Corporation-Corporate Affairs-VEFE', klass:'Remote Keyless Entry System', freq:'315 MHz', granted:'1995-01-11' },
   'ACJ932HK1210A': { mfr:'Panasonic Corporation of North America', klass:'SMART FOB', freq:'313.85 MHz', granted:'2011-12-23' },
   'CWTWB1G0090': { mfr:'ALPS ALPINE CO., LTD.', klass:'Hand Unit', freq:'433.92 MHz', granted:'2017-03-23' },

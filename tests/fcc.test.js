@@ -41,6 +41,14 @@ check('no FCC ID is the literal word "varies" or a placeholder',
 const malformed = [...used.keys()].filter(f => !/^[A-Z0-9][A-Z0-9.\-]{2,26}$/i.test(f));
 check('FCC IDs are shaped like FCC IDs', !malformed.length, malformed.join(', '));
 
+/* The reverse of the first check, and the failure mode of adding IDs in bulk:
+   a grant verified, pasted into fcc.js, and then never attached to the vehicle
+   it was looked up for. Nothing else notices -- the suite stays green, the
+   count goes up, and the car still shows no fob. */
+const orphans = Object.keys(G).filter(f => !used.has(f));
+check('every verified grant is actually attached to a vehicle', !orphans.length,
+  orphans.join(', ') + ' -- verified but on no record');
+
 check('every grant record carries a holder and a grant date',
   Object.entries(G).every(([, g]) => g.mfr && g.granted),
   Object.entries(G).filter(([, g]) => !g.mfr || !g.granted).map(([k]) => k).join(', '));
@@ -82,6 +90,12 @@ check('no fob is certified after the car it belongs to stopped being built',
    than guessed -- deciding which years take which fob needs the bench. New ones
    should show up here rather than pass silently. */
 const WIDE_SPANS = [
+  /* Tesla's own manuals split the Model S/X fob at the 2021 refresh: 1048598
+     for the earlier cars, 1614285 after. One record covers both, so the later
+     fob reads as a wide span -- correctly. It is listed rather than removed
+     because a counter needs to know the refresh fob exists; splitting the
+     record is the real fix and wants the bench to confirm the cutover year. */
+  '2AEIM-1614285 tesla-model-s-x-2012-2024',
   'KR5S180144014 nissan-murano-2003-2020',
   'KR5TXN7 infiniti-qx80-2011-2025',
   'KR5TXN7 nissan-armada-2004-2024',
