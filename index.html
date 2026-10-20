@@ -233,14 +233,14 @@
     <h2>Quote builder</h2>
     <form class="card" id="quoteForm">
       <div class="row">
-        <div class="field"><label>Service call</label><input id="qBase" type="number" inputmode="decimal" step="0.01" placeholder="85"></div>
-        <div class="field"><label>Trip</label><input id="qTrip" type="number" inputmode="decimal" step="0.01" placeholder="0"></div>
+        <div class="field"><label>Service call</label><input id="qBase" type="number" inputmode="decimal" min="0" step="0.01" placeholder="85"></div>
+        <div class="field"><label>Trip</label><input id="qTrip" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
       </div>
       <div class="row">
-        <div class="field"><label>Keys</label><input id="qKeys" type="number" inputmode="numeric" value="1"></div>
-        <div class="field"><label>Per key</label><input id="qPer" type="number" inputmode="decimal" step="0.01" placeholder="140"></div>
+        <div class="field"><label>Keys</label><input id="qKeys" type="number" inputmode="numeric" min="0" max="99" value="1"></div>
+        <div class="field"><label>Per key</label><input id="qPer" type="number" inputmode="decimal" min="0" step="0.01" placeholder="140"></div>
       </div>
-      <div class="field"><label>Programming</label><input id="qProg" type="number" inputmode="decimal" step="0.01" placeholder="75"></div>
+      <div class="field"><label>Programming</label><input id="qProg" type="number" inputmode="decimal" min="0" step="0.01" placeholder="75"></div>
       <button class="btn primary" type="submit">Total</button>
     </form>
     <div id="qOut"></div>
@@ -276,7 +276,7 @@
     <form class="card" id="setForm">
       <div class="field"><label>Business name</label><input id="setShop" placeholder="On Spot Locksmith"></div>
       <div class="field"><label>Phone</label><input id="setPhone" type="tel"></div>
-      <div class="field"><label>Default trip charge</label><input id="setRate" type="number" inputmode="decimal" step="0.01"></div>
+      <div class="field"><label>Default trip charge</label><input id="setRate" type="number" inputmode="decimal" min="0" step="0.01"></div>
       <button class="btn primary" type="submit">Save</button>
     </form>
 

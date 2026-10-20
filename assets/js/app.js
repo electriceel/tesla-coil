@@ -754,9 +754,19 @@ function editVehicle(id, prefill) {
       obdPort: f.obdPort, doorUnlock: f.doorUnlock, notes: f.notes,
       verified: true
     };
-    Store.saveVehicle(rec);
+    if (!persisted(Store.saveVehicle(rec))) return;
     go('vehicle', rec.id);
   });
+}
+
+/* A save that did not happen must never read as one. localStorage fills up --
+   a long job log, an imported BCM table -- and every save path here used to
+   say "Saved." whether or not the bytes landed. Wrap each one: the call sites
+   read the same, and a failure now stops the flow and says what to do. */
+function persisted(ok) {
+  if (ok !== false) return true;
+  alert(Store.lastError || 'Nothing was saved — this device refused the write.');
+  return false;
 }
 
 /* ======================= VIN ======================= */
@@ -1116,7 +1126,7 @@ function editBlank(id) {
       makes: f.makes.split(',').map(s => s.trim()).filter(Boolean),
       notes: f.notes
     };
-    Store.saveBlank(rec);
+    if (!persisted(Store.saveBlank(rec))) return;
     blankUI.detail = rec.id;
     RENDER_blanks();
   });
@@ -1904,7 +1914,7 @@ function mkSave() {
     opKeys: mkUI.opKeys, sficCount: mkUI.sficCount,
     savedAt: new Date().toISOString()
   };
-  Store.saveMkSystem(rec);
+  if (!persisted(Store.saveMkSystem(rec))) return;
   mkUI.loadedId = rec.id;
   RENDER_master();
   alert('Saved. It is in the backup file too.');
@@ -2006,42 +2016,86 @@ function bcmLookup() {
        Check the label on the BCM again &mdash; the code is usually four characters after the dash.</div>`;
 }
 
+/* The code is normalised the same way here as in the lookup. It was not: the
+   lookup strips spaces from both sides, the import deduplicated on the raw
+   string, so a file carrying "AB12,1234" and "AB 12,9999" stored both and the
+   second -- a different PIN for the same BCM -- could never be reached. A PIN
+   you cannot see is not harmless in a table whose whole job is to stop you
+   burning an attempt on the module. One key, one row, and the collisions are
+   counted so the file can be questioned. */
+const bcmKey = (v) => String(v == null ? '' : v).toUpperCase().replace(/\s+/g, '');
+
 function importBcmCsv(text, append) {
   const rows = [];
   text.split(/\r?\n/).forEach(line => {
     const t = line.trim();
     if (!t || /^bcm\b/i.test(t)) return;
     const p = t.split(/[,;\t]/).map(s => s.trim());
-    if (p.length >= 2 && p[0] && p[1]) rows.push({ bcm: p[0].toUpperCase(), pin: p[1], note: p[2] || '' });
+    if (p.length >= 2 && p[0] && p[1]) rows.push({ bcm: bcmKey(p[0]), pin: p[1], note: p[2] || '' });
   });
   if (!rows.length) throw new Error('Found no "bcm,pin" rows in that file.');
-  const merged = append ? Store.bcmRows().slice() : [];
-  const have = new Set(merged.map(r => r.bcm));
-  rows.forEach(r => { if (!have.has(r.bcm)) { merged.push(r); have.add(r.bcm); } });
-  Store.setBcmRows(merged);
-  return rows.length;
+  const merged = append ? Store.bcmRows().map(r => ({ ...r, bcm: bcmKey(r.bcm) })) : [];
+  const have = new Map(merged.map(r => [r.bcm, r.pin]));
+  let dupes = 0, conflicts = 0;
+  rows.forEach(r => {
+    if (!have.has(r.bcm)) { merged.push(r); have.set(r.bcm, r.pin); return; }
+    dupes++;
+    if (have.get(r.bcm) !== r.pin) conflicts++;
+  });
+  if (!persisted(Store.setBcmRows(merged))) return { added: 0, dupes: 0, conflicts: 0, failed: true };
+  return { added: rows.length - dupes, dupes, conflicts };
 }
 
 /* --- small field calculators --- */
+/* parseInt stops at the first character it does not like and returns what it
+   read so far, which made this tool confidently wrong in two ways: "0x1A" read
+   as decimal 0, and "1A" as decimal 1, both shown as real answers. And a
+   20-digit hex value -- an ordinary length for transponder data -- came back
+   as 1.2089258196146292e+24 with a binary string rounded off past 2^53.
+
+   So: a value must be wholly valid in a base to be read in that base, and the
+   conversion runs on BigInt, which is exact at any length. */
+const HEX_RE = /^[0-9a-f]+$/i;
+const DEC_RE = /^[0-9]+$/;
+
 function runHexDec() {
-  const v = ($('#hexIn').value || '').trim();
-  if (!v) { $('#hexOut').innerHTML = ''; return; }
-  const asHex = parseInt(v.replace(/^0x/i, ''), 16);
-  const asDec = parseInt(v, 10);
+  const raw = ($('#hexIn').value || '').trim().replace(/[\s_]/g, '');
+  if (!raw) { $('#hexOut').innerHTML = ''; return; }
+  const h = raw.replace(/^0x/i, '');
+  const isHex = HEX_RE.test(h) && h.length <= 64;
+  /* An explicit 0x prefix says the value is hex and nothing else. */
+  const isDec = !/^0x/i.test(raw) && DEC_RE.test(raw) && raw.length <= 64;
+
+  const fromHex = isHex ? BigInt('0x' + h) : null;
+  const fromDec = isDec ? BigInt(raw) : null;
+  const em = '&mdash;';
+
   $('#hexOut').innerHTML = `<div class="card"><dl class="spec">
-    <dt>As hex</dt><dd class="mono">${Number.isNaN(asHex) ? '&mdash;' : asHex + ' dec'}</dd>
-    <dt>As decimal</dt><dd class="mono">${Number.isNaN(asDec) ? '&mdash;' : asDec.toString(16).toUpperCase() + ' hex'}</dd>
-    <dt>Binary</dt><dd class="mono">${Number.isNaN(asHex) ? '&mdash;' : asHex.toString(2)}</dd>
-  </dl></div>`;
+    <dt>As hex</dt><dd class="mono">${fromHex === null ? em : fromHex.toString(10) + ' dec'}</dd>
+    <dt>As decimal</dt><dd class="mono">${fromDec === null ? em : fromDec.toString(16).toUpperCase() + ' hex'}</dd>
+    <dt>Binary</dt><dd class="mono" style="word-break:break-all">${fromHex === null
+      ? (fromDec === null ? em : fromDec.toString(2)) : fromHex.toString(2)}</dd>
+  </dl></div>`
+    + (isHex || isDec ? '' : `<div class="notice warn tiny">Not a whole number in either base.
+        Hex takes 0-9 and A-F, decimal takes 0-9 &mdash; a value that is only partly valid is
+        shown as a dash rather than guessed at.</div>`);
 }
+
+/* Every figure on this screen is read back to a customer, so a stray NaN or a
+   negative key count is worse here than almost anywhere else in the app. Each
+   input is coerced once, at the point of use. */
+const money = (v, dflt) => {
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? n : (dflt || 0);
+};
 
 function runQuote() {
   const p = Store.prefs();
-  const base = parseFloat($('#qBase').value || '0');
-  const keys = parseInt($('#qKeys').value || '1', 10);
-  const per = parseFloat($('#qPer').value || '0');
-  const prog = parseFloat($('#qProg').value || '0');
-  const trip = parseFloat($('#qTrip').value || p.rate || '0');
+  const base = Math.max(0, money($('#qBase').value));
+  const keys = Math.max(0, Math.min(99, parseInt($('#qKeys').value, 10) || 0));
+  const per = Math.max(0, money($('#qPer').value));
+  const prog = Math.max(0, money($('#qProg').value));
+  const trip = Math.max(0, money($('#qTrip').value, money(p.rate)));
   const total = base + (keys * per) + prog + trip;
   $('#qOut').innerHTML = `<div class="notice ok">
     <div class="tiny">Service ${base.toFixed(2)} + ${keys} key(s) @ ${per.toFixed(2)} + programming ${prog.toFixed(2)} + trip ${trip.toFixed(2)}</div>
@@ -2099,7 +2153,7 @@ function editJob(id, prefillVehicle) {
   $('#jobForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target).entries());
-    Store.saveJob({ id: id || uid(), ...f });
+    if (!persisted(Store.saveJob({ id: id || uid(), ...f }))) return;
     $('#jobEditor').innerHTML = '';
     $('#jobListWrap').hidden = false;
     RENDER_jobs();
@@ -2616,13 +2670,24 @@ function boot() {
   $('#bcmImport').addEventListener('click', async () => {
     try {
       const text = await pickFile('.csv,.txt,text/csv,text/plain');
-      const n = importBcmCsv(text, true);
-      alert(`Imported ${n} row(s).`);
+      const r = importBcmCsv(text, true);
+      if (r.failed) return;
+      /* A duplicate code carrying a DIFFERENT PIN is the one worth saying out
+         loud -- the file disagrees with itself, and only one of the two can be
+         right. The table keeps the first and says how many it passed over. */
+      alert(`Imported ${r.added} row(s).`
+        + (r.dupes ? `\n${r.dupes} already in the table were skipped.` : '')
+        + (r.conflicts ? `\n${r.conflicts} of those gave a DIFFERENT PIN for a code you `
+            + `already have. The table kept the one you had — check the file before `
+            + `you trust either.` : ''));
       RENDER_bcm();
     } catch (err) { alert(err.message); }
   });
   $('#bcmClear').addEventListener('click', () => {
-    if (confirm('Clear the loaded BCM table?')) { Store.setBcmRows([]); RENDER_bcm(); $('#bcmOut').innerHTML = ''; }
+    if (!confirm('Clear the loaded BCM table?')) return;
+    if (!persisted(Store.setBcmRows([]))) return;
+    RENDER_bcm();
+    $('#bcmOut').innerHTML = '';
   });
   $('#hexIn').addEventListener('input', runHexDec);
   $('#quoteForm').addEventListener('submit', (e) => { e.preventDefault(); runQuote(); });
@@ -2634,7 +2699,8 @@ function boot() {
   /* settings */
   $('#setForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    Store.setPrefs({ shop: $('#setShop').value, phone: $('#setPhone').value, rate: $('#setRate').value });
+    if (!persisted(Store.setPrefs({ shop: $('#setShop').value, phone: $('#setPhone').value,
+                                    rate: $('#setRate').value }))) return;
     alert('Saved.');
   });
   $('#exportBtn').addEventListener('click', () =>
@@ -2670,7 +2736,7 @@ document.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = (f.elements.text.value || '').trim();
   if (!text) return;
-  Store.addTip(vehShown, f.dataset.tipcat, text);
+  if (!persisted(Store.addTip(vehShown, f.dataset.tipcat, text))) return;
   vehTipOpen = '';
   RENDER_vehicle(vehShown);
 });
