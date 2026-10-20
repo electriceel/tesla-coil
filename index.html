@@ -136,7 +136,7 @@
     <h2>VIN decoder</h2>
     <form class="card" id="vinForm">
       <div class="field">
-        <label>17-character VIN <span class="mono" id="vinLen">0/17</span></label>
+        <label for="vinInput">17-character VIN <span class="mono" id="vinLen">0/17</span></label>
         <input id="vinInput" class="mono" style="letter-spacing:2px;text-transform:uppercase"
                autocapitalize="characters" autocomplete="off" spellcheck="false"
                placeholder="1FTFW1ET5DFA12345">
@@ -210,7 +210,7 @@
     <h2>Nissan BCM &rarr; PIN</h2>
     <form class="card" id="bcmForm">
       <div class="field">
-        <label>BCM code <span class="tiny muted" id="bcmCount"></span></label>
+        <label for="bcmInput">BCM code <span class="tiny muted" id="bcmCount"></span></label>
         <input id="bcmInput" class="mono" style="text-transform:uppercase" autocomplete="off" placeholder="e.g. 5B7D">
       </div>
       <button class="btn primary" type="submit">Look up PIN</button>
@@ -233,14 +233,14 @@
     <h2>Quote builder</h2>
     <form class="card" id="quoteForm">
       <div class="row">
-        <div class="field"><label>Service call</label><input id="qBase" type="number" inputmode="decimal" min="0" step="0.01" placeholder="85"></div>
-        <div class="field"><label>Trip</label><input id="qTrip" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
+        <div class="field"><label for="qBase">Service call</label><input id="qBase" type="number" inputmode="decimal" min="0" step="0.01" placeholder="85"></div>
+        <div class="field"><label for="qTrip">Trip</label><input id="qTrip" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></div>
       </div>
       <div class="row">
-        <div class="field"><label>Keys</label><input id="qKeys" type="number" inputmode="numeric" min="0" max="99" value="1"></div>
-        <div class="field"><label>Per key</label><input id="qPer" type="number" inputmode="decimal" min="0" step="0.01" placeholder="140"></div>
+        <div class="field"><label for="qKeys">Keys</label><input id="qKeys" type="number" inputmode="numeric" min="0" max="99" value="1"></div>
+        <div class="field"><label for="qPer">Per key</label><input id="qPer" type="number" inputmode="decimal" min="0" step="0.01" placeholder="140"></div>
       </div>
-      <div class="field"><label>Programming</label><input id="qProg" type="number" inputmode="decimal" min="0" step="0.01" placeholder="75"></div>
+      <div class="field"><label for="qProg">Programming</label><input id="qProg" type="number" inputmode="decimal" min="0" step="0.01" placeholder="75"></div>
       <button class="btn primary" type="submit">Total</button>
     </form>
     <div id="qOut"></div>
@@ -251,7 +251,7 @@
     <button class="back" data-go="tools">&lsaquo; Back to tools</button>
     <h2>Hex / decimal</h2>
     <div class="card">
-      <div class="field"><label>Value</label><input id="hexIn" class="mono" autocomplete="off" placeholder="4F2A or 20266"></div>
+      <div class="field"><label for="hexIn">Value</label><input id="hexIn" class="mono" autocomplete="off" placeholder="4F2A or 20266"></div>
     </div>
     <div id="hexOut"></div>
   </section>
@@ -274,9 +274,9 @@
   <section class="view" id="view-settings">
     <h2>Shop</h2>
     <form class="card" id="setForm">
-      <div class="field"><label>Business name</label><input id="setShop" placeholder="On Spot Locksmith"></div>
-      <div class="field"><label>Phone</label><input id="setPhone" type="tel"></div>
-      <div class="field"><label>Default trip charge</label><input id="setRate" type="number" inputmode="decimal" min="0" step="0.01"></div>
+      <div class="field"><label for="setShop">Business name</label><input id="setShop" placeholder="On Spot Locksmith"></div>
+      <div class="field"><label for="setPhone">Phone</label><input id="setPhone" type="tel"></div>
+      <div class="field"><label for="setRate">Default trip charge</label><input id="setRate" type="number" inputmode="decimal" min="0" step="0.01"></div>
       <button class="btn primary" type="submit">Save</button>
     </form>
 

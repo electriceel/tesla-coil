@@ -214,7 +214,12 @@ impossible. Fitment is deliberately *not* in that file — the FCC certifies a r
 model year, so the "fits 2012-2017 Camry" line on a lookup site is a marketplace listing
 and lives on the vehicle record where the bench can correct it.
 
-`node tests/integrity.test.js` covers the seams between files, where the flaws that no single
+`node tests/integrity.test.js` loads `store.js` against a stubbed localStorage and exercises it
+for real — a damaged backup is refused before it can overwrite a good one, a reserved name like
+`__proto__` cannot be used as a tip key, a save that hits the quota returns false and says why.
+Source-grep checks in the same file match against the code with comments and string literals
+stripped, because the first negative check written there passed on its own prose. It also covers
+the seams between files, where the flaws that no single
 module's test would catch actually live: that every script `index.html` loads is in the service
 worker's precache list and every precached path exists (`addAll` rejects as a unit, so one missing
 file silently kills offline entirely); that no `Store` method throws away the result of a write and

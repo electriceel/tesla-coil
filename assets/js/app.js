@@ -2160,10 +2160,25 @@ function editJob(id, prefillVehicle) {
   });
 }
 
+/* Quoting is not enough on its own: Excel and Sheets evaluate a cell whose
+   text begins with = + - @ or a control character, quoted or not. The everyday
+   casualty is not an attack, it is a phone number -- "+18055550123" opens as a
+   broken formula. A leading apostrophe makes the spreadsheet treat it as text
+   and is not displayed.
+
+   Plain numbers are left alone, so a negative price stays a number people can
+   sum rather than becoming text. */
+const CSV_FORMULA = /^[=+\-@\t\r]/;
+function csvCell(v) {
+  let s = String(v == null ? '' : v);
+  if (CSV_FORMULA.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = "'" + s;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 function jobsCsv() {
   const cols = ['date', 'customer', 'phone', 'vehicle', 'service', 'keys', 'price', 'status', 'notes'];
-  const q = s => `"${String(s == null ? '' : s).replace(/"/g, '""')}"`;
-  return [cols.join(',')].concat(Store.jobs().map(j => cols.map(c => q(j[c])).join(','))).join('\n');
+  return [cols.join(',')]
+    .concat(Store.jobs().map(j => cols.map(c => csvCell(j[c])).join(','))).join('\n');
 }
 
 /* ======================= settings ======================= */
