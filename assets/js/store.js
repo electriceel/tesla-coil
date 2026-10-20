@@ -12,10 +12,27 @@ const K = {
   prefs:    NS + 'prefs'
 };
 
+/* JSON.parse turns a "__proto__" key into a real own property, and code that
+   then does obj[k] || (obj[k] = {}) walks straight onto Object.prototype. The
+   reviver drops it at the boundary so nothing downstream has to remember. */
+const RESERVED = ['__proto__', 'constructor', 'prototype'];
+const dropProto = (k, v) => (RESERVED.includes(k) ? undefined : v);
+
 function read(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v, dropProto) : fallback; }
   catch (e) { console.warn('read failed', key, e); return fallback; }
 }
+
+/* Any id used as an object key gets checked here. Tips are keyed by vehicle
+   id, which arrives from the route, so "__proto__" reached
+   all[vehId] || (all[vehId] = {}) and wrote the category onto
+   Object.prototype -- giving every object in the app a stray property. No
+   real record uses these names, so refusing them costs nothing. */
+const safeKey = (k) => {
+  const s = String(k == null ? '' : k);
+  return (s && !RESERVED.includes(s)) ? s : '';
+};
+const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 /* Returns false when the write did not happen -- which on a phone means the
    storage quota is full, and which used to be reported to nobody. Every caller
    said "Saved." regardless, so a job logged in a customer's driveway could
@@ -102,26 +119,38 @@ const Store = {
      Shaped { vehicleId: { category: [ {id, text, at} ] } }. These are your notes
      from your own jobs, on this device — nothing is submitted anywhere. */
   allTips() { return read(K.tips, {}); },
-  tipsFor(vehId) { return Store.allTips()[vehId] || {}; },
-  addTip(vehId, cat, text) {
+  tipsFor(vehId) {
     const all = Store.allTips();
-    const veh = all[vehId] || (all[vehId] = {});
-    const list = veh[cat] || (veh[cat] = []);
+    const id = safeKey(vehId);
+    return (id && hasOwn(all, id)) ? all[id] : {};
+  },
+  addTip(vehId, cat, text) {
+    const id = safeKey(vehId), c = safeKey(cat);
+    if (!id || !c) return false;
+    const all = Store.allTips();
+    const veh = hasOwn(all, id) ? all[id] : (all[id] = {});
+    const list = hasOwn(veh, c) ? veh[c] : (veh[c] = []);
     list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                 text: String(text || '').trim(), at: new Date().toISOString() });
     return write(K.tips, all);
   },
   deleteTip(vehId, cat, tipId) {
     const all = Store.allTips();
-    if (!all[vehId] || !all[vehId][cat]) return;
-    all[vehId][cat] = all[vehId][cat].filter(t => t.id !== tipId);
-    if (!all[vehId][cat].length) delete all[vehId][cat];
-    if (!Object.keys(all[vehId]).length) delete all[vehId];
+    const id = safeKey(vehId), c = safeKey(cat);
+    if (!id || !c || !hasOwn(all, id) || !hasOwn(all[id], c)) return false;
+    all[id][c] = all[id][c].filter(t => t.id !== tipId);
+    if (!all[id][c].length) delete all[id][c];
+    if (!Object.keys(all[id]).length) delete all[id];
     return write(K.tips, all);
   },
+  /* Counts only what is actually a list. The import refuses a malformed tips
+     block now, but this number is read straight off storage, which a person
+     can also edit by hand. */
   tipCount() {
-    return Object.values(Store.allTips())
-      .reduce((n, veh) => n + Object.values(veh).reduce((m, list) => m + list.length, 0), 0);
+    return Object.values(Store.allTips()).reduce((n, veh) =>
+      n + (veh && typeof veh === 'object'
+        ? Object.values(veh).reduce((m, list) => m + (Array.isArray(list) ? list.length : 0), 0)
+        : 0), 0);
   },
 
   /* ---- master-key systems ----
@@ -163,6 +192,27 @@ const Store = {
      backup reported as a success is the worst of both. */
   importAll(obj, mode) {
     if (!obj || obj.app !== 'keypro-field') throw new Error('Not a KeyPro backup file.');
+    /* Check the shape of every section before touching storage. In replace
+       mode the writes are destructive, so a truncated or hand-edited backup
+       used to wipe what was there and report success -- on the only backup
+       mechanism the app has. A string where the vehicle map should be was
+       spread into numbered keys and counted as a record. */
+    const isPlain = (v) => v && typeof v === 'object' && !Array.isArray(v);
+    const shape = { vehicles: isPlain, blanks: isPlain, tips: isPlain, prefs: isPlain,
+                    jobs: Array.isArray, bcm: Array.isArray, mk: Array.isArray };
+    const wrong = Object.keys(shape)
+      .filter(k => obj[k] != null && !shape[k](obj[k]));
+    /* tips nests two levels deep, so the top-level check does not reach the
+       lists. A category holding a string instead of an array counted its
+       characters as tips. */
+    if (isPlain(obj.tips) && Object.values(obj.tips).some(
+          cats => !isPlain(cats) || Object.values(cats).some(l => !Array.isArray(l)))) {
+      wrong.push('tips');
+    }
+    if (wrong.length) {
+      throw new Error('That backup is damaged — ' + wrong.join(', ')
+        + (wrong.length === 1 ? ' is' : ' are') + ' not the right shape. Nothing was changed.');
+    }
     let ok = true;
     if (mode === 'replace') {
       ok = write(K.vehicles, obj.vehicles || {}) && ok;
@@ -182,10 +232,14 @@ const Store = {
       /* Tips merge per vehicle per category, skipping ids already present. */
       const tips = Store.allTips();
       Object.entries(obj.tips || {}).forEach(([vid, cats]) => {
-        const mine = tips[vid] || (tips[vid] = {});
+        const id = safeKey(vid);
+        if (!id) return;
+        const mine = hasOwn(tips, id) ? tips[id] : (tips[id] = {});
         Object.entries(cats).forEach(([cat, list]) => {
-          const seenIds = new Set((mine[cat] || []).map(t => t.id));
-          mine[cat] = (mine[cat] || []).concat(list.filter(t => !seenIds.has(t.id)));
+          const c = safeKey(cat);
+          if (!c || !Array.isArray(list)) return;
+          const seenIds = new Set((mine[c] || []).map(t => t.id));
+          mine[c] = (mine[c] || []).concat(list.filter(t => t && !seenIds.has(t.id)));
         });
       });
       ok = write(K.tips, tips) && ok;

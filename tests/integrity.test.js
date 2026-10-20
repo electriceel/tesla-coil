@@ -8,8 +8,22 @@ const path = require('path');
 const read = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 
 const { SEED_VEHICLES: V } = require('../assets/js/data.js');
-const app = read('assets/js/app.js');
-const store = read('assets/js/store.js');
+
+/* Several checks below assert that a source file does or does not contain a
+   construct. Run against the raw text they are nearly worthless: this file is
+   heavily commented, every comment quotes the bug it describes, and the first
+   negative check written here passed its own prose instead of the code. Match
+   against the code with comments and string literals stripped. */
+const code = (f) => read(f)
+  .replace(/\/\*[\s\S]*?\*\//g, ' ')
+  .replace(/(^|[^:])\/\/.*$/gm, '$1')
+  .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
+  .replace(/"(?:[^"\\\n]|\\.)*"/g, '""');
+
+const app = code('assets/js/app.js');
+const store = code('assets/js/store.js');
+const appRaw = read('assets/js/app.js');
+const storeRaw = read('assets/js/store.js');
 const sw = read('sw.js');
 const html = read('index.html');
 
@@ -43,13 +57,14 @@ check('every script index.html loads is precached', !uncached.length, uncached.j
    them printing "Saved." A job logged in a driveway vanished with a
    confirmation on screen. */
 check('write() reports why it failed, not just that it did',
-  /lastError\s*=/.test(store) && /QuotaExceededError/.test(store));
+  /lastError\s*=/.test(store) && /QuotaExceededError/.test(storeRaw));
 check('Store exposes the reason to the UI', /get lastError\(\)/.test(store));
 
 /* Every Store method whose job is to persist has to hand the boolean back. A
    method that calls write() and returns undefined cannot be checked by anyone. */
 const swallowed = [];
-store.split('\n').forEach((line, i) => {
+storeRaw.split('\n').forEach((line, i) => {
+  if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
   const m = line.match(/^\s*(?:ok = )?write\(K\.\w+/);
   if (m && !/return |ok = /.test(line)) swallowed.push((i + 1) + ': ' + line.trim());
 });
@@ -61,7 +76,8 @@ check('no Store method throws away the result of write()', !swallowed.length,
 const SAVERS = ['saveVehicle', 'saveBlank', 'saveJob', 'saveMkSystem', 'addTip',
                 'setPrefs', 'setBcmRows'];
 const unwrapped = [];
-app.split('\n').forEach((line, i) => {
+appRaw.split('\n').forEach((line, i) => {
+  if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
   SAVERS.forEach(fn => {
     if (!line.includes('Store.' + fn + '(')) return;
     if (!/persisted\(/.test(line)) unwrapped.push((i + 1) + ': ' + line.trim().slice(0, 90));
@@ -69,7 +85,7 @@ app.split('\n').forEach((line, i) => {
 });
 check('every Store save in the UI goes through persisted()', !unwrapped.length,
   unwrapped.join('\n     '));
-check('persisted() actually tells the user', /function persisted\(ok\)[\s\S]{0,220}alert\(/.test(app));
+check('persisted() actually tells the user', /function persisted\(ok\)[\s\S]{0,220}alert\(/.test(appRaw));
 
 /* ============ the money screen ============
    The rate pref reaches the quote builder as a number. The field is
@@ -92,7 +108,7 @@ check('#qKeys is bounded at both ends', /id="qKeys"[^>]*min="0"[^>]*max="99"/.te
 check('the converter demands a wholly valid value', /const HEX_RE = /.test(app)
   && /const DEC_RE = /.test(app));
 check('and converts with BigInt, which is exact at any length',
-  /BigInt\('0x' \+ h\)/.test(app) && /BigInt\(raw\)/.test(app));
+  /BigInt\(/.test(app) && /BigInt\('0x' \+ h\)/.test(appRaw) && /BigInt\(raw\)/.test(appRaw));
 check('parseInt is no longer used for the conversion',
   !/parseInt\(v\.replace\(\/\^0x\/i/.test(app));
 
@@ -104,7 +120,7 @@ check('parseInt is no longer used for the conversion',
    burning an attempt. */
 check('import and lookup normalise the code the same way', /const bcmKey = /.test(app));
 check('and a duplicate code with a different PIN is reported, not swallowed',
-  /conflicts/.test(app) && /DIFFERENT PIN/.test(app));
+  /conflicts/.test(app) && /DIFFERENT PIN/.test(appRaw));
 
 /* ============ ids that contradict their own data ============
    A vehicle id is an opaque key -- renaming one would orphan the tips, jobs
@@ -130,6 +146,139 @@ check('no new id contradicts the years on its own record', !newDiv.length,
 const healed = ID_YEAR_DIVERGENCE.filter(id => !diverged.includes(id));
 check('the divergence list carries no entries that are already fixed', !healed.length,
   healed.join(', ') + ' -- drop them from the list');
+
+/* ============ store.js, actually run ============
+   Grepping the source proves a construct is present, not that it works: the
+   first draft of the damaged-backup check passed happily with the rejection
+   turned into `if (false)`. store.js has no exports and talks to
+   localStorage, so load it with a stub and exercise the real functions. */
+function loadStore() {
+  const mem = new Map();
+  const localStorage = {
+    getItem: k => (mem.has(k) ? mem.get(k) : null),
+    setItem: (k, v) => { if (mem.__full) { const e = new Error('full'); e.name = 'QuotaExceededError'; throw e; } mem.set(k, String(v)); },
+    removeItem: k => mem.delete(k),
+    clear: () => mem.clear()
+  };
+  const src = read('assets/js/store.js') + '\n;return Store;';
+  const Store = new Function('localStorage', 'console', src)(localStorage, { warn() {} });
+  return { Store, mem };
+}
+
+{
+  const { Store } = loadStore();
+  const before = Object.keys(Object.prototype).length;
+  const refused = [
+    Store.addTip('__proto__', 'entry', 'x'),
+    Store.addTip('constructor', 'entry', 'x'),
+    Store.addTip('prototype', 'entry', 'x'),
+    Store.addTip('toyota-camry-2002-2006', '__proto__', 'x')
+  ];
+  check('addTip cannot write onto Object.prototype',
+    Object.keys(Object.prototype).length === before,
+    'leaked: ' + JSON.stringify(Object.keys(Object.prototype)));
+  /* Two separate defences stop this -- the reserved-name screen and the
+     hasOwnProperty read -- and either alone keeps Object.prototype clean. So
+     check the screen's own contract as well, or it can be removed without
+     anything noticing until the day the other layer is refactored. */
+  check('a reserved name is refused outright, not quietly stored',
+    refused.every(r => r === false) && Store.tipCount() === 0,
+    JSON.stringify(refused) + ' tips=' + Store.tipCount());
+  check('but an ordinary tip still saves',
+    Store.addTip('toyota-camry-2002-2006', 'entry', 'wedge the top corner') !== false
+    && Store.tipCount() === 1, String(Store.tipCount()));
+}
+
+{
+  /* A damaged backup must leave a good one alone. replace mode writes over
+     everything, so this is the one import path that can destroy data. */
+  const { Store } = loadStore();
+  Store.saveJob({ id: 'keep-me', customer: 'Ryan', date: '2026-10-20' });
+  const damaged = [
+    ['jobs as an object', { app: 'keypro-field', jobs: { a: 1 } }],
+    ['vehicles as a string', { app: 'keypro-field', vehicles: 'x' }],
+    ['mk not an array', { app: 'keypro-field', mk: 'x' }],
+    ['a tip list that is a string', { app: 'keypro-field', tips: { v1: { entry: 'nope' } } }]
+  ];
+  damaged.forEach(([name, obj]) => {
+    let threw = false;
+    try { Store.importAll(obj, 'replace'); } catch (e) { threw = /damaged/.test(e.message); }
+    check(`a backup with ${name} is refused`, threw);
+  });
+  check('and the job that was already there survived every attempt',
+    Store.jobs().length === 1 && Store.jobs()[0].id === 'keep-me',
+    JSON.stringify(Store.jobs()));
+
+  let ok = false;
+  try { ok = Store.importAll(Store.exportAll(), 'replace'); } catch (e) { ok = 'threw: ' + e.message; }
+  check('a sound backup still restores', ok === true && Store.jobs().length === 1, String(ok));
+}
+
+{
+  const { Store, mem } = loadStore();
+  mem.__full = true;
+  check('a save that hits the quota returns false',
+    Store.saveJob({ id: 'j', customer: 'x' }) === false);
+  check('and says the storage is full', /storage is full/.test(Store.lastError), Store.lastError);
+}
+
+{
+  const { Store } = loadStore();
+  check('a rate of "$85" from a backup is cleaned to a number', (() => {
+    Store.importAll({ app: 'keypro-field', prefs: { rate: '$85/hr' } }, 'merge');
+    return Store.prefs().rate === '85';
+  })(), JSON.stringify(Store.prefs()));
+}
+
+/* ============ keys that are not keys ============
+   JSON.parse turns "__proto__" into a real own property, and
+   all[vehId] || (all[vehId] = {}) then walks onto Object.prototype. Tips are
+   keyed by vehicle id, which arrives from the route, so Store.addTip wrote a
+   category straight onto Object.prototype and gave every object in the app a
+   stray property. Not reachable from the UI as it stood -- a missing vehicle
+   renders no tip form -- which is exactly why it needed catching now. */
+check('JSON is parsed with a reviver that drops __proto__',
+  /const dropProto = /.test(store) && /JSON\.parse\(v, dropProto\)/.test(store));
+check('ids used as object keys are screened', /const safeKey = /.test(store));
+check('and the tip paths read with hasOwnProperty, not bare indexing',
+  /const hasOwn = /.test(store)
+  && !/all\[vehId\] \|\| \(all\[vehId\] = \{\}\)/.test(store));
+
+/* ============ a damaged backup must not destroy a good one ============
+   replace mode writes over everything. A truncated or hand-edited file used
+   to be accepted field by field -- a string where the vehicle map belongs was
+   spread into numbered keys and counted as records -- and the only backup
+   mechanism the app has reported success. Shape is checked before the first
+   write now. */
+check('importAll validates every section before writing anything',
+  /const shape = \{/.test(store) && /Nothing was changed/.test(storeRaw));
+check('and reaches inside tips, which nests two levels',
+  /Array\.isArray\(l\)/.test(store));
+check('tipCount counts only actual lists',
+  /Array\.isArray\(list\) \? list\.length : 0/.test(store));
+
+/* ============ the job log opens in a spreadsheet ============
+   Quoting a CSV field does not stop Excel or Sheets evaluating it: a cell
+   whose text starts with = + - @ is a formula either way. The everyday
+   casualty is not an attack, it is a phone number -- "+18055550123" opens
+   broken. Plain numbers are left alone so a price column still sums. */
+check('CSV cells that would be read as formulas are escaped',
+  /const CSV_FORMULA = /.test(app) && /function csvCell/.test(app));
+check('but plain numbers are left as numbers',
+  /\^-\?\\d\+\(\\\.\\d\+\)\?\$/.test(app));
+check('the job export goes through csvCell', /cols\.map\(c => csvCell\(j\[c\]\)\)/.test(app));
+
+/* ============ every field has a label a screen reader can find ============
+   The markup looked labelled -- <label>Trip</label><input id="qTrip"> -- but
+   with no for= and no wrapping, nothing associates the two. Eleven fields,
+   including the whole quote builder and the VIN box. */
+const LABELLED = ['vinInput', 'bcmInput', 'qBase', 'qTrip', 'qKeys', 'qPer', 'qProg',
+                  'hexIn', 'setShop', 'setPhone', 'setRate'];
+const unlabelled = LABELLED.filter(id => !new RegExp('<label for="' + id + '"').test(html));
+check('every standalone input is bound to its label', !unlabelled.length,
+  unlabelled.join(', '));
+check('and the page does not block pinch zoom',
+  !/user-scalable=no|maximum-scale=1/.test(html));
 
 /* ============ basic record sanity ============ */
 const ids = new Set();
