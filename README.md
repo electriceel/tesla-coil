@@ -214,6 +214,14 @@ impossible. Fitment is deliberately *not* in that file — the FCC certifies a r
 model year, so the "fits 2012-2017 Camry" line on a lookup site is a marketplace listing
 and lives on the vehicle record where the bench can correct it.
 
+`node tests/integrity.test.js` covers the seams between files, where the flaws that no single
+module's test would catch actually live: that every script `index.html` loads is in the service
+worker's precache list and every precached path exists (`addAll` rejects as a unit, so one missing
+file silently kills offline entirely); that no `Store` method throws away the result of a write and
+every save in the UI goes through `persisted()`; that the money fields cannot go negative and the
+quote reader cannot produce `NaN`; and that no new vehicle id contradicts the years on its own
+record. Every check in it was written after the flaw it guards was found in the shipped app.
+
 `node tests/fcc.test.js` refuses to let an unchecked ID ship: every ID in the seed must have
 a grant row, every grant row must be attached to a vehicle, no fob may be certified after
 its car stopped being built, and a record naming one fob for a span that plainly had several

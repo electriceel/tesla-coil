@@ -16,12 +16,32 @@ function read(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
   catch (e) { console.warn('read failed', key, e); return fallback; }
 }
+/* Returns false when the write did not happen -- which on a phone means the
+   storage quota is full, and which used to be reported to nobody. Every caller
+   said "Saved." regardless, so a job logged in a customer's driveway could
+   vanish with a confirmation on screen. The boolean is now carried all the way
+   out to the UI, and lastError says what to tell the person. */
+let lastError = '';
 function write(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); return true; }
-  catch (e) { console.warn('write failed', key, e); return false; }
+  try { localStorage.setItem(key, JSON.stringify(val)); lastError = ''; return true; }
+  catch (e) {
+    const full = e && (e.name === 'QuotaExceededError'
+      || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
+    lastError = full
+      ? "This device's storage is full, so nothing was saved. Export a backup from "
+        + 'Settings, then delete old jobs or the BCM table to make room.'
+      : 'This device refused to save (' + ((e && e.name) || 'unknown') + '). If you are in '
+        + 'a private window, the app cannot store anything.';
+    console.warn('write failed', key, e);
+    return false;
+  }
 }
 
 const Store = {
+  /* Why the last write failed, for the UI to show. Empty when the last one
+     worked. */
+  get lastError() { return lastError; },
+
   /* ---- vehicles ---- */
   overrides() { return read(K.vehicles, {}); },
   /* Seed records merged with user edits. A user record with the same id wins
@@ -89,7 +109,7 @@ const Store = {
     const list = veh[cat] || (veh[cat] = []);
     list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                 text: String(text || '').trim(), at: new Date().toISOString() });
-    write(K.tips, all);
+    return write(K.tips, all);
   },
   deleteTip(vehId, cat, tipId) {
     const all = Store.allTips();
@@ -97,7 +117,7 @@ const Store = {
     all[vehId][cat] = all[vehId][cat].filter(t => t.id !== tipId);
     if (!all[vehId][cat].length) delete all[vehId][cat];
     if (!Object.keys(all[vehId]).length) delete all[vehId];
-    write(K.tips, all);
+    return write(K.tips, all);
   },
   tipCount() {
     return Object.values(Store.allTips())
@@ -112,13 +132,22 @@ const Store = {
     const all = Store.mkSystems();
     const i = all.findIndex(x => x.id === rec.id);
     if (i >= 0) all[i] = rec; else all.unshift(rec);
-    write(K.mk, all);
-    return rec;
+    return write(K.mk, all);
   },
-  deleteMkSystem(id) { write(K.mk, Store.mkSystems().filter(x => x.id !== id)); },
+  deleteMkSystem(id) { return write(K.mk, Store.mkSystems().filter(x => x.id !== id)); },
 
   /* ---- prefs ---- */
-  prefs() { return read(K.prefs, { shop: '', phone: '', rate: '' }); },
+  /* rate reaches the quote builder as a number. The field is type=number so it
+     cannot be typed wrong, but importAll merges whatever a backup file carries,
+     and "$85" in there turned every quote into "$NaN" -- on the one screen the
+     customer is looking at. Cleaned on the way out, so a bad stored value
+     cannot reach the arithmetic however it got there. */
+  prefs() {
+    const p = read(K.prefs, {}) || {};
+    const rate = parseFloat(String(p.rate == null ? '' : p.rate).replace(/[^0-9.\-]/g, ''));
+    return { shop: String(p.shop || ''), phone: String(p.phone || ''),
+             rate: Number.isFinite(rate) ? String(rate) : '' };
+  },
   setPrefs(p) { return write(K.prefs, p); },
 
   /* ---- backup ---- */
@@ -130,23 +159,26 @@ const Store = {
       mk: Store.mkSystems(), prefs: Store.prefs()
     };
   },
+  /* Returns false if any part of the restore did not fit. A half-restored
+     backup reported as a success is the worst of both. */
   importAll(obj, mode) {
     if (!obj || obj.app !== 'keypro-field') throw new Error('Not a KeyPro backup file.');
+    let ok = true;
     if (mode === 'replace') {
-      write(K.vehicles, obj.vehicles || {});
-      write(K.blanks, obj.blanks || {});
-      write(K.jobs, obj.jobs || []);
-      write(K.bcm, obj.bcm || []);
-      write(K.tips, obj.tips || {});
-      write(K.mk, obj.mk || []);
+      ok = write(K.vehicles, obj.vehicles || {}) && ok;
+      ok = write(K.blanks, obj.blanks || {}) && ok;
+      ok = write(K.jobs, obj.jobs || []) && ok;
+      ok = write(K.bcm, obj.bcm || []) && ok;
+      ok = write(K.tips, obj.tips || {}) && ok;
+      ok = write(K.mk, obj.mk || []) && ok;
     } else {
-      write(K.vehicles, { ...Store.overrides(), ...(obj.vehicles || {}) });
-      write(K.blanks, { ...Store.blankOverrides(), ...(obj.blanks || {}) });
+      ok = write(K.vehicles, { ...Store.overrides(), ...(obj.vehicles || {}) }) && ok;
+      ok = write(K.blanks, { ...Store.blankOverrides(), ...(obj.blanks || {}) }) && ok;
       const seen = new Set(Store.jobs().map(j => j.id));
-      write(K.jobs, Store.jobs().concat((obj.jobs || []).filter(j => !seen.has(j.id))));
+      ok = write(K.jobs, Store.jobs().concat((obj.jobs || []).filter(j => !seen.has(j.id)))) && ok;
       const key = r => `${r.bcm}`.toUpperCase();
       const have = new Set(Store.bcmRows().map(key));
-      write(K.bcm, Store.bcmRows().concat((obj.bcm || []).filter(r => !have.has(key(r)))));
+      ok = write(K.bcm, Store.bcmRows().concat((obj.bcm || []).filter(r => !have.has(key(r))))) && ok;
       /* Tips merge per vehicle per category, skipping ids already present. */
       const tips = Store.allTips();
       Object.entries(obj.tips || {}).forEach(([vid, cats]) => {
@@ -156,10 +188,11 @@ const Store = {
           mine[cat] = (mine[cat] || []).concat(list.filter(t => !seenIds.has(t.id)));
         });
       });
-      write(K.tips, tips);
+      ok = write(K.tips, tips) && ok;
       const haveMk = new Set(Store.mkSystems().map(m => m.id));
-      write(K.mk, Store.mkSystems().concat((obj.mk || []).filter(m => !haveMk.has(m.id))));
+      ok = write(K.mk, Store.mkSystems().concat((obj.mk || []).filter(m => !haveMk.has(m.id)))) && ok;
     }
-    if (obj.prefs) Store.setPrefs({ ...Store.prefs(), ...obj.prefs });
+    if (obj.prefs) ok = Store.setPrefs({ ...Store.prefs(), ...obj.prefs }) && ok;
+    return ok;
   }
 };
