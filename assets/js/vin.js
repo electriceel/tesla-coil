@@ -65,10 +65,32 @@ function decodeVin(raw) {
   return out;
 }
 
-/* Free NHTSA vPIC decode. No key, no auth. Fails closed when offline. */
-async function decodeVinOnline(vin) {
+/* Free NHTSA vPIC decode. No key, no auth. Fails closed when offline.
+
+   The timeout is the point. "Needs signal" is not the same as "no signal":
+   one bar in a parking structure gives you a socket that connects and then
+   never answers, and fetch waits on that forever. The button sat disabled on
+   "Asking NHTSA..." with no way back short of leaving the screen -- in
+   exactly the conditions this button exists for. Twelve seconds, then give up
+   and say so, because the offline decode above it is already the useful part. */
+const VPIC_TIMEOUT_MS = 12000;
+
+async function decodeVinOnline(vin, timeoutMs) {
   const url = `https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/${encodeURIComponent(vin)}?format=json`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const ms = timeoutMs || VPIC_TIMEOUT_MS;
+  const timer = ctl ? setTimeout(() => ctl.abort(), ms) : null;
+  let res;
+  try {
+    res = await fetch(url, { cache: 'no-store', signal: ctl ? ctl.signal : undefined });
+  } catch (e) {
+    if (e && e.name === 'AbortError') {
+      throw new Error(`no answer in ${Math.round(ms / 1000)}s`);
+    }
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   if (!res.ok) throw new Error(`vPIC returned ${res.status}`);
   const json = await res.json();
   const r = (json.Results && json.Results[0]) || {};

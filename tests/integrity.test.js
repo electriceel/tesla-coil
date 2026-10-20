@@ -73,8 +73,14 @@ check('no Store method throws away the result of write()', !swallowed.length,
 
 /* And every save the UI performs has to be wrapped, or the next one added
    quietly reintroduces the bug. */
+/* A delete is a write. The first pass of this list covered only the save
+   paths, so four deletes went on ignoring their result -- and because
+   removing a record shrinks the payload, a full device never exposed it. It
+   takes storage refused outright (private mode, device policy) to show, and
+   then the record stays while the view re-renders as though it had gone. */
 const SAVERS = ['saveVehicle', 'saveBlank', 'saveJob', 'saveMkSystem', 'addTip',
-                'setPrefs', 'setBcmRows'];
+                'setPrefs', 'setBcmRows',
+                'deleteVehicle', 'deleteBlank', 'deleteJob', 'deleteTip', 'deleteMkSystem'];
 const unwrapped = [];
 appRaw.split('\n').forEach((line, i) => {
   if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
@@ -229,6 +235,33 @@ function loadStore() {
     return Store.prefs().rate === '85';
   })(), JSON.stringify(Store.prefs()));
 }
+
+/* Dead persistence code is its own bug: Store.deleteMkSystem existed from the
+   first commit and nothing called it, so saved master systems accumulated with
+   no way to remove one, on the screen where a locksmith saves a record per
+   job. Everything Store exposes to delete something needs a way in. */
+['deleteVehicle', 'deleteBlank', 'deleteJob', 'deleteTip', 'deleteMkSystem'].forEach(fn =>
+  check(`Store.${fn} is reachable from the UI`, app.includes('Store.' + fn + '('),
+    'defined but never called -- the records it removes can never be removed'));
+
+/* ============ the one network call in the app ============
+   "Needs signal" is not "no signal": one bar gives you a socket that connects
+   and never answers, and fetch waits on that forever. The button sat disabled
+   reading "Asking NHTSA..." with no way back, in exactly the conditions it
+   exists for. */
+const vin = code('assets/js/vin.js');
+check('the NHTSA lookup is the only network call in the app',
+  ['app.js', 'store.js', 'data.js', 'master.js', 'sfic.js', 'fcc.js', 'dealer.js', 'models.js']
+    .every(f => !/\bfetch\(|XMLHttpRequest|sendBeacon|new WebSocket/.test(code('assets/js/' + f))));
+check('and it gives up rather than hanging', /AbortController/.test(vin)
+  && /setTimeout\(\(\) => ctl\.abort\(\)/.test(vin));
+check('with a timeout short enough to be useful in the field', (() => {
+  const m = read('assets/js/vin.js').match(/VPIC_TIMEOUT_MS = (\d+)/);
+  return m && +m[1] > 0 && +m[1] <= 20000;
+})(), 'VPIC_TIMEOUT_MS must be set and no more than 20s');
+const vinRaw = read('assets/js/vin.js');
+check('an abort is reported as a timeout, not a mystery',
+  /AbortError/.test(vinRaw) && /no answer in/.test(vinRaw));
 
 /* ============ keys that are not keys ============
    JSON.parse turns "__proto__" into a real own property, and

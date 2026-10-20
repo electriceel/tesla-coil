@@ -378,6 +378,15 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
    operating shear line, so they read as a separate band rather than as more
    master pins -- loading a control pin where a master pin goes builds a core
    that assembles, passes the key and will not come out of the housing. */
+/* Small square control that sits inside a tappable row without swallowing it.
+   44px so it is a real touch target with gloves on. */
+.iconbtn{
+  flex:0 0 auto;width:44px;height:44px;border-radius:var(--r2);
+  background:transparent;border:1px solid var(--line);color:var(--fg3);
+  font-size:20px;line-height:1;cursor:pointer
+}
+.iconbtn.danger{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent)}
+.iconbtn:active{background:var(--surface2)}
 .pinchart td.ctl{background:color-mix(in srgb,var(--info) 18%,transparent);color:var(--info)}
 .pinchart td.topp{background:color-mix(in srgb,var(--fg3) 14%,transparent)}
 .allocrow{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s2)}
