@@ -1743,6 +1743,9 @@ function RENDER_master() {
               ? `existing master, +${s.count}`
               : `${s.count} change key${s.count === 1 ? '' : 's'}`}`}</div>
         </div>
+        <button class="iconbtn danger" data-mkdel="${esc(s.id)}"
+          aria-label="Delete the saved system ${esc(s.label || 'Untitled system')}"
+          title="Delete this saved system">&times;</button>
         <div class="go">&rsaquo;</div>
       </div>`).join('')}` : ''}`;
 
@@ -2476,7 +2479,7 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier],[data-safe],[data-safeblank]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkdel],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier],[data-safe],[data-safeblank]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
@@ -2497,7 +2500,10 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (t.dataset.delveh) {
-    if (confirm('Delete this record for good?')) { Store.deleteVehicle(t.dataset.delveh); go('lookup'); }
+    if (confirm('Delete this record for good?')) {
+      if (!persisted(Store.deleteVehicle(t.dataset.delveh))) return;
+      go('lookup');
+    }
     return;
   }
   /* --- blank directory --- */
@@ -2579,6 +2585,17 @@ document.addEventListener('click', (e) => {
   }
   if (t.hasAttribute('data-mksave')) { mkSave(); return; }
   if (t.hasAttribute('data-mkcopy')) { mkCopy(); return; }
+  if (t.dataset.mkdel)   {
+    /* Store.deleteMkSystem existed from the start and nothing ever called it,
+       so saved systems only ever accumulated -- on the one screen where a
+       locksmith saves a record per job. */
+    const rec = Store.mkSystems().find(x => x.id === t.dataset.mkdel);
+    if (!confirm(`Delete the saved system "${(rec && rec.label) || 'Untitled system'}"?`)) return;
+    if (!persisted(Store.deleteMkSystem(t.dataset.mkdel))) return;
+    if (mkUI.loadedId === t.dataset.mkdel) mkUI.loadedId = null;
+    RENDER_master();
+    return;
+  }
   if (t.dataset.mkload)  { mkLoad(t.dataset.mkload); return; }
   if (t.dataset.vtab)    { vehTab = t.dataset.vtab; vehTipOpen = ''; RENDER_vehicle(vehShown); return; }
   if (t.dataset.tipadd)  {
@@ -2587,7 +2604,8 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (t.dataset.tipdel)  {
-    if (confirm('Delete this tip?')) Store.deleteTip(vehShown, t.dataset.tipdelcat, t.dataset.tipdel);
+    if (confirm('Delete this tip?')
+        && !persisted(Store.deleteTip(vehShown, t.dataset.tipdelcat, t.dataset.tipdel))) return;
     RENDER_vehicle(vehShown);
     return;
   }
@@ -2613,7 +2631,11 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (t.dataset.bdel) {
-    if (confirm('Delete this blank record?')) { Store.deleteBlank(t.dataset.bdel); blankUI.detail = null; RENDER_blanks(); }
+    if (confirm('Delete this blank record?')) {
+      if (!persisted(Store.deleteBlank(t.dataset.bdel))) return;
+      blankUI.detail = null;
+      RENDER_blanks();
+    }
     return;
   }
   /* A make chip on a blank detail jumps to the vehicle lookup filtered to it. */
@@ -2631,7 +2653,12 @@ document.addEventListener('click', (e) => {
   if (t.dataset.newjob)    { editJob(null); return; }
   if (t.dataset.editjob)   { editJob(t.dataset.editjob); return; }
   if (t.dataset.deljob) {
-    if (confirm('Delete this job?')) { Store.deleteJob(t.dataset.deljob); $('#jobEditor').innerHTML = ''; $('#jobListWrap').hidden = false; RENDER_jobs(); }
+    if (confirm('Delete this job?')) {
+      if (!persisted(Store.deleteJob(t.dataset.deljob))) return;
+      $('#jobEditor').innerHTML = '';
+      $('#jobListWrap').hidden = false;
+      RENDER_jobs();
+    }
     return;
   }
   if (t.dataset.canceljob) { $('#jobEditor').innerHTML = ''; $('#jobListWrap').hidden = false; return; }

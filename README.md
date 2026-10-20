@@ -214,6 +214,11 @@ impossible. Fitment is deliberately *not* in that file — the FCC certifies a r
 model year, so the "fits 2012-2017 Camry" line on a lookup site is a marketplace listing
 and lives on the vehicle record where the bench can correct it.
 
+The one network call in the whole app is the optional NHTSA vPIC lookup on the VIN screen, behind
+its own button. It times out after 12 seconds, because "needs signal" is not "no signal" — one bar
+gives you a socket that connects and never answers, and an un-aborted `fetch` waits on that forever.
+Everything else, vPIC model data included, is bundled and works with the radio off.
+
 `node tests/integrity.test.js` loads `store.js` against a stubbed localStorage and exercises it
 for real — a damaged backup is refused before it can overwrite a good one, a reserved name like
 `__proto__` cannot be used as a tip key, a save that hits the quota returns false and says why.

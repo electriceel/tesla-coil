@@ -10,7 +10,7 @@
    Field notes on the shape of a record are in autopro/README.md.
    =========================================================================== */
 
-const SEED_VERSION = '2026.10.20.2';
+const SEED_VERSION = '2026.10.20.3';
 
 /* --- Vehicle reference ---------------------------------------------------- */
 /* Records are written in a compact form and expanded by V(). Short keys keep a
