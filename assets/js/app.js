@@ -1034,10 +1034,16 @@ function RENDER_blanks() {
      turned out to hide ordinary searches: "toyota" matches 14 rows, "dimple"
      17, "safe" 20, and every one of them came back as a bare header. 40 keeps
      those open and still closes the queries that match most of the file --
-     "edge" has 347 confirmed hits, "key" 285, a bare letter 465. The absolute
-     cap keeps a 900-row brand search from opening all of it. */
+     "edge" has 372 confirmed hits, "key" 335, a bare letter 524.
+
+     The absolute cap keeps a one-letter query from opening all 8,143 rows. It
+     was 150, which the Blue Dog import pushed "padlock" (276 rows) and "safe"
+     (253) straight past, so both came back as bare headers again. 300 opens
+     them and still closes "ilco" (3,238) and "commercial" (3,396). Rendering
+     the 276 costs nothing measurable: on a 4x-throttled CPU the last keystroke
+     of "padlock" took 64ms with them open against 69ms with them shut. */
   const confirmedHits = hits.filter(b => !b.kwUnknown).length;
-  const autoOpen = blankUI.q.trim().length > 0 && confirmedHits <= 40 && hits.length <= 150;
+  const autoOpen = blankUI.q.trim().length > 0 && confirmedHits <= 40 && hits.length <= 300;
 
   $('#blankDir').innerHTML = groups.size ? Array.from(groups.entries()).map(([name, items]) => {
     const open = autoOpen || blankUI.open[name];

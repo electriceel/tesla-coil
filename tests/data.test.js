@@ -198,10 +198,21 @@ const words = require('./stopwords.js').keyWords;
 const bare = (s) => String(s || '').split(/[\/,]/)
   .map(t => t.replace(/\(.*?\)/g, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase()).filter(Boolean);
 
+/* The app does not word-match a blank-number row against a vehicle, and has
+   not since vehiclesForBlank was written: a kwUnknown label is a maker plus a
+   catalog number, so matching its words links on the manufacturer's name. This
+   test reimplemented the matcher without that rule and so reported links the
+   app never makes -- it flagged "VO-MP JMA" against a Volvo and "MZ-1 JMA"
+   against a Mazda-built Probe, which are the right families anyway, and
+   "O1007RMA RN ORIG" against a Renault, where RN is Sargent's bow letter. The
+   number path still applies to every row, because the number is the join. */
+const kwGuard = /const keys = new Set\(b\.kwUnknown \? \[\] : keyWords\(b\.keyway\)\);/;
+check('app.js still joins blank-number rows on the number alone',
+  kwGuard.test(require('fs').readFileSync(require('path').join(__dirname, '../assets/js/app.js'), 'utf8')));
 const crossLinks = [];
 const NON_AUTO = ['Residential', 'Commercial', 'Utility', 'Safe & vault', 'Import & uncommon'];
 B.filter(b => NON_AUTO.includes(b.cat)).forEach(b => {
-  const keys = new Set(words(b.keyway));
+  const keys = new Set(b.kwUnknown ? [] : words(b.keyway));
   const cats = new Set([b.ilco, b.ilcoChip].flatMap(bare));
   V.forEach(v => {
     const vb = v.blanks || {};
@@ -246,9 +257,24 @@ check('a keyway that only restates the Ilco number is flagged kwUnknown',
    about having a catalog number, not about whose. */
 const NUMBERED = (b) => [b.ilco, b.ilcoChip, b.framon, b.jma, b.silca, b.strattec]
   .some(v => v && v !== '—');
-const unnumbered = B.filter(b => b.kwUnknown && !NUMBERED(b));
-check('every kwUnknown row is indexed by a catalog number of some kind',
+/* The curated rows have no second place for their number to live, so for them
+   the rule stays absolute. The Blue Dog import is different: a row's label IS
+   the supplier's product designation, which is what you type into their site,
+   and 3,041 of those listings cross-reference no brand this directory has a
+   column for. Giving them an invented column value to satisfy a test is the
+   one thing worse than leaving it blank. What has to hold for them is that the
+   label is a designation you can look up and that the search reaches it. */
+const unnumbered = B.filter(b => b.kwUnknown && !NUMBERED(b) && !/^bdk-/.test(b.id));
+check('every curated kwUnknown row is indexed by a catalog number of some kind',
   !unnumbered.length, unnumbered.map(b => b.id).join(', '));
+const bdkRows = B.filter(b => /^bdk-/.test(b.id));
+check('every imported row carries a designation to look up',
+  bdkRows.every(b => /[A-Za-z0-9]/.test(String(b.keyway || '').split('\u2014')[0])),
+  bdkRows.filter(b => !/[A-Za-z0-9]/.test(String(b.keyway || '').split('\u2014')[0]))
+    .map(b => b.id).slice(0, 5).join(', '));
+check('and every one of them is flagged so the UI never calls it a keyway',
+  bdkRows.every(b => b.kwUnknown === true),
+  bdkRows.filter(b => b.kwUnknown !== true).map(b => b.id).slice(0, 5).join(', '));
 
 /* 19 distinct page ranges spread across 994 records is a section range pasted
    onto everything in the section, not a citation. Precision that cannot be
@@ -271,10 +297,25 @@ B.forEach(b => {
   const i = String(b.ilco || '').toUpperCase();
   if (i && i !== '—') (byIlco[i] = byIlco[i] || []).push(b.id);
 });
-const newCollisions = Object.entries(byIlco).filter(([i, ids]) => ids.length > 1
+/* One blank is one row applies to the rows that name a confirmed keyway. A
+   supplier's cross-reference table legitimately maps several of its own product
+   names onto one Ilco number -- "139 DL" and "138 Ilco" are the same Zetor
+   tractor profile under two makers' numbering -- and an imported row sharing a
+   number with a curated one is the cross-reference working, not a duplicate. */
+const confirmedByIlco = {};
+B.filter(b => !b.kwUnknown).forEach(b => {
+  const i = String(b.ilco || '').toUpperCase();
+  if (i && i !== '—') (confirmedByIlco[i] = confirmedByIlco[i] || []).push(b.id);
+});
+const newCollisions = Object.entries(confirmedByIlco).filter(([i, ids]) => ids.length > 1
   && String(KNOWN_ILCO_COLLISIONS[i] || []) !== String(ids.slice().sort()));
-check('no new Ilco number lands on two blank records', !newCollisions.length,
+check('no new Ilco number lands on two confirmed blank records', !newCollisions.length,
   newCollisions.map(([i, ids]) => `${i}: ${ids.join(', ')}`).join('\n     '));
+/* What a parse bug looks like is one number smeared across hundreds of rows,
+   so the group size is the thing to bound. The widest real group is five. */
+const widest = Object.entries(byIlco).sort((a, b) => b[1].length - a[1].length)[0] || ['', []];
+check('no Ilco number is spread across a suspicious number of rows',
+  widest[1].length <= 8, `${widest[0]} on ${widest[1].length} rows`);
 
 /* ---- how people actually name a car ---- */
 /* Nobody says "Chevrolet" and nobody says "Crown Victoria Police Interceptor".
@@ -378,10 +419,14 @@ check('one search gathers the dimple family', dimple.length >= 14, `${dimple.len
 check('the dimple family includes the method and sourcing rows',
   ['dimple-method', 'dimple-sourcing', 'dimple-euro', 'multlock'].every(id => dimple.some(b => b.id === id)),
   dimple.map(b => b.id).join(', '));
-/* Ilco does not make most of these. An invented number here is a parts order. */
-check('no dimple row claims an Ilco number',
-  B.filter(b => /dimple/i.test(b.cut || '')).every(b => !b.ilco || b.ilco === '—'),
-  B.filter(b => /dimple/i.test(b.cut || '') && b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
+/* Ilco does not make most of these, and an invented number here is a parts
+   order, so no row I wrote may carry one. Ilco does catalogue a few: Blue Dog's
+   own listings cross DM128 to Ilco G191 and KE4 to Ilco S13KE. Those are the
+   supplier's claim, not mine, and they stay. */
+const myDimple = B.filter(b => /dimple/i.test(b.cut || '') && !/^bdk-/.test(b.id));
+check('no dimple row of my own claims an Ilco number',
+  myDimple.every(b => !b.ilco || b.ilco === '—'),
+  myDimple.filter(b => b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
 
 /* ---- bit and flat steel ---- */
 /* Both were in the directory by application -- warded interior doors, antique
@@ -714,8 +759,13 @@ check('the golf cart row names the blanks it promises',
 ['club car cc1', 'ez-go 1677'].forEach(q =>
   check(`searching "${q}" reaches the cart row`, blankSearch(q).length >= 1));
 
+/* Both are still one row each; what changed is that other rows now mention
+   them. Blue Dog's EU13R listing cross-references JMA EU-8D, so searching
+   EU-8D reaches two rows and both answers are right. Assert the row, not the
+   count. */
 check('the two Euro blanks are present and findable',
-  blankSearch('EU1R').length === 1 && blankSearch('EU-8D').length === 1);
+  blankSearch('EU1R').some(b => b.id === 'euro-eu1r')
+  && blankSearch('EU-8D').some(b => b.id === 'euro-eu8d'));
 
 /* ---- Corbin Russwin, Sargent, Yale, Mosler ----
    Same compare as the Best set: CLK pairs the Ilco EZ reference (CO89, RU16,
@@ -756,9 +806,17 @@ check('and says out loud that the sources disagree',
    genuinely different blanks, so a leading 0 could be either a letter O or a
    typo for a blank already here. None of them were added. */
 const zeroPrefixed = ['O1007LB', 'O1007LC', 'O1007LE', 'O1007RC', 'O1007RL'];
-check('no blank was invented from an ambiguous leading zero',
-  zeroPrefixed.every(d => !B.some(b => String(b.ilco || '').toUpperCase() === d)),
-  zeroPrefixed.filter(d => B.some(b => String(b.ilco || '').toUpperCase() === d)).join(', '));
+/* None was invented, and none may be. Two of them have since arrived with their
+   own evidence: Blue Dog list products titled O1007RC and O1007RL and write the
+   O as a letter in the listing text too, independently of CLK. A second source
+   spelling it out is what settles a leading 0, so the rule is now about where
+   the number came from rather than whether it exists at all. */
+const invented = zeroPrefixed.filter(d => B.some(b => {
+  if (String(b.ilco || '').toUpperCase() !== d) return false;
+  return !new RegExp('\\b' + d + '\\b', 'i').test(String(b.keyway) + ' ' + String(b.notes));
+}));
+check('no blank was invented from an ambiguous leading zero', !invented.length,
+  invented.join(', '));
 
 /* ---- European profiles, and a numbering system the app did not have ----
    The euro-key-blanks collection held two blanks and both were already added
@@ -781,6 +839,13 @@ check('and no Framon number was filed as an Ilco or JMA one',
 check('every BD row names the series it belongs to',
   framonRows.every(b => /Framon|Blue Dog/.test(b.notes || '')),
   framonRows.filter(b => !/Framon|Blue Dog/.test(b.notes || '')).map(b => b.id).slice(0,5).join(', '));
+/* A BD number is Framon's catalogue number. The import reads Ilco, Silca, JMA
+   and Strattec numbers out of the listing text, and a BD number landing in one
+   of those columns would be the title leaking into a cross-reference. */
+check('and no BD number was also filed under another brand',
+  framonRows.every(b => [b.ilco, b.silca, b.jma, b.strattec].every(v => v !== b.framon)),
+  framonRows.filter(b => [b.ilco, b.silca, b.jma, b.strattec].some(v => v === b.framon))
+    .map(b => b.id).slice(0, 5).join(', '));
 
 ['BD173', 'BD234', 'BD225', 'BD124', 'BD15C', 'BD143', 'BD68', 'BD226', 'BD20', 'BD41']
   .forEach(d => check(`Framon ${d} is findable`, blankSearch(d).length >= 1));
@@ -825,9 +890,15 @@ check('every one of them says where it came from',
 /* The nine rows re-identified from the maker's own catalogue have to say both
    where they came from and that they were corrected -- a reader who saw the
    earlier wrong description deserves to know it changed and why. */
-const corrected = B.filter(b => /bluedogkeys\.com/.test(b.notes || ''));
-check('the corrected rows name the maker as the source', corrected.length === 10,
+/* bluedogkeys.com now sources 6,723 imported rows, so it no longer identifies
+   this batch. The correction sentence does, and that is the right handle: these
+   are the rows whose earlier claim was replaced. */
+const corrected = B.filter(b => /Previously filed/.test(b.notes || ''));
+check('the corrected rows are still ten', corrected.length === 10,
   corrected.length + ' rows');
+check('and each names the maker as the source',
+  corrected.every(b => /bluedogkeys\.com/.test(b.notes)),
+  corrected.filter(b => !/bluedogkeys\.com/.test(b.notes)).map(b => b.id).join(', '));
 /* Every one of them is a bdk- row: a row corrected from the maker's catalogue
    should not still be filed under the reseller's prefix. */
 check('and each was renamed out of the reseller prefix',
@@ -837,10 +908,64 @@ check('and each was renamed out of the reseller prefix',
    what this particular row used to claim, which is the bit a reader who saw
    the old version needs. */
 check('and each names the specific claim it replaced',
-  corrected.every(b => /Previously filed/.test(b.notes)),
-  corrected.filter(b => !/Previously filed/.test(b.notes)).map(b => b.id).join(', '));
+  corrected.every(b => /Previously filed (here )?as /.test(b.notes)),
+  corrected.filter(b => !/Previously filed (here )?as /.test(b.notes)).map(b => b.id).join(', '));
 check('and none wears the edition 13 prefix',
   clkRowsAll.every(b => !/^(cat-|cat13-)/.test(b.id)));
+
+/* ---- the whole Blue Dog catalogue ----
+   8,698 products, 8,241 of them blank listings, 6,723 naming nothing this
+   directory already held. The ask was all of it, and all of it is here. */
+const bdk = B.filter(b => /^bdk-/.test(b.id));
+check('the full Blue Dog import is present', bdk.length > 6700, bdk.length + ' rows');
+check('every imported row says where it came from',
+  bdk.every(b => /bluedogkeys\.com/.test(b.notes || '')),
+  bdk.filter(b => !/bluedogkeys\.com/.test(b.notes || '')).map(b => b.id).slice(0, 5).join(', '));
+
+/* Blue Dog sell plenty that is not a key blank, and a blank directory that
+   offers you a gift card or a rubber handle boot has stopped being one. */
+const NOT_BLANKS = /gift card|t[- ]?handle cover|lock sock|depth (&|and) space manual|ring bound|key (machine|cutter|duplicator)|code machine|removal tool|\d+ pack|key by code/i;
+const junk = bdk.filter(b => NOT_BLANKS.test(b.keyway + ' ' + b.notes));
+check('no product that is not a key blank came in with them', !junk.length,
+  junk.map(b => `${b.id} (${b.keyway})`).slice(0, 6).join('\n     '));
+
+/* A shipping policy pasted into a key record is noise that reads like fact and
+   goes stale the moment they change couriers. */
+check('no imported note carries the shop\'s shipping boilerplate',
+  !bdk.some(b => /PLEASE NOTE|business day|EST with ship/i.test(b.notes || '')),
+  bdk.filter(b => /PLEASE NOTE|business day/i.test(b.notes || '')).map(b => b.id).join(', '));
+
+/* Strattec part numbers are six to eight digits. The listings put the Ilco
+   number and the GM key code in front of the brand name too -- "Y153 Strattec",
+   "B46 Strattec" -- and both read as Strattec's to anything matching on
+   adjacency. Shape is what rules them out. */
+const badStrattec = bdk.filter(b => b.strattec && !/^\d{6,8}$/.test(b.strattec));
+check('every imported Strattec number has a Strattec number\'s shape', !badStrattec.length,
+  badStrattec.map(b => `${b.id}=${b.strattec}`).slice(0, 6).join(', '));
+
+/* A number read out of a cross-reference has to be orderable. "15D" is half of
+   JMA's YA-15D and buys nothing; a value carrying a slash is two numbers. */
+const NUMCOLS = ['ilco', 'ilcoChip', 'silca', 'jma', 'strattec', 'framon'];
+const halfNumbers = bdk.filter(b => NUMCOLS.some(f => b[f] && (/\//.test(b[f])
+  || (f === 'jma' && /^\d{1,2}[A-Z]?$/.test(b[f]) && !/^\d/.test(String(b.keyway))))));
+check('no imported catalog number is half a number or two of them', !halfNumbers.length,
+  halfNumbers.map(b => `${b.id}: ` + NUMCOLS.filter(f => b[f]).map(f => f + '=' + b[f]).join(' '))
+    .slice(0, 6).join('\n     '));
+
+/* Reading the supplier's cross-reference is only worth doing if it reaches a
+   useful share of the catalogue, and only honest if the rest stays blank. */
+const withNum = bdk.filter(b => NUMCOLS.some(f => b[f] && b[f] !== '—'));
+check('the cross-reference pass reached a real share of the import',
+  withNum.length > 3000, `${withNum.length} of ${bdk.length} rows carry a number`);
+check('and the rest are blank rather than guessed',
+  bdk.filter(b => !NUMCOLS.some(f => b[f])).every(b => !/^(unknown|n\/a|tbd|\?)/i.test(b.keyway)));
+
+/* Searching a number has to reach the row that carries it, whichever column it
+   landed in -- that is the whole reason for reading them out of the text. */
+[['70B', 'ilco'], ['HON50', 'silca'], ['KAW-12D', 'jma'], ['320433', 'strattec']]
+  .forEach(([num, col]) => check(`searching "${num}" reaches a row carrying it as ${col}`,
+    blankSearch(num).some(b => String(b[col] || '').toUpperCase() === num.toUpperCase()),
+    blankSearch(num).slice(0, 3).map(b => b.id).join(', ') || 'no hits'));
 
 /* A catalog number with no digit in it is a description that landed in a
    number column. One listing puts the number in the brand slot and the
