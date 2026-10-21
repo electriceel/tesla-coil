@@ -211,6 +211,12 @@ names its source in the note \u2014 mostly CLK Supplies product listings, which 
 catalogue rather than the manufacturer's own, and suppliers do disagree with each other on
 Silca equivalents. A test refuses a supplier-sourced row that wears the edition 13 prefix.
 
+Blanks carry a Framon column alongside Ilco, Silca, JMA and Strattec. Framon catalogues
+European and oddball profiles that Ilco does not \u2014 H\u00e4fele, Huwil, Legge, Lockwood, Bricard,
+Tesa \u2014 and filing one of its BD numbers under Ilco would be a wrong number somebody orders
+from. A test refuses a BD number in the Ilco or JMA field, and refuses a field the detail view
+shows but the editor drops.
+
 Where two sources disagree on a blank number the row says so rather than picking one. Ilco's
 S22 is O1007CA in the edition 13 pass and O1007LA in a supplier listing; the edition 13 value
 fits the rest of its series and is kept, with the disagreement on the row, because guessing
@@ -280,7 +286,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,254 blanks across 540-odd makes is
+safe & vault, import & uncommon — because 1,269 blanks across 540-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for
