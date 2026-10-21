@@ -7,14 +7,47 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c =>
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const nz = (v, alt = '—') => (v && String(v).trim()) ? v : alt;
 
-/* ======================= routing ======================= */
+/* ======================= routing =======================
+   Back has to come back here, not leave. This router called
+   history.replaceState and nothing else, so however deep you were the app
+   occupied a single history entry and there was nothing underneath it but the
+   browser: installed on a phone, the first press of Back closed KeyPro
+   outright, mid-job.
+
+   Two changes fix it. A main-menu entry is seeded under whatever the app opens
+   on, so Back always has somewhere inside the app to land. And a move to a new
+   destination pushes its own entry instead of overwriting the one you are on,
+   with one exception: a hop between two bottom-nav tabs replaces, because the
+   tabs are all one level deep and Back from any of them should be the main
+   menu, not the tab you looked at before it. Drill-downs still push, so Back
+   out of a vehicle record returns to the list you found it in -- the moto list
+   if that is where you were, not the main menu.
+
+   From the main menu itself Back is let through, because leaving is what Back
+   should do there and a spare entry would only make one press do nothing. */
 const VIEWS = ['lookup', 'moto', 'vehicle', 'vin', 'blanks', 'tools', 'lishi', 'dealer', 'safe',
                'master', 'bcm', 'quote', 'hex', 'jobs', 'settings'];
+/* The view the app opens on, and the one Back works back towards. */
+const HOME = 'lookup';
+/* The bottom-nav tabs. Every other view is reached from one of them. */
+const TABS = ['lookup', 'moto', 'vin', 'blanks', 'tools', 'jobs'];
 let current = 'lookup';
+/* The hash of the history entry directly beneath the one we are on, known only
+   while we put it there -- a Back or Forward press leaves us somewhere this
+   cannot account for, so it is cleared and the shortcut below goes quiet until
+   the next push. */
+let below = '';
 
 let vehShown = '';
 function go(view, arg) {
-  if (!VIEWS.includes(view)) view = 'lookup';
+  if (!VIEWS.includes(view)) view = HOME;
+  /* Walking back to the entry directly beneath this one -- the on-screen "Back
+     to vehicles" button under a record, say -- is the Back button's job. Let
+     the browser do it, so this entry is dropped rather than a third copy of the
+     list stacked on top of the record you just left, which would have put the
+     next press of Back straight back into it. */
+  const to = arg ? `#${view}/${encodeURIComponent(arg)}` : `#${view}`;
+  if (to !== location.hash && to === below) { history.back(); return; }
   /* Arriving at a different vehicle starts on Overview; re-rendering the one you
      are already reading keeps the tab you are on. */
   if (view === 'vehicle' && arg !== vehShown) { vehTab = 'overview'; vehTipOpen = ''; vehShown = arg; }
@@ -24,13 +57,22 @@ function go(view, arg) {
   const r = RENDER[view];
   if (r) r(arg);
   window.scrollTo(0, 0);
-  const hash = arg ? `#${view}/${encodeURIComponent(arg)}` : `#${view}`;
-  if (location.hash !== hash) history.replaceState(null, '', hash);
+  /* Already here: a re-render, or Back landing on an entry that exists. Either
+     way there is no new destination to record. */
+  if (location.hash === to) return;
+  const from = location.hash.replace(/^#/, '').split('/');
+  const sideways = !arg && view !== HOME && TABS.includes(view)
+    && from.length === 1 && from[0] !== HOME && TABS.includes(from[0]);
+  if (sideways) history.replaceState(null, '', to);
+  else { below = location.hash; history.pushState(null, '', to); }
 }
 
 function routeFromHash() {
+  /* A history traversal put us somewhere this router did not choose, so what is
+     underneath is no longer anything it can claim to know. */
+  below = '';
   const [v, a] = location.hash.replace(/^#/, '').split('/');
-  go(v || 'lookup', a ? decodeURIComponent(a) : undefined);
+  go(v || HOME, a ? decodeURIComponent(a) : undefined);
 }
 
 /* ======================= lookup =======================
@@ -2829,6 +2871,24 @@ function boot() {
     RENDER_settings();
   });
 
+  /* Opened on a deep link rather than the main menu -- a bookmarked vehicle, a
+     shared blank -- so seed the main menu underneath it. Without an entry below
+     it the first press of Back has nowhere to go but out, which is the whole
+     bug. Opening on the main menu needs no seed: Back there should leave, and a
+     spare entry would only make one press do nothing. */
+  const opened = /^#[a-z]/.test(location.hash) ? location.hash : '#' + HOME;
+  if (opened === '#' + HOME) {
+    /* Pin the entry we are on to the route about to render. The start_url
+       carries no hash, so without this "" and "#lookup" read as two different
+       destinations and the very first render stacked one on the other -- and
+       that spare entry made the first press of Back on the main menu do
+       nothing at all. */
+    history.replaceState(null, '', opened);
+  } else {
+    history.replaceState(null, '', '#' + HOME);
+    history.pushState(null, '', opened);
+    below = '#' + HOME;
+  }
   window.addEventListener('hashchange', routeFromHash);
   routeFromHash();
 
