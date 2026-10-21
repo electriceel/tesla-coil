@@ -205,6 +205,18 @@ the stack sit lower, so the bottom pin is sized to the shallower of the two cuts
 master pin makes up the difference. The math has its own test suite separate from the UI — `node tests/master.test.js`.
 The seed data has two — `node tests/data.test.js` and `node tests/crossref.test.js`.
 
+Blank numbers come from two tiers of source and the rows say which. The `cat-` and `cat13-`
+rows are the Ilco Key Blank Directory edition 13 pass. Everything else that carries a number
+names its source in the note \u2014 mostly CLK Supplies product listings, which is a supplier
+catalogue rather than the manufacturer's own, and suppliers do disagree with each other on
+Silca equivalents. A test refuses a supplier-sourced row that wears the edition 13 prefix.
+
+The Best SFIC blanks are indexed under both numbering systems. The same physical blank is
+catalogued 1A1G1 by Best and A1114G by Ilco, and the directory used to carry those as two
+separate rows with nothing joining them \u2014 whichever number was stamped on the key in your
+hand, the other was invisible. All 27 keyways now name their counterpart, and a test walks
+every pair in both directions.
+
 **FCC IDs** are kept in `assets/js/fcc.js`, one row per ID, joined to the vehicle at render
 time — 100 verified grants across 241 vehicles. Only what the FCC certifies is stored: the
 grant holder, the equipment class, the frequency and the **original** grant date. Original
@@ -263,7 +275,7 @@ master keying, Nissan BCM, the quote builder, and hex/decimal.
 
 **Blanks** — a browsable key blank directory. It opens on eight categories —
 automotive, powersports, fleet & equipment, utility, residential, commercial,
-safe & vault, import & uncommon — because 1,235 blanks across 540-odd makes is
+safe & vault, import & uncommon — because 1,248 blanks across 540-odd makes is
 not a list you read on arrival. From there, regroup
 by make, by cut type (edge / laser / Tibbe) or A-Z by keyway, or search any catalog number — keyway, Ilco, Ilco
 chip, Silca, JMA, Strattec — and matching groups open themselves. Tap a blank for

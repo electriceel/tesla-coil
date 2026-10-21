@@ -639,5 +639,66 @@ check('and still squashes punctuation the way it always did',
 check('so the accented row is reachable by its plain spelling',
   B.some(b => squash([b.keyway, (b.makes || []).join(' ')].join(' ')).includes('hafele')));
 
+/* ---- Best SFIC blanks, and the two numbering systems ----
+   The directory carried the same physical Best blank twice: once under the
+   Best designation 1A1G1 and once under the Ilco number A1114G, in separate
+   rows with nothing connecting them. Searching one number told you nothing
+   about the other, which on a counter is the whole question. A CLK Supplies
+   listing sells each blank under both numbers on one page, which is what
+   established the pairing. */
+const BEST_PAIRS = {
+  '1A1A1':'A1114A', '1A1B1':'A1114B', '1A1C1':'A1114C', '1A1D1':'A1114D',
+  '1A1DD1':'A1114DD', '1A1E1':'A1114E', '1A1F1':'A1114F', '1A1FM1':'A1114FM',
+  '1A1G1':'A1114G', '1A1H1':'A1114H', '1A1J1':'A1114J', '1A1K1':'A1114K',
+  '1A1L1':'A1114L', '1A1M1':'A1114M', '1A1N1':'A1114N', '1A1Q1':'A1114Q',
+  '1A1TA1':'A1114TA', '1A1TB1':'A1114TB', '1A1TD1':'A1114TD', '1A1TE1':'A1114TE',
+  '1A1WA1':'A1114WA', '1A1WC1':'A1114WC', '1A1WD1':'A1114WD', '1A1WE1':'A1114WE',
+  '1A1WG1':'A1114WG', '1A1WH1':'A1114WH', '1A1WY1':'A1114WY'
+};
+const blankSearch = (q) => {
+  const terms = String(q).toLowerCase().split(/\s+/).filter(Boolean);
+  return B.filter(b => {
+    const hay = [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.cat, b.notes]
+      .concat(b.makes || []).join(' ').toLowerCase();
+    const flat = squash(hay);
+    return terms.every(t => hay.includes(t) || flat.includes(squash(t)));
+  });
+};
+
+const unreachable = Object.entries(BEST_PAIRS).filter(([a, b]) =>
+  !blankSearch(a).length || !blankSearch(b).length);
+check('every Best SFIC keyway is reachable by both of its numbers', !unreachable.length,
+  unreachable.map(([a, b]) => a + '/' + b).join(', '));
+
+/* The point is not that both numbers find something -- it is that whichever
+   one you have in hand, the row names the other. */
+const oneWay = Object.entries(BEST_PAIRS).filter(([a, b]) =>
+  !blankSearch(a).some(r => JSON.stringify(r).includes(b))
+  || !blankSearch(b).some(r => JSON.stringify(r).includes(a)));
+check('and each one names its counterpart, so either number answers the question',
+  !oneWay.length, oneWay.map(([a, b]) => a + ' <-> ' + b).join(', '));
+
+/* These came off a supplier listing, so they must not wear the prefix the
+   edition 13 catalogue pass is counted by -- the same rule the Lowe &
+   Fletcher rows follow. */
+const clkRows = B.filter(b => /CLK Supplies/.test(b.notes || ''));
+check('the CLK-sourced rows say so on their face', clkRows.length >= 13,
+  clkRows.length + ' rows cite CLK');
+check('and none of them claims the edition 13 prefix',
+  clkRows.every(b => !/^(cat-|cat13-)/.test(b.id)
+                     || / Same blank as /.test(b.notes)),
+  clkRows.filter(b => /^(cat-|cat13-)/.test(b.id) && !/ Same blank as /.test(b.notes))
+    .map(b => b.id).join(', '));
+
+/* The golf cart row promised three blanks and named none of them. */
+const gc = B.find(b => b.id === 'golfcart');
+check('the golf cart row names the blanks it promises',
+  gc && /CC1/.test(gc.notes) && /1677/.test(gc.notes) && /1919/.test(gc.notes), gc && gc.notes);
+['club car cc1', 'ez-go 1677'].forEach(q =>
+  check(`searching "${q}" reaches the cart row`, blankSearch(q).length >= 1));
+
+check('the two Euro blanks are present and findable',
+  blankSearch('EU1R').length === 1 && blankSearch('EU-8D').length === 1);
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
