@@ -33,6 +33,22 @@ if (!keyWords('TOY48 laser').includes('TOY48')) {
   throw new Error('app.js keyWords dropped a real keyway token');
 }
 
+/* And squash, for the same reason. tests/data.test.js kept its own copy, and
+   the moment app.js started folding accents instead of deleting them the two
+   disagreed -- the test would have gone on passing a search behaviour the app
+   no longer had. Exactly the drift this file was written for. */
+const qm = src.match(/const squash = \(s\) =>([\s\S]*?);\n/);
+if (!qm) throw new Error('squash not found in app.js');
+const squash = new Function('return (s) =>' + qm[1] + ';')();
+
+if (squash('F-150') !== 'f150') {
+  throw new Error('app.js squash stopped squashing punctuation: ' + squash('F-150'));
+}
+if (squash('H\u00e4fele') !== 'hafele') {
+  throw new Error('app.js squash stopped folding accents: ' + squash('H\u00e4fele'));
+}
+
 module.exports = KEY_STOPWORDS;
 module.exports.STOP = KEY_STOPWORDS;
 module.exports.keyWords = keyWords;
+module.exports.squash = squash;
