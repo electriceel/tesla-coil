@@ -107,13 +107,18 @@ function setDomain(d) {
   Object.assign(filterMem[lookupDomain], filter);
   lookupDomain = d;
   Object.assign(filter, filterMem[d]);
-  lookupShowAll = false;
+  resetLookupPaging();
 }
 const domainVehicles = (d) => Store.vehicles().filter(v => domainOf(v) === (d || lookupDomain));
 /* The seed is a few hundred records and grows as the user adds their own, so the
    unfiltered list is capped until they ask for the rest. */
 const LOOKUP_CAP = 60;
 let lookupShowAll = false;
+const INDEX_CAP = 40;
+let indexShowAll = false;
+/* Both "show all" states belong to the filter that produced them, so changing
+   the filter clears both. Kept in one place because it is set from seven. */
+function resetLookupPaging() { lookupShowAll = false; indexShowAll = false; }
 const lookupOpen = {};
 
 function allMakes() {
@@ -229,7 +234,15 @@ function renderCatalog() {
   /* Include the active make even when no record uses it yet — otherwise arriving
      from a blank's make chip shows an empty list with no visible filter.
      At 60+ makes this is a dropdown; a chip row filled the whole screen. */
-  const makes = Array.from(new Set(allMakes().concat(filter.make ? [filter.make] : []))).sort();
+  /* The index knows 27 makes the directory has no record for -- McLaren,
+     Bugatti, Lancia, VinFast. They are on the make screen, so they have to be
+     in the dropdown too, or picking one there is a filter you cannot get back
+     to from the control that is supposed to set it. */
+  const idxMakes = (lookupDomain === 'auto' && typeof VPIC_MODELS !== 'undefined')
+    ? Object.keys(VPIC_MODELS) : [];
+  const makes = Array.from(new Set(allMakes()
+    .concat(idxMakes)
+    .concat(filter.make ? [filter.make] : []))).sort();
   const makeSel = $(D.sel);
   const wantMakes = makes.join('\u0000');
   if (makeSel.dataset.built !== wantMakes) {
@@ -249,8 +262,14 @@ function renderCatalog() {
 
   /* Nothing chosen yet? Show the makes, not 500 vehicles. Picking a make is the
      first thing you do on a real call, and a list you have to scroll past to
-     start is not a starting point. */
-  if (!filter.make && !filter.year && !parseQuery(filter.q).terms.length) {
+     start is not a starting point.
+
+     A bare year counts as choosing something. parseQuery pulls years out of the
+     query before the words, so "1987" left no terms behind and the box did
+     nothing at all -- you got the make index back and no sign the year had
+     registered. */
+  const parsed = parseQuery(filter.q);
+  if (!filter.make && !filter.year && !parsed.terms.length && !parsed.years.length) {
     return renderMakeIndex();
   }
 
@@ -262,17 +281,20 @@ function renderCatalog() {
   /* Narrowed to a handful of models? Open them — the user has already chosen. */
   const autoOpen = groups.length <= 3;
 
-  $(D.count).textContent = hits.length
+  const gaps = indexGaps();
+  const gapCount = gaps.length;
+  $(D.count).textContent = (hits.length
     ? `${hits.length} record${hits.length === 1 ? '' : 's'} in ${groups.length} model${groups.length === 1 ? '' : 's'}`
       + (capped ? ` \u00b7 showing ${LOOKUP_CAP}` : '')
-    : '';
+    : '') + (gapCount ? `${hits.length ? ' \u00b7 ' : ''}${gapCount} more in the index` : '');
 
   $(D.results).innerHTML =
     (filter.make ? `<button class="back" data-allmakes="1">&lsaquo; All makes</button>` : '')
     + (hits.length
       ? shown.map(g => g.rows.length === 1 ? vehicleCardHtml(g.rows[0]) : nameplateHtml(g, autoOpen)).join('')
         + (capped ? `<button class="btn ghost" data-showall="1">Show all ${groups.length} models</button>` : '')
-      : emptyLookupHtml());
+      : (gaps.length ? '' : emptyLookupHtml()))
+    + indexGapsHtml(gaps, hits.length > 0);
 }
 
 /* The make index: every make with what it holds, so the first tap narrows a few
@@ -286,19 +308,28 @@ function renderMakeIndex() {
     e.records++;
     e.models.add(v.model);
   });
+  /* A make the index knows but no record covers still belongs on this screen:
+     leaving it off is how the catalogue came to look thinner than it is. */
+  const idx = (lookupDomain === 'auto' && typeof VPIC_MODELS !== 'undefined') ? VPIC_MODELS : {};
+  Object.keys(idx).forEach(mk => { if (!byMake.has(mk)) byMake.set(mk, { records: 0, models: new Set() }); });
   const rows = Array.from(byMake.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   const total = domainVehicles().length;
+  const indexTotal = Object.values(idx).reduce((n, m) => n + Object.keys(m).length, 0);
 
   $(D.count).textContent =
-    `${rows.length} makes \u00b7 ${total} record${total === 1 ? '' : 's'}`;
+    `${rows.length} makes \u00b7 ${total} record${total === 1 ? '' : 's'}`
+    + (indexTotal ? ` \u00b7 ${indexTotal} models indexed` : '');
 
   $(D.results).innerHTML = `<div class="card" style="padding:0;overflow:hidden">`
-    + rows.map(([make, e]) => `
+    + rows.map(([make, e]) => {
+      const known = Object.keys(idx[make] || {}).length;
+      return `
       <button class="mkrow" data-pickmake="${esc(make)}">
         <span class="mkrow-nm">${esc(make)}</span>
-        <span class="mkrow-n">${e.models.size} model${e.models.size === 1 ? '' : 's'}</span>
+        <span class="mkrow-n">${e.models.size ? e.models.size + ' model' + (e.models.size === 1 ? '' : 's') : ''}${
+          known > e.models.size ? `${e.models.size ? ' &middot; ' : ''}${known} indexed` : ''}</span>
         <span class="mkrow-go">&rsaquo;</span>
-      </button>`).join('')
+      </button>`; }).join('')
     + `</div>`;
 }
 
@@ -353,26 +384,180 @@ function nameplateHtml(g, autoOpen) {
 /* When the lookup finds nothing, the vPIC index can still say whether the thing
    exists. "Real vehicle, no key data yet" is a different answer from "no such
    vehicle", and only the first one is worth adding a record for. */
-function emptyLookupHtml() {
-  /* The NHTSA index is passenger vehicles — it does not carry bikes, ATVs or
-     side-by-sides, so under Moto there is nothing honest to offer and the
-     fallback stays out of the way. */
-  const hits = (lookupDomain === 'auto' && typeof vpicSearch === 'function' && filter.q.trim())
-    ? vpicSearch(filter.q, 6) : [];
-  if (!hits.length) {
-    return `<div class="empty">No match in your database.<br><br>
-      <button class="btn btn-sm" data-newveh="1">Add ${lookupDomain === 'moto' ? 'this machine' : 'this vehicle'}</button></div>`;
+/* ======================= the model index =======================
+   models.js carries 2,301 make/model pairs harvested from NHTSA vPIC: which
+   vehicles exist and what years they ran, and nothing about keys. Until now the
+   lookup only reached for it when a search came back with nothing at all, so
+   "mercedes" returned the 15 records on file and said nothing about the other
+   30 models Mercedes built -- the catalogue looked thin because most of what it
+   knows was only wired into the add-vehicle form's autocomplete.
+
+   Those models are now listed under the records, plainly marked as index
+   entries with no key record of their own. Several of them do have an answer
+   already: the directory holds 23 vintage records, each covering a marque for a
+   span of years, and a 1987 Mercury Cougar has been answerable from the Ford
+   vintage record the whole time -- there was just no way to type your way to
+   it. An index row that one of those records covers now says so and opens it. */
+
+/* Each vintage record names the marques it covers in its own title -- "Most
+   Chrysler / Dodge / Plymouth (vintage)" -- so splitting that is reading the
+   record rather than second-guessing it. Two name a corporation instead of its
+   marques, and those two are spelled out here. Saturn and Geo are deliberately
+   left out of the GM list: Saturn had its own keyway, and the Geo cars were
+   rebadged Isuzu, Suzuki and Toyota, so the B-series answer would be wrong for
+   both. */
+const VINTAGE_FAMILY = {
+  'gm-vintage-1981-1995':   ['Chevrolet', 'GMC', 'Buick', 'Cadillac', 'Oldsmobile', 'Pontiac'],
+  'ford-vintage-1981-1995': ['Ford', 'Mercury', 'Lincoln'],
+};
+function vintageRecords() {
+  const known = Array.from(new Set(Store.vehicles().map(v => v.make)));
+  return Store.vehicles().filter(v => /vintage/i.test(v.model)).map(v => ({
+    rec: v,
+    makes: VINTAGE_FAMILY[v.id]
+      || Array.from(new Set([v.make].concat(
+           v.model.split(/[\/,]|\band\b/).map(part => {
+             const t = part.replace(/\(.*?\)/g, '').replace(/\bmost\b|\bvintage\b/gi, '').trim();
+             return known.find(mk => mk.toLowerCase() === t.toLowerCase()
+               || mk.toLowerCase().startsWith(t.toLowerCase()) && t.length > 3);
+           }).filter(Boolean))))
+  }));
+}
+/* Rebuilt only when the store changes, like the search haystacks. */
+let vintageCache = { rev: -1, list: null };
+function vintageCovering(make, y0, y1) {
+  if (vintageCache.rev !== Store.rev) vintageCache = { rev: Store.rev, list: vintageRecords() };
+  const hit = vintageCache.list.find(e => e.makes.includes(make)
+    && y0 <= e.rec.yearEnd && y1 >= e.rec.yearStart);
+  return hit ? hit.rec : null;
+}
+
+/* A record names the models it covers separated by slashes, commas and
+   brackets -- "Tahoe / Suburban", "E-350 / E-450 cutaway", "Corvette (C5/C6)".
+   A space is not a boundary: "Silverado 1500" is one name. Brackets were being
+   stripped rather than split, which cost the Corvette generations their
+   record. */
+/* Split once per record, not once per record per candidate model: the gap scan
+   walks 2,356 index models against the records of their make, and rebuilding
+   these strings inside that loop was most of what a one-letter query cost. */
+let nameCache = { rev: -1, map: new Map() };
+function recordNames(r) {
+  if (nameCache.rev !== Store.rev) nameCache = { rev: Store.rev, map: new Map() };
+  let n = nameCache.map.get(r.id);
+  if (!n) {
+    n = (r.model + ' / ' + (r.aliases || []).join(' / '))
+      .split(/[\/(),]/).map(squash).filter(Boolean);
+    nameCache.map.set(r.id, n);
   }
-  return `<div class="notice info">No key data on file for that yet &mdash; but these are real
-      vehicles, per the NHTSA database. Tap one to start a record with the years filled in.</div>` +
-    hits.map(h => `
-      <div class="card tap vres" data-vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}">
+  return n;
+}
+/* Whether an index model name is one of the names a record already carries.
+   A plain substring test was letting records swallow models they have nothing
+   to do with: the Chevrolet SS disappeared into "Expre-SS- / GMC Savana", the
+   Chrysler TC into "Mos-tC-hrysler", and the C4 and C8 into a Kodiak record
+   that mentions C4500-C8500. Short names now have to match a whole name; from
+   four characters up a prefix either way is enough, which is what keeps F-350
+   under "F-250/F-350 Super Duty". */
+const nameFits = (n, t) => t === n
+  || (n.length >= 4 && (t.startsWith(n) || (t.length >= 4 && n.startsWith(t))));
+
+/* The records of each make, grouped once per store revision. */
+let byMakeCache = { rev: -1, domain: '', map: null };
+function vehiclesByMake() {
+  if (byMakeCache.rev === Store.rev && byMakeCache.domain === lookupDomain) return byMakeCache.map;
+  const map = new Map();
+  domainVehicles().forEach(v => {
+    if (!map.has(v.make)) map.set(v.make, []);
+    map.get(v.make).push(v);
+  });
+  byMakeCache = { rev: Store.rev, domain: lookupDomain, map };
+  return map;
+}
+
+/* Index models the current filter matches that no record of their own covers.
+   Coverage is judged at the year asked for, not across the whole production
+   run, because that is the difference between an answer and a shrug: there is a
+   Mercury record naming the Cougar, but it starts in 1995, and "1987 cougar"
+   used to come back "no match in your database" even though the Ford vintage
+   record has answered it all along. With no year in the query the whole run is
+   the window, so browsing still hides models the directory already covers. */
+function indexGaps() {
+  if (lookupDomain !== 'auto' || typeof VPIC_MODELS === 'undefined') return [];
+  const { years, terms } = parseQuery(filter.q);
+  const dropdownYear = parseInt(filter.year, 10);
+  const wanted = years.concat(dropdownYear ? [dropdownYear] : []);
+  const byMake = vehiclesByMake();
+  const out = [];
+  Object.entries(VPIC_MODELS).forEach(([mk, models]) => {
+    if (filter.make && mk !== filter.make) return;
+    const recs = byMake.get(mk) || [];
+    Object.entries(models).forEach(([md, yrs]) => {
+      const [y0, y1] = yrs;
+      if (wanted.some(y => y < y0 || y > y1)) return;
+      /* The years the question is actually about. */
+      const w0 = wanted.length ? Math.max(y0, Math.min(...wanted)) : y0;
+      const w1 = wanted.length ? Math.min(y1, Math.max(...wanted)) : y1;
+      if (terms.length) {
+        const hay = (mk + ' ' + md + ' ' + (MAKE_NICKNAMES[mk] || '')).toLowerCase();
+        const tight = squash(hay);
+        /* Chassis designations get typed with the engine letter on the end --
+           190E, 300D, 240TD -- and the index calls them 190, 300, 240. A model
+           that starts with a digit and runs to three characters or more counts
+           as a match when it starts the term. Numbers only, because the first
+           version of this let "vanagon" answer with a Mitsubishi Van, and three
+           characters at least, or "3" would answer for every BMW ever built. */
+        const mdt = squash(md);
+        const stem = /^\d/.test(mdt) && mdt.length >= 3 && terms.some(t => squash(t).startsWith(mdt));
+        if (!stem && !terms.every(t => hay.includes(t) || tight.includes(squash(t)))) return;
+      }
+      const n = squash(md);
+      const covered = recs.some(r => {
+        if (r.yearEnd < w0 || r.yearStart > w1) return false;
+        return recordNames(r).some(t => nameFits(n, t));
+      });
+      if (!covered) out.push({ mk, md, y0, y1, via: vintageCovering(mk, w0, w1) });
+    });
+  });
+  return out.sort((a, b) => (a.mk + a.md).localeCompare(b.mk + b.md));
+}
+
+function indexGapsHtml(gaps, hadRecords) {
+  if (!gaps.length) return '';
+  const shown = indexShowAll ? gaps : gaps.slice(0, INDEX_CAP);
+  return `<div class="notice info" style="margin-top:14px">${gaps.length}${hadRecords ? ' more' : ''}
+      model${gaps.length === 1 ? '' : 's'} in the NHTSA index with no key record of their own.
+      The ones a vintage record covers say so; the rest are real vehicles waiting
+      for your notes.</div>`
+    + shown.map(h => `
+      <div class="card tap vres" data-${h.via ? `vid="${esc(h.via.id)}"` : `vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}"`}>
         <div style="flex:1;min-width:0">
-          <div class="yr">${h.y0}&ndash;${h.y1} &middot; NHTSA</div>
-          <div class="nm">${esc(h.mk)} ${esc(h.md)}</div>
-          <div class="sub">No key data yet &mdash; tap to add</div>
-        </div><div class="go">+</div>
-      </div>`).join('');
+          <div class="yr">${h.y0}${h.y1 !== h.y0 ? '&ndash;' + h.y1 : ''} &middot; INDEX</div>
+          <div class="nm">${esc(filter.make ? h.md : h.mk + ' ' + h.md)}</div>
+          <div class="sub">${h.via
+            ? esc(nz(h.via.blanks && h.via.blanks.keyway)) + ' &middot; via ' + esc(h.via.model)
+            : 'No key record yet &mdash; tap to add'}</div>
+        </div><div class="go">${h.via ? '&rsaquo;' : '+'}</div>
+      </div>`).join('')
+    + (gaps.length > shown.length
+        ? `<button class="btn ghost" data-indexall="1">Show all ${gaps.length} index models</button>` : '');
+}
+
+function emptyLookupHtml() {
+  /* indexGaps() does the index lookup now, and it respects the make and year
+     filters. This used to call vpicSearch(), which did not: with the make set
+     to McLaren and "metro" typed, the screen answered with a Geo Metro and a
+     Chevrolet Metro. One path through the index, and it is the one the filters
+     reach. */
+  /* The NHTSA index starts at model year 1981. Asking for a 1965 Mustang and
+     getting a bare "no match" reads as a gap in the app rather than the edge of
+     what it can know, so say which it is. */
+  const old = parseQuery(filter.q).years.filter(y => y < 1981);
+  return `<div class="empty">No match in your database.${old.length
+    ? `<br><br><span class="muted">The NHTSA model index this app falls back on starts at
+       model year 1981, so there is nothing to offer for ${old.join(' or ')}. Pre-war and
+       post-war cars mostly take a bit or a flat steel blank &mdash; the blank directory
+       carries those.</span>` : ''}<br><br>
+    <button class="btn btn-sm" data-newveh="1">Add ${lookupDomain === 'moto' ? 'this machine' : 'this vehicle'}</button></div>`;
 }
 
 /* ======================= vehicle detail ======================= */
@@ -2587,11 +2772,12 @@ const RENDER = {
 };
 
 document.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkdel],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier],[data-safe],[data-safeblank]');
+  const t = e.target.closest('[data-go],[data-vid],[data-editveh],[data-delveh],[data-canceledit],[data-newveh],[data-jobfrom],[data-editjob],[data-deljob],[data-canceljob],[data-newjob],[data-bgroup],[data-bopen],[data-bid],[data-bback],[data-bedit],[data-bdel],[data-bcancel],[data-bmake],[data-bnew],[data-showall],[data-indexall],[data-vpic],[data-lopen],[data-vtab],[data-blankfor],[data-tipadd],[data-tipdel],[data-mkopen],[data-mksave],[data-mkcopy],[data-mkload],[data-mkdel],[data-mkmode],[data-mklevels],[data-mkalloc],[data-mksym],[data-pickmake],[data-allmakes],[data-lishi],[data-lishimake],[data-lishiback],[data-lishiblank],[data-dtier],[data-safe],[data-safeblank]');
   if (!t) return;
 
   if (t.dataset.go)        { go(t.dataset.go); return; }
   if (t.dataset.showall)   { lookupShowAll = true; renderCatalog(); return; }
+  if (t.dataset.indexall)  { indexShowAll = true; renderCatalog(); return; }
   if (t.dataset.lopen)     { const k = t.dataset.lopen; lookupOpen[k] = !lookupOpen[k]; renderCatalog(); return; }
   if (t.dataset.vpic) {
     const [mk, md, y0, y1] = t.dataset.vpic.split('|');
@@ -2617,14 +2803,14 @@ document.addEventListener('click', (e) => {
   /* --- blank directory --- */
   if (t.dataset.pickmake) {
     filter.make = t.dataset.pickmake;
-    lookupShowAll = false;
+    resetLookupPaging();
     renderCatalog();
     window.scrollTo(0, 0);
     return;
   }
   if (t.hasAttribute('data-allmakes')) {
     filter.make = ''; filter.year = ''; filter.q = '';
-    lookupShowAll = false;
+    resetLookupPaging();
     renderCatalog();
     window.scrollTo(0, 0);
     return;
@@ -2787,10 +2973,10 @@ function boot() {
   /* Both catalog toolbars are wired the same way; the domain config says which
      elements belong to which tab. */
   Object.values(DOMAINS).forEach(D => {
-    $(D.sel).addEventListener('change', (e) => { filter.make = e.target.value; lookupShowAll = false; renderCatalog(); });
-    $(D.year).addEventListener('change', (e) => { filter.year = e.target.value; lookupShowAll = false; renderCatalog(); });
-    $(D.q).addEventListener('input', (e) => { filter.q = e.target.value; lookupShowAll = false; renderCatalog(); });
-    $(D.clear).addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; lookupShowAll = false; renderCatalog(); });
+    $(D.sel).addEventListener('change', (e) => { filter.make = e.target.value; resetLookupPaging(); renderCatalog(); });
+    $(D.year).addEventListener('change', (e) => { filter.year = e.target.value; resetLookupPaging(); renderCatalog(); });
+    $(D.q).addEventListener('input', (e) => { filter.q = e.target.value; resetLookupPaging(); renderCatalog(); });
+    $(D.clear).addEventListener('click', () => { filter.make = ''; filter.year = ''; filter.q = ''; resetLookupPaging(); renderCatalog(); });
   });
   $('#addVehBtn').addEventListener('click', () => { go('vehicle'); editVehicle(null); });
   /* Adding from the Moto tab starts a moto record, so it lands back in the tab
