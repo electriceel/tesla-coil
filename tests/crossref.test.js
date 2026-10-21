@@ -33,9 +33,16 @@ const dupField = V.filter(v => (v.blanks || {}).silca || (v.blanks || {}).jma);
 check('vehicles carry no duplicated Silca or JMA', !dupField.length,
   dupField.slice(0, 5).map(v => v.id).join(', '));
 
-/* ---- one Silca per keyway across the blank directory ---- */
+/* ---- one Silca per keyway across the blank directory ----
+   Only the rows that name a confirmed keyway are indexed by keyway word. A
+   kwUnknown label is a maker, a catalog number and, on the Blue Dog import, the
+   supplier's product type -- so "AGA2 Silca - Cylinder" would register SILCA
+   and CYLINDER as keyways and every row sharing the word would clash with every
+   other. The app does not treat those labels as keyways either; this is the
+   same rule. */
+const KEYWAY_ROWS = B.filter(b => !b.kwUnknown);
 const bySilca = new Map();
-B.forEach(b => {
+KEYWAY_ROWS.forEach(b => {
   if (!b.silca || b.silca === '—') return;
   words(b.keyway).forEach(w => {
     if (!bySilca.has(w)) bySilca.set(w, new Map());
@@ -53,7 +60,7 @@ check('one Silca reference per keyway in the blank directory', !silcaClash.lengt
 
 /* ---- a vehicle's Ilco belongs to a family the blank row knows ---- */
 const byWord = new Map();
-B.forEach(b => words(b.keyway).forEach(w => {
+KEYWAY_ROWS.forEach(b => words(b.keyway).forEach(w => {
   if (!byWord.has(w)) byWord.set(w, []);
   byWord.get(w).push(b);
 }));

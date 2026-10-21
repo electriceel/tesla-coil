@@ -387,6 +387,36 @@ const badYears = V.filter(v => !(v.yearStart <= v.yearEnd) || v.yearStart < 1900
   .map(v => `${v.id} ${v.yearStart}-${v.yearEnd}`);
 check('every year range is ordered and plausible', !badYears.length, badYears.join(', '));
 
+/* ============ one global, one owner ============
+   Every script on the page shares one scope, and a second top-level `const` of
+   a name another file already took is a SyntaxError that kills the whole file
+   and everything after it. The Blue Dog import shipped a helper called K;
+   store.js has had `const K = {...}` for its storage keys since the beginning.
+   data.js died on load, Store with it, and the app rendered an empty shell.
+
+   Nothing in the node suites could see it, because each one evaluates a file on
+   its own. This check reads the scripts in the order index.html loads them and
+   looks at them together, which is the only place the collision exists. */
+const SCRIPTS = [...html.matchAll(/<script src="(assets\/js\/[^"]+)"><\/script>/g)].map(m => m[1]);
+check('the page loads every script this test knows about', SCRIPTS.length >= 9,
+  SCRIPTS.length + ' scripts');
+const owner = new Map(); const clashes = [];
+SCRIPTS.forEach(rel => {
+  const text = fs.readFileSync(path.join(__dirname, '..', rel), 'utf8');
+  /* Column zero only: a declaration indented by even one space is inside a
+     function or a block and cannot collide with another file's. */
+  const names = new Set([...text.matchAll(/^(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/gm)]
+    .map(m => m[1]));
+  names.forEach(n => {
+    if (owner.has(n)) clashes.push(`${n}: ${owner.get(n)} and ${rel}`);
+    else owner.set(n, rel);
+  });
+});
+check('no two scripts declare the same global', !clashes.length, clashes.join('\n     '));
+check('and the check can actually see the globals it is guarding',
+  owner.get('Store') === 'assets/js/store.js' && owner.get('SEED_BLANKS') === 'assets/js/data.js',
+  `Store from ${owner.get('Store')}, SEED_BLANKS from ${owner.get('SEED_BLANKS')}`);
+
 console.log(fail ? `\n${fail} FAILED`
   : `\nall integrity checks passed  (${assets.length} precached files, ${V.length} vehicles)`);
 process.exit(fail ? 1 : 0);
