@@ -774,8 +774,13 @@ check('the Framon-catalogued blanks are present', framonRows.length >= 12,
 check('and no Framon number was filed as an Ilco or JMA one',
   framonRows.every(b => !/^BD\d+/.test(String(b.ilco || '')) && !/^BD\d+/.test(String(b.jma || ''))),
   framonRows.filter(b => /^BD\d+/.test(String(b.ilco || b.jma || ''))).map(b => b.id).join(', '));
-check('every Framon row says the number is Framon\u2019s, not Ilco\u2019s',
-  framonRows.every(b => /Framon/.test(b.notes || '')));
+/* Blue Dog is a division of Framon and the BD series is theirs -- CLK's SKUs
+   are literally FRA-BD123. Either name identifies the series honestly, and
+   the rows corrected from the maker's own site name Blue Dog because that is
+   whose description they now carry. */
+check('every BD row names the series it belongs to',
+  framonRows.every(b => /Framon|Blue Dog/.test(b.notes || '')),
+  framonRows.filter(b => !/Framon|Blue Dog/.test(b.notes || '')).map(b => b.id).slice(0,5).join(', '));
 
 ['BD173', 'BD234', 'BD225', 'BD124', 'BD15C', 'BD143', 'BD68', 'BD226', 'BD20', 'BD41']
   .forEach(d => check(`Framon ${d} is findable`, blankSearch(d).length >= 1));
@@ -809,11 +814,31 @@ check('the blank search reads it', /b\.strattec, b\.framon/.test(appSrc));
    hand, 154 named nothing the directory knew. Most are Framon BD numbers
    spanning categories the directory was thin on -- RV and motorhome, plant
    and agricultural equipment, padlocks, bit and barrel. */
-const clkRowsAll = B.filter(b => /^clk-/.test(b.id));
+/* Nine of this batch were later re-identified from Blue Dog's own catalogue
+   and renamed bdk-, so the batch spans both prefixes. */
+const clkRowsAll = B.filter(b => /^(clk|bdk)-/.test(b.id));
 check('the CLK batch is present', clkRowsAll.length >= 150, clkRowsAll.length + ' rows');
 check('every one of them says where it came from',
-  clkRowsAll.every(b => /CLK Supplies/.test(b.notes || '')),
-  clkRowsAll.filter(b => !/CLK Supplies/.test(b.notes || '')).map(b => b.id).slice(0, 5).join(', '));
+  clkRowsAll.every(b => /CLK Supplies|bluedogkeys\.com/.test(b.notes || '')),
+  clkRowsAll.filter(b => !/CLK Supplies|bluedogkeys\.com/.test(b.notes || '')).map(b => b.id).slice(0, 5).join(', '));
+
+/* The nine rows re-identified from the maker's own catalogue have to say both
+   where they came from and that they were corrected -- a reader who saw the
+   earlier wrong description deserves to know it changed and why. */
+const corrected = B.filter(b => /bluedogkeys\.com/.test(b.notes || ''));
+check('the corrected rows name the maker as the source', corrected.length === 10,
+  corrected.length + ' rows');
+/* Every one of them is a bdk- row: a row corrected from the maker's catalogue
+   should not still be filed under the reseller's prefix. */
+check('and each was renamed out of the reseller prefix',
+  corrected.every(b => /^bdk-/.test(b.id)),
+  corrected.filter(b => !/^bdk-/.test(b.id)).map(b => b.id).join(', '));
+/* Not just that a correction happened -- the shared sentence says that -- but
+   what this particular row used to claim, which is the bit a reader who saw
+   the old version needs. */
+check('and each names the specific claim it replaced',
+  corrected.every(b => /Previously filed/.test(b.notes)),
+  corrected.filter(b => !/Previously filed/.test(b.notes)).map(b => b.id).join(', '));
 check('and none wears the edition 13 prefix',
   clkRowsAll.every(b => !/^(cat-|cat13-)/.test(b.id)));
 
