@@ -234,7 +234,15 @@ function renderCatalog() {
   /* Include the active make even when no record uses it yet — otherwise arriving
      from a blank's make chip shows an empty list with no visible filter.
      At 60+ makes this is a dropdown; a chip row filled the whole screen. */
-  const makes = Array.from(new Set(allMakes().concat(filter.make ? [filter.make] : []))).sort();
+  /* The index knows 27 makes the directory has no record for -- McLaren,
+     Bugatti, Lancia, VinFast. They are on the make screen, so they have to be
+     in the dropdown too, or picking one there is a filter you cannot get back
+     to from the control that is supposed to set it. */
+  const idxMakes = (lookupDomain === 'auto' && typeof VPIC_MODELS !== 'undefined')
+    ? Object.keys(VPIC_MODELS) : [];
+  const makes = Array.from(new Set(allMakes()
+    .concat(idxMakes)
+    .concat(filter.make ? [filter.make] : []))).sort();
   const makeSel = $(D.sel);
   const wantMakes = makes.join('\u0000');
   if (makeSel.dataset.built !== wantMakes) {
@@ -424,6 +432,48 @@ function vintageCovering(make, y0, y1) {
   return hit ? hit.rec : null;
 }
 
+/* A record names the models it covers separated by slashes, commas and
+   brackets -- "Tahoe / Suburban", "E-350 / E-450 cutaway", "Corvette (C5/C6)".
+   A space is not a boundary: "Silverado 1500" is one name. Brackets were being
+   stripped rather than split, which cost the Corvette generations their
+   record. */
+/* Split once per record, not once per record per candidate model: the gap scan
+   walks 2,356 index models against the records of their make, and rebuilding
+   these strings inside that loop was most of what a one-letter query cost. */
+let nameCache = { rev: -1, map: new Map() };
+function recordNames(r) {
+  if (nameCache.rev !== Store.rev) nameCache = { rev: Store.rev, map: new Map() };
+  let n = nameCache.map.get(r.id);
+  if (!n) {
+    n = (r.model + ' / ' + (r.aliases || []).join(' / '))
+      .split(/[\/(),]/).map(squash).filter(Boolean);
+    nameCache.map.set(r.id, n);
+  }
+  return n;
+}
+/* Whether an index model name is one of the names a record already carries.
+   A plain substring test was letting records swallow models they have nothing
+   to do with: the Chevrolet SS disappeared into "Expre-SS- / GMC Savana", the
+   Chrysler TC into "Mos-tC-hrysler", and the C4 and C8 into a Kodiak record
+   that mentions C4500-C8500. Short names now have to match a whole name; from
+   four characters up a prefix either way is enough, which is what keeps F-350
+   under "F-250/F-350 Super Duty". */
+const nameFits = (n, t) => t === n
+  || (n.length >= 4 && (t.startsWith(n) || (t.length >= 4 && n.startsWith(t))));
+
+/* The records of each make, grouped once per store revision. */
+let byMakeCache = { rev: -1, domain: '', map: null };
+function vehiclesByMake() {
+  if (byMakeCache.rev === Store.rev && byMakeCache.domain === lookupDomain) return byMakeCache.map;
+  const map = new Map();
+  domainVehicles().forEach(v => {
+    if (!map.has(v.make)) map.set(v.make, []);
+    map.get(v.make).push(v);
+  });
+  byMakeCache = { rev: Store.rev, domain: lookupDomain, map };
+  return map;
+}
+
 /* Index models the current filter matches that no record of their own covers.
    Coverage is judged at the year asked for, not across the whole production
    run, because that is the difference between an answer and a shrug: there is a
@@ -436,11 +486,7 @@ function indexGaps() {
   const { years, terms } = parseQuery(filter.q);
   const dropdownYear = parseInt(filter.year, 10);
   const wanted = years.concat(dropdownYear ? [dropdownYear] : []);
-  const byMake = new Map();
-  domainVehicles().forEach(v => {
-    if (!byMake.has(v.make)) byMake.set(v.make, []);
-    byMake.get(v.make).push(v);
-  });
+  const byMake = vehiclesByMake();
   const out = [];
   Object.entries(VPIC_MODELS).forEach(([mk, models]) => {
     if (filter.make && mk !== filter.make) return;
@@ -467,8 +513,7 @@ function indexGaps() {
       const n = squash(md);
       const covered = recs.some(r => {
         if (r.yearEnd < w0 || r.yearStart > w1) return false;
-        const h = squash(r.model + ' ' + (r.aliases || []).join(' '));
-        return h.includes(n) || (n.includes(h) && h.length > 3);
+        return recordNames(r).some(t => nameFits(n, t));
       });
       if (!covered) out.push({ mk, md, y0, y1, via: vintageCovering(mk, w0, w1) });
     });
@@ -498,33 +543,21 @@ function indexGapsHtml(gaps, hadRecords) {
 }
 
 function emptyLookupHtml() {
-  /* The NHTSA index is passenger vehicles — it does not carry bikes, ATVs or
-     side-by-sides, so under Moto there is nothing honest to offer and the
-     fallback stays out of the way. */
-  const hits = (lookupDomain === 'auto' && typeof vpicSearch === 'function' && filter.q.trim())
-    ? vpicSearch(filter.q, 6) : [];
-  if (!hits.length) {
-    /* The NHTSA index starts at model year 1981. Asking for a 1965 Mustang and
-       getting a bare "no match" reads as a gap in the app rather than the edge
-       of what it can know, so say which it is. */
-    const old = parseQuery(filter.q).years.filter(y => y < 1981);
-    return `<div class="empty">No match in your database.${old.length
-      ? `<br><br><span class="muted">The NHTSA model index this app falls back on starts at
-         model year 1981, so there is nothing to offer for ${old.join(' or ')}. Pre-war and
-         post-war cars mostly take a bit or a flat steel blank &mdash; the blank directory
-         carries those.</span>` : ''}<br><br>
-      <button class="btn btn-sm" data-newveh="1">Add ${lookupDomain === 'moto' ? 'this machine' : 'this vehicle'}</button></div>`;
-  }
-  return `<div class="notice info">No key data on file for that yet &mdash; but these are real
-      vehicles, per the NHTSA database. Tap one to start a record with the years filled in.</div>` +
-    hits.map(h => `
-      <div class="card tap vres" data-vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}">
-        <div style="flex:1;min-width:0">
-          <div class="yr">${h.y0}&ndash;${h.y1} &middot; NHTSA</div>
-          <div class="nm">${esc(h.mk)} ${esc(h.md)}</div>
-          <div class="sub">No key data yet &mdash; tap to add</div>
-        </div><div class="go">+</div>
-      </div>`).join('');
+  /* indexGaps() does the index lookup now, and it respects the make and year
+     filters. This used to call vpicSearch(), which did not: with the make set
+     to McLaren and "metro" typed, the screen answered with a Geo Metro and a
+     Chevrolet Metro. One path through the index, and it is the one the filters
+     reach. */
+  /* The NHTSA index starts at model year 1981. Asking for a 1965 Mustang and
+     getting a bare "no match" reads as a gap in the app rather than the edge of
+     what it can know, so say which it is. */
+  const old = parseQuery(filter.q).years.filter(y => y < 1981);
+  return `<div class="empty">No match in your database.${old.length
+    ? `<br><br><span class="muted">The NHTSA model index this app falls back on starts at
+       model year 1981, so there is nothing to offer for ${old.join(' or ')}. Pre-war and
+       post-war cars mostly take a bit or a flat steel blank &mdash; the blank directory
+       carries those.</span>` : ''}<br><br>
+    <button class="btn btn-sm" data-newveh="1">Add ${lookupDomain === 'moto' ? 'this machine' : 'this vehicle'}</button></div>`;
 }
 
 /* ======================= vehicle detail ======================= */

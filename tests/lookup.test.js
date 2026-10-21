@@ -21,7 +21,7 @@ const check = (name, ok, detail) => {
    evaluates fine against stubs as long as the globals it closes over exist. */
 function loadApp() {
   const { SEED_VEHICLES, SEED_BLANKS } = require('../assets/js/data.js');
-  const models = new Function(read('assets/js/models.js') + '\n;return { VPIC_MODELS, vpicSearch };')();
+  const models = new Function(read('assets/js/models.js') + '\n;return { VPIC_MODELS };')();
   let rev = 1;
   const Store = {
     get rev() { return rev; },
@@ -38,10 +38,10 @@ function loadApp() {
   };
   const src = read('assets/js/app.js')
     + '\n;return { indexGaps, vintageCovering, vintageRecords, VINTAGE_FAMILY, filter, setDomain, parseQuery };';
-  return new Function('document', 'window', 'Store', 'VPIC_MODELS', 'vpicSearch',
+  return new Function('document', 'window', 'Store', 'VPIC_MODELS',
                       'localStorage', 'navigator', 'location', 'history', 'alert', 'confirm', 'console', src)(
     document, { addEventListener: noop, scrollTo: noop, matchMedia: () => ({ matches: false, addEventListener: noop }) },
-    Store, models.VPIC_MODELS, models.vpicSearch,
+    Store, models.VPIC_MODELS,
     { getItem: () => null, setItem: noop, removeItem: noop },
     { onLine: true, serviceWorker: { register: () => ({ catch: noop }) } },
     { hash: '#lookup', href: '' }, { replaceState: noop, pushState: noop, back: noop },
@@ -118,6 +118,70 @@ check('"2000 cougar" is left to the record that covers it',
    "vanagon" answer with a Mitsubishi Van. */
 check('a word query does not stem-match a shorter model',
   !find(ask('vanagon'), 'Mitsubishi', 'Van') && !find(ask('vanagon'), 'Nissan', 'Van'));
+
+/* ---- the index obeys the filters, and short names do not get swallowed ---- */
+/* A plain substring test let records swallow models they have nothing to do
+   with: the Chevrolet SS vanished into "Expre-SS- / GMC Savana", the Chrysler
+   TC into "Mos-tC-hrysler", the C4 and C8 into a Kodiak record that mentions
+   C4500-C8500. All four are real vehicles and all four were invisible. */
+[['Chevrolet', 'SS'], ['Chrysler', 'TC']]
+  .forEach(([mk, md]) => check(`${mk} ${md} is not swallowed by a longer name`,
+    !!find(ask('', mk), mk, md)));
+/* And the prefix rule that keeps real coverage working still does. */
+[['Ford', 'F-350'], ['Mazda', 'CX-5'], ['Honda', 'CR-V'], ['Acura', 'RDX'],
+ ['Chevrolet', 'Corvette']]
+  .forEach(([mk, md]) => check(`${mk} ${md} is still left to its record`,
+    !find(ask('', mk), mk, md)));
+
+/* Brackets separate names rather than being stripped, so "Corvette (C5/C6)"
+   covers both generations. vPIC's own C5, C6 and C7 under Chevrolet are
+   1981-1993 trucks and nothing to do with a Corvette, so they stay listed --
+   with the GM vintage record as their answer, which is the right one. */
+const c5 = find(ask('', 'Chevrolet'), 'Chevrolet', 'C5');
+check('the 1981-93 Chevrolet C5 is listed, not mistaken for a Corvette',
+  !!c5 && c5.y1 < 1997, c5 && c5.y0 + '-' + c5.y1);
+check('and the GM vintage record answers it',
+  c5 && c5.via && c5.via.id === 'gm-vintage-1981-1995', c5 && c5.via && c5.via.id);
+
+/* The make filter and the query have to agree. emptyLookupHtml used to run its
+   own index search that ignored the make, so McLaren plus "metro" answered
+   with a Geo Metro and a Chevrolet Metro. */
+check('the make filter is honoured by the index', !ask('metro', 'McLaren').length,
+  ask('metro', 'McLaren').map(g => g.mk + ' ' + g.md).join(', '));
+check('and a model that make does build still comes back',
+  !!find(ask('720', 'McLaren'), 'McLaren', '720S'));
+/* Read the code, not the comment above it that explains why the call went. */
+const appCode = read('assets/js/app.js').replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, ' ');
+check('the old filter-blind fallback is gone from app.js', !/vpicSearch\s*\(/.test(appCode));
+
+/* ---- the index is clean ---- */
+/* vPIC matches a make name as a substring, so the first harvest asked for
+   "Geo" and got Peugeot's 405 (PEU-GEO-T), asked for "Mini" and got Mack, Pete
+   and KW. Asking by make ID and vehicle type fixed it; these are the entries
+   that were there and must not come back. */
+const IDX = new Function(read('assets/js/models.js') + '\n;return VPIC_MODELS;')();
+[['Mini', 'Mack'], ['Mini', 'Pete'], ['Mini', 'KW'], ['Mini', 'Brockway Mini Homes'],
+ ['Ram', 'B17 Bomber'], ['Smart', 'Beverage Industry'], ['Geo', '505'], ['Ford', 'Milford Pipe & Supply']]
+  .forEach(([mk, md]) => check(`the index no longer files "${md}" under ${mk}`,
+    !(IDX[mk] || {})[md]));
+check('and it carries the marques it was missing',
+  ['McLaren', 'Geo', 'Peugeot', 'Bugatti', 'Lancia', 'Maybach', 'VinFast', 'Fisker']
+    .every(mk => IDX[mk] && Object.keys(IDX[mk]).length),
+  ['McLaren', 'Geo', 'Peugeot', 'Bugatti', 'Lancia', 'Maybach', 'VinFast', 'Fisker']
+    .filter(mk => !IDX[mk]).join(', '));
+/* Motorcycles are a separate catalogue with its own tab. Honda sold 53 bikes
+   in 2015 alongside four cars, and listing them here made the gap look several
+   times worse than it is. */
+check('and no motorcycles came in with the cars',
+  !(IDX['Honda'] || {})['Gold Wing'] && !(IDX['Suzuki'] || {})['GSX-R750']
+  && !(IDX['BMW'] || {})['R 18']);
+/* A body-builder registering a chassis under its own company name is not a
+   vehicle anyone cuts a key for. */
+const companyish = Object.entries(IDX).flatMap(([mk, m]) => Object.keys(m)
+  .filter(md => /trailer|manufactur|\bllc\b|\binc\b|corporation|welding/i.test(md))
+  .map(md => mk + ' / ' + md));
+check('and no body-builder company names are filed as models', !companyish.length,
+  companyish.slice(0, 6).join(', '));
 
 /* ---- the index does not swamp the records ---- */
 const empty = ask('');
