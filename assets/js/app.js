@@ -919,7 +919,7 @@ const KEY_STOPWORDS = new Set([
      once between a gate operator and a reefer panel and was fixed by rewording
      the row; it came back and matched a reefer against a quick-access safe. The
      second time is the signal to fix it here instead of renaming another row. */
-  'ACCESS', 'QUICK', 'PANEL'
+  'ACCESS', 'QUICK', 'PANEL', 'PATTERN'
 ]);
 /* A single character is never evidence that two keyways are related. The E in
    "Schlage 101-E-LFIC" matched the E in Can-Am's "D.E.S.S." and put a

@@ -217,6 +217,11 @@ Tesa \u2014 and filing one of its BD numbers under Ilco would be a wrong number 
 from. A test refuses a BD number in the Ilco or JMA field, and refuses a field the detail view
 shows but the editor drops.
 
+The BD series is Blue Dog's, and Blue Dog is a division of Framon \u2014 one series, two names.
+Where a reseller's description of a BD blank disagreed with the maker's own, the maker won and
+the row says what it used to claim: ten rows were corrected that way, including one filed as a
+French cylinder profile that is actually a gaming machine key.
+
 Where two sources disagree on a blank number the row says so rather than picking one. Ilco's
 S22 is O1007CA in the edition 13 pass and O1007LA in a supplier listing; the edition 13 value
 fits the rest of its series and is kept, with the disagreement on the row, because guessing
