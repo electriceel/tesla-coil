@@ -79,8 +79,16 @@ function allMakes() {
 }
 
 /* Punctuation-insensitive form, so "f150" finds "F-150" and "toy44h" finds
-   "TOY44H-PT". */
-const squash = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+   "TOY44H-PT".
+
+   Accents are folded, not dropped. The old version stripped anything outside
+   a-z0-9, which turned "Hafele" into "hfele" -- so the one accented name in
+   the directory could not be found by typing it the way anyone types it on a
+   phone, and the next Citroen or Skoda entry would have gone the same way.
+   NFD splits a letter from its accent so the accent alone is removed. */
+const squash = (s) => String(s == null ? '' : s)
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 /* Nobody walks up and says "Chevrolet". They say Chevy, and before this the
    search came back empty for it across all 58 Chevrolet records. One map, read

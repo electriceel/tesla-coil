@@ -284,7 +284,7 @@ const seedMakes = new Set(V.map(v => v.make));
 const deadNicks = Object.keys(NICK).filter(m => !seedMakes.has(m));
 check('every nicknamed make exists in the seed', !deadNicks.length, deadNicks.join(', '));
 
-const squash = (x) => String(x == null ? '' : x).toLowerCase().replace(/[^a-z0-9]+/g, '');
+const squash = require('./stopwords.js').squash;   // lifted from app.js, never copied
 const hay = (v) => [v.make, NICK[v.make] || '', v.model, (v.aliases || []).join(' '),
   v.blanks.keyway, v.blanks.ilco, v.blanks.silca, v.blanks.jma, v.blanks.oem,
   v.transponder.chip, v.transponder.system,
@@ -565,6 +565,79 @@ check('and names no way to open one without its key',
 check('no magnetic row claims an Ilco number',
   B.filter(b => /^magnetic/.test(b.id)).every(b => !b.ilco || b.ilco === '—'),
   B.filter(b => /^magnetic/.test(b.id) && b.ilco && b.ilco !== '—').map(b => b.id).join(', '));
+
+/* ---- cabinet and furniture locks ----
+   The directory already carried ~40 National Cabinet rows and a set of
+   casework method rows, so the gap was never "cabinet keys" in general. It
+   was the brands genuinely absent -- Lowe & Fletcher above all, which is
+   behind most imported office casework and locker banks -- and the job that
+   comes up most and had no row at all: there is no key, there is no code,
+   and the answer is to measure the cylinder and replace it. */
+const byId = Object.fromEntries(B.map(b => [b.id, b]));
+
+check('the Lowe & Fletcher family has a row explaining the LF numbering',
+  !!byId['lowe-fletcher'] && /code/i.test(byId['lowe-fletcher'].notes));
+
+const LF = ['lf-3', 'lf-7', 'lf-10', 'lf-12', 'lf-19', 'lf-30r'];
+check('every Lowe & Fletcher blank row is present', LF.every(id => byId[id]),
+  LF.filter(id => !byId[id]).join(', '));
+check('each carries an Ilco number rather than a dash',
+  LF.every(id => byId[id] && byId[id].ilco && byId[id].ilco !== '—'));
+
+/* These came off a supplier listing, not the edition 13 catalogue pass. The
+   cat- prefix is what that pass is counted by, so wearing it would both
+   misstate where the numbers came from and inflate a guarded count. */
+check('and none of them claims the catalogue prefix',
+  LF.every(id => !/^(cat-|cat13-)/.test(id)));
+check('each says on its face that a supplier listing is the source',
+  LF.every(id => /CLK Supplies/.test(byId[id].notes)),
+  LF.filter(id => !/CLK Supplies/.test(byId[id].notes)).join(', '));
+
+check('the Timberline row was enriched rather than duplicated',
+  byId['cat-il11'] && byId['cat-il11'].silca === 'HF1R'
+  && /KY-300/.test(byId['cat-il11'].notes));
+check('and no second Timberline blank row was added alongside it',
+  B.filter(b => /\b1043J\b/.test(String(b.ilco || ''))).length === 1);
+
+check('the cam lock replacement row names what to measure',
+  byId['cam-lock-replace']
+  && /cylinder length/i.test(byId['cam-lock-replace'].notes)
+  && /cam/i.test(byId['cam-lock-replace'].notes));
+check('the key-alike row does not oversell a cabinet lock',
+  byId['cam-lock-keyalike'] && /privacy device, not security/i.test(byId['cam-lock-keyalike'].notes));
+check('the tool chest row is kept apart from the truck toolbox row',
+  byId['tool-chest-rolling'] && byId['toolbox-truck']
+  && /not truck boxes/i.test(byId['tool-chest-rolling'].notes));
+check('the European furniture makers have a row',
+  byId['euro-furniture-makers']
+  && ['Häfele', 'Huwil', 'Meroni', 'Eurolocks'].every(m =>
+       (byId['euro-furniture-makers'].makes || []).includes(m)));
+
+/* A row nobody can find is a row that does not exist. */
+const findable = (q) => {
+  const terms = q.toLowerCase().split(/\s+/);
+  return B.filter(b => {
+    const hay = [b.keyway, b.ilco, b.silca, b.jma, b.cut, b.cat, b.notes]
+      .concat(b.makes || []).join(' ').toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+};
+[['lowe fletcher', 7], ['cam lock', 2], ['locker', 2], ['tool chest', 1], ['hafele', 0]]
+  .forEach(([q, least]) => check(`searching "${q}" reaches the new material`,
+    findable(q).length >= least, `${findable(q).length} rows`));
+/* Häfele carries an accent and nobody types an umlaut on a phone at a job.
+   app.js squashes punctuation out of both sides of a search; it used to drop
+   the accented letter entirely, turning "Häfele" into "hfele", so the row was
+   unreachable by its own name. squash() folds accents now, and this checks
+   the fold rather than the row -- the next Citroën or Škoda depends on it. */
+check('squash folds accents instead of deleting the letter',
+  squash('Häfele') === 'hafele' && squash('Citroën') === 'citroen'
+  && squash('Škoda') === 'skoda',
+  [squash('Häfele'), squash('Citroën'), squash('Škoda')].join(' '));
+check('and still squashes punctuation the way it always did',
+  squash('F-150') === 'f150' && squash('TOY44H-PT') === 'toy44hpt');
+check('so the accented row is reachable by its plain spelling',
+  B.some(b => squash([b.keyway, (b.makes || []).join(' ')].join(' ')).includes('hafele')));
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
