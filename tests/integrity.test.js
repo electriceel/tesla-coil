@@ -387,6 +387,50 @@ const badYears = V.filter(v => !(v.yearStart <= v.yearEnd) || v.yearStart < 1900
   .map(v => `${v.id} ${v.yearStart}-${v.yearEnd}`);
 check('every year range is ordered and plausible', !badYears.length, badYears.join(', '));
 
+/* ============ the Back button stays in the app ============
+   This app is installed to a phone home screen and runs standalone, where Back
+   is a hardware button and the only one there is. The router called
+   history.replaceState and nothing else, so however deep you were the whole app
+   occupied a single history entry with nothing under it but the browser: the
+   first press of Back closed KeyPro, mid-job.
+
+   Behaviour this cannot see is checked in a real browser; what it can do is
+   make sure the three pieces are still in app.js, because any one of them going
+   missing restores the bug silently. */
+const appJs = fs.readFileSync(path.join(__dirname, '../assets/js/app.js'), 'utf8');
+check('a move to a new destination gets its own history entry',
+  /else \{ below = location\.hash; history\.pushState\(null, '', to\); \}/.test(appJs));
+check('and the router no longer only ever replaces',
+  !/if \(location\.hash !== hash\) history\.replaceState/.test(appJs));
+/* Without this the no-hash start_url and #lookup read as two destinations, the
+   first render stacks one on the other, and the first press of Back on the main
+   menu does nothing at all. */
+check('the entry the app boots on is pinned to the route it renders',
+  /history\.replaceState\(null, '', opened\)/.test(appJs));
+/* A bookmarked vehicle or blank opens above the main menu, so Back reaches it
+   rather than leaving. */
+check('a deep link seeds the main menu underneath itself',
+  /history\.replaceState\(null, '', '#' \+ HOME\);\s*\n\s*history\.pushState\(null, '', opened\)/.test(appJs));
+/* The bottom-nav tabs are one level deep, so hopping between them must not
+   stack: Back from any tab is the main menu, not the tab before it. */
+check('tab-to-tab hops replace instead of stacking',
+  /const sideways = !arg && view !== HOME && TABS\.includes\(view\)/.test(appJs)
+  && /&& from\.length === 1 && from\[0\] !== HOME && TABS\.includes\(from\[0\]\)/.test(appJs));
+/* The on-screen back button under a record goes through the same go(), and
+   without this it stacked the list on top of the record -- so the next press of
+   hardware Back walked you straight back into the record you had just left. */
+check('walking back to the entry beneath us unwinds instead of stacking',
+  /if \(to !== location\.hash && to === below\) \{ history\.back\(\); return; \}/.test(appJs));
+check('and what is beneath us is forgotten after a history traversal',
+  /function routeFromHash\(\) \{[\s\S]{0,400}?below = '';/.test(appJs));
+check('and every bottom-nav tab in the markup is one the router knows is a tab', (() => {
+  const tabs = (appJs.match(/const TABS = \[([^\]]*)\]/) || [, ''])[1]
+    .split(',').map(t => t.trim().replace(/'/g, '')).filter(Boolean);
+  const inNav = [...html.matchAll(/<nav class="nav">([\s\S]*?)<\/nav>/g)]
+    .flatMap(m => [...m[1].matchAll(/data-go="([^"]+)"/g)]).map(m => m[1]);
+  return inNav.length >= 6 && inNav.every(v => tabs.includes(v)) && tabs.every(v => inNav.includes(v));
+})(), 'TABS and the nav bar disagree');
+
 /* ============ one global, one owner ============
    Every script on the page shares one scope, and a second top-level `const` of
    a name another file already took is a SyntaxError that kills the whole file
