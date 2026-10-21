@@ -684,11 +684,19 @@ check('and each one names its counterpart, so either number answers the question
 const clkRows = B.filter(b => /CLK Supplies/.test(b.notes || ''));
 check('the CLK-sourced rows say so on their face', clkRows.length >= 13,
   clkRows.length + ' rows cite CLK');
+/* The rule is about where a ROW came from, not whether CLK is mentioned on
+   it. An edition 13 row that cites CLK for a supplementary reference -- the
+   Ilco EZ number, a second designation for the same blank -- is fine and is
+   better than leaving the addition unattributed. What must never happen is a
+   row whose own numbers came from the supplier wearing the prefix that marks
+   the catalogue pass. Those rows say "not the Ilco edition 13 pass", so that
+   is the thing to test. */
+const clkSourced = B.filter(b => /not the Ilco edition 13 pass/.test(b.notes || ''));
+check('rows sourced from CLK exist and are marked as such', clkSourced.length >= 5,
+  clkSourced.length + ' rows');
 check('and none of them claims the edition 13 prefix',
-  clkRows.every(b => !/^(cat-|cat13-)/.test(b.id)
-                     || / Same blank as /.test(b.notes)),
-  clkRows.filter(b => /^(cat-|cat13-)/.test(b.id) && !/ Same blank as /.test(b.notes))
-    .map(b => b.id).join(', '));
+  clkSourced.every(b => !/^(cat-|cat13-)/.test(b.id)),
+  clkSourced.filter(b => /^(cat-|cat13-)/.test(b.id)).map(b => b.id).join(', '));
 
 /* The golf cart row promised three blanks and named none of them. */
 const gc = B.find(b => b.id === 'golfcart');
@@ -699,6 +707,49 @@ check('the golf cart row names the blanks it promises',
 
 check('the two Euro blanks are present and findable',
   blankSearch('EU1R').length === 1 && blankSearch('EU-8D').length === 1);
+
+/* ---- Corbin Russwin, Sargent, Yale, Mosler ----
+   Same compare as the Best set: CLK pairs the Ilco EZ reference (CO89, RU16,
+   S22) with the full Ilco number, and the directory held the full numbers
+   from the edition 13 pass without the EZ reference. Adding it is additive;
+   the edition 13 values are not touched. */
+const EZ_PAIRS = {
+  'CO89':'A1001ABM', 'CO91':'A1001AH', 'RU16':'A1011P', 'CO98':'A1001C1',
+  'CO92':'A1001FH', 'CO94':'A1001BH', 'CO95':'A1001DH', 'CO33':'1001E',
+  'CO102':'A1001C2', 'CO51':'A1001D1', 'CO107':'A1001D1'
+};
+const ezMissing = Object.entries(EZ_PAIRS).filter(([ez, num]) =>
+  !blankSearch(ez).some(r => JSON.stringify(r).toUpperCase().includes(num)));
+check('every Ilco EZ reference reaches the blank it names', !ezMissing.length,
+  ezMissing.map(([a, b]) => a + ' -> ' + b).join(', '));
+check('one Ilco number carrying two EZ references says both',
+  ['CO51', 'CO107'].every(ez => blankSearch(ez).some(r => r.id === 'cat13-corbin-a1001d1')));
+
+['L1011PZ', 'R1001EP', 'N1007KMA', '1095A', '1115A'].forEach(d =>
+  check(`the absent blank ${d} is now carried`, blankSearch(d).length >= 1));
+check('S22 1/2 reaches 1007LA', blankSearch('S22 1/2').some(r => r.id === 'cat13-sargent-1007la'));
+check('the Yale section row now names its Ilco numbers',
+  blankSearch('998GA').some(r => r.id === 'y4-res'));
+
+/* ---- the conflict that was recorded instead of resolved ----
+   CLK sells S22 as O1007LA. The edition 13 pass has O1007CA, and that is the
+   value that fits: the whole O1007C series runs SAR-29 to SAR-41 in order,
+   while 1007LA is SAR-8 in a different series. Guessing between two sources
+   on a blank number is how someone buys the wrong key, so the row keeps the
+   edition 13 value and says the sources disagree. */
+const s22 = B.find(b => b.id === 'cat-s22');
+check('the S22 row keeps its edition 13 number', s22 && s22.ilco === 'O1007CA', s22 && s22.ilco);
+check('and says out loud that the sources disagree',
+  s22 && /SOURCES DISAGREE/.test(s22.notes) && /O1007LA/.test(s22.notes));
+
+/* The Sargent numbers CLK writes with a leading zero -- 01007LB, 01007RC --
+   are ambiguous: Ilco runs both a plain 1007LB and an O-prefixed O1007CB as
+   genuinely different blanks, so a leading 0 could be either a letter O or a
+   typo for a blank already here. None of them were added. */
+const zeroPrefixed = ['O1007LB', 'O1007LC', 'O1007LE', 'O1007RC', 'O1007RL'];
+check('no blank was invented from an ambiguous leading zero',
+  zeroPrefixed.every(d => !B.some(b => String(b.ilco || '').toUpperCase() === d)),
+  zeroPrefixed.filter(d => B.some(b => String(b.ilco || '').toUpperCase() === d)).join(', '));
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
