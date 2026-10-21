@@ -254,8 +254,14 @@ function renderCatalog() {
 
   /* Nothing chosen yet? Show the makes, not 500 vehicles. Picking a make is the
      first thing you do on a real call, and a list you have to scroll past to
-     start is not a starting point. */
-  if (!filter.make && !filter.year && !parseQuery(filter.q).terms.length) {
+     start is not a starting point.
+
+     A bare year counts as choosing something. parseQuery pulls years out of the
+     query before the words, so "1987" left no terms behind and the box did
+     nothing at all -- you got the make index back and no sign the year had
+     registered. */
+  const parsed = parseQuery(filter.q);
+  if (!filter.make && !filter.year && !parsed.terms.length && !parsed.years.length) {
     return renderMakeIndex();
   }
 
@@ -280,7 +286,7 @@ function renderCatalog() {
       ? shown.map(g => g.rows.length === 1 ? vehicleCardHtml(g.rows[0]) : nameplateHtml(g, autoOpen)).join('')
         + (capped ? `<button class="btn ghost" data-showall="1">Show all ${groups.length} models</button>` : '')
       : (gaps.length ? '' : emptyLookupHtml()))
-    + indexGapsHtml(gaps);
+    + indexGapsHtml(gaps, hits.length > 0);
 }
 
 /* The make index: every make with what it holds, so the first tap narrows a few
@@ -470,12 +476,13 @@ function indexGaps() {
   return out.sort((a, b) => (a.mk + a.md).localeCompare(b.mk + b.md));
 }
 
-function indexGapsHtml(gaps) {
+function indexGapsHtml(gaps, hadRecords) {
   if (!gaps.length) return '';
   const shown = indexShowAll ? gaps : gaps.slice(0, INDEX_CAP);
-  return `<div class="notice info" style="margin-top:14px">${gaps.length} more model${gaps.length === 1 ? '' : 's'}
-      in the NHTSA index with no key record of their own. The ones a vintage record
-      covers say so; the rest are real vehicles waiting for your notes.</div>`
+  return `<div class="notice info" style="margin-top:14px">${gaps.length}${hadRecords ? ' more' : ''}
+      model${gaps.length === 1 ? '' : 's'} in the NHTSA index with no key record of their own.
+      The ones a vintage record covers say so; the rest are real vehicles waiting
+      for your notes.</div>`
     + shown.map(h => `
       <div class="card tap vres" data-${h.via ? `vid="${esc(h.via.id)}"` : `vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}"`}>
         <div style="flex:1;min-width:0">
@@ -497,7 +504,15 @@ function emptyLookupHtml() {
   const hits = (lookupDomain === 'auto' && typeof vpicSearch === 'function' && filter.q.trim())
     ? vpicSearch(filter.q, 6) : [];
   if (!hits.length) {
-    return `<div class="empty">No match in your database.<br><br>
+    /* The NHTSA index starts at model year 1981. Asking for a 1965 Mustang and
+       getting a bare "no match" reads as a gap in the app rather than the edge
+       of what it can know, so say which it is. */
+    const old = parseQuery(filter.q).years.filter(y => y < 1981);
+    return `<div class="empty">No match in your database.${old.length
+      ? `<br><br><span class="muted">The NHTSA model index this app falls back on starts at
+         model year 1981, so there is nothing to offer for ${old.join(' or ')}. Pre-war and
+         post-war cars mostly take a bit or a flat steel blank &mdash; the blank directory
+         carries those.</span>` : ''}<br><br>
       <button class="btn btn-sm" data-newveh="1">Add ${lookupDomain === 'moto' ? 'this machine' : 'this vehicle'}</button></div>`;
   }
   return `<div class="notice info">No key data on file for that yet &mdash; but these are real

@@ -129,7 +129,7 @@ check('a well-covered search stays mostly records', silverado.length <= 5,
 /* ---- the wiring is actually in the view ---- */
 const appSrc = read('assets/js/app.js');
 check('the catalogue renders the index under the records',
-  /\+ indexGapsHtml\(gaps\);/.test(appSrc));
+  /\+ indexGapsHtml\(gaps, hits\.length > 0\);/.test(appSrc));
 check('and the make index counts what the index knows',
   /\$\{indexTotal\} models indexed/.test(appSrc));
 check('and an index row that a record answers opens that record',
