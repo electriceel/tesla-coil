@@ -244,7 +244,7 @@ check('a keyway that only restates the Ilco number is flagged kwUnknown',
    the only numbering the directory carried. Framon catalogues profiles Ilco
    does not -- which is the whole reason those rows exist -- so the rule is
    about having a catalog number, not about whose. */
-const NUMBERED = (b) => [b.ilco, b.framon, b.jma, b.silca]
+const NUMBERED = (b) => [b.ilco, b.ilcoChip, b.framon, b.jma, b.silca, b.strattec]
   .some(v => v && v !== '—');
 const unnumbered = B.filter(b => b.kwUnknown && !NUMBERED(b));
 check('every kwUnknown row is indexed by a catalog number of some kind',
@@ -803,6 +803,53 @@ check('the blank editor offers it', /F\('framon', 'Framon', b\.framon\)/.test(ap
 check('and the editor writes it back rather than dropping it',
   /framon: f\.framon/.test(appSrc));
 check('the blank search reads it', /b\.strattec, b\.framon/.test(appSrc));
+
+/* ---- the rest of the CLK catalogue ----
+   I predicted a low hit rate here and was wrong: of 186 blank listings in
+   hand, 154 named nothing the directory knew. Most are Framon BD numbers
+   spanning categories the directory was thin on -- RV and motorhome, plant
+   and agricultural equipment, padlocks, bit and barrel. */
+const clkRowsAll = B.filter(b => /^clk-/.test(b.id));
+check('the CLK batch is present', clkRowsAll.length >= 150, clkRowsAll.length + ' rows');
+check('every one of them says where it came from',
+  clkRowsAll.every(b => /CLK Supplies/.test(b.notes || '')),
+  clkRowsAll.filter(b => !/CLK Supplies/.test(b.notes || '')).map(b => b.id).slice(0, 5).join(', '));
+check('and none wears the edition 13 prefix',
+  clkRowsAll.every(b => !/^(cat-|cat13-)/.test(b.id)));
+
+/* A catalog number with no digit in it is a description that landed in a
+   number column. One listing puts the number in the brand slot and the
+   description where the number usually goes, and it got through the first
+   pass looking like a Strattec number called "GM OEM". */
+const digitless = B.filter(b => ['ilco', 'ilcoChip', 'silca', 'jma', 'strattec', 'framon']
+  .some(f => b[f] && b[f] !== '—' && !/[0-9]/.test(String(b[f]))));
+check('no catalog number is a description with no digit in it', !digitless.length,
+  digitless.map(b => b.id).slice(0, 6).join(', '));
+
+/* The equipment note first said "one key across a whole fleet", and "across"
+   contains "cross" -- so 25 new rows started answering a search for
+   cruciform keys, the same trap "cross-reference" was. The guard for that is
+   the "cross key" result count below, not a ban on an ordinary English word:
+   five rows that predate this batch use "across" perfectly well, and
+   rewriting them would buy nothing. */
+
+/* "Krueger International" is an office furniture maker whose second word is
+   also a truck make, and the blank advertised it as part of its keyway. */
+const ki = B.find(b => /krueger/i.test(b.keyway || ''));
+check('the Krueger furniture blank does not claim International as a keyway',
+  ki && !/International/i.test(ki.keyway), ki && ki.keyway);
+check('but the full brand survives where it cannot cause a false link',
+  ki && /Krueger International/.test(ki.notes));
+
+/* The categories the batch was meant to fill. */
+[['trimark', 3], ['kubota', 2], ['hercules', 5], ['bauer', 2], ['fastec', 1]]
+  .forEach(([q, least]) => check(`"${q}" now returns something`,
+    blankSearch(q).length >= least, blankSearch(q).length + ' rows'));
+
+/* Volume must not drown the everyday searches. */
+[['toyota', 40], ['sc1', 60], ['cross key', 30]].forEach(([q, ceiling]) =>
+  check(`"${q}" still lands tightly (<= ${ceiling} rows)`,
+    blankSearch(q).length <= ceiling, blankSearch(q).length + ' rows'));
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
