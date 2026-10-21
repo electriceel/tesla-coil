@@ -238,8 +238,17 @@ const restates = (b) => {
 const unflagged = B.filter(b => restates(b) && !b.kwUnknown);
 check('a keyway that only restates the Ilco number is flagged kwUnknown',
   !unflagged.length, unflagged.slice(0, 6).map(b => `${b.id} (${b.keyway} = ${b.ilco})`).join('\n     '));
-check('every kwUnknown row still carries the Ilco number it is indexed by',
-  B.filter(b => b.kwUnknown).every(b => b.ilco && b.ilco !== '—'));
+/* kwUnknown means the keyway field is a catalog number standing in for a
+   keyway nobody confirmed, so the row has to be indexed by SOME number or it
+   is indexed by nothing. That used to mean an Ilco number, because Ilco was
+   the only numbering the directory carried. Framon catalogues profiles Ilco
+   does not -- which is the whole reason those rows exist -- so the rule is
+   about having a catalog number, not about whose. */
+const NUMBERED = (b) => [b.ilco, b.framon, b.jma, b.silca]
+  .some(v => v && v !== '—');
+const unnumbered = B.filter(b => b.kwUnknown && !NUMBERED(b));
+check('every kwUnknown row is indexed by a catalog number of some kind',
+  !unnumbered.length, unnumbered.map(b => b.id).join(', '));
 
 /* 19 distinct page ranges spread across 994 records is a section range pasted
    onto everything in the section, not a citation. Precision that cannot be
@@ -750,6 +759,50 @@ const zeroPrefixed = ['O1007LB', 'O1007LC', 'O1007LE', 'O1007RC', 'O1007RL'];
 check('no blank was invented from an ambiguous leading zero',
   zeroPrefixed.every(d => !B.some(b => String(b.ilco || '').toUpperCase() === d)),
   zeroPrefixed.filter(d => B.some(b => String(b.ilco || '').toUpperCase() === d)).join(', '));
+
+/* ---- European profiles, and a numbering system the app did not have ----
+   The euro-key-blanks collection held two blanks and both were already added
+   last pass, so "the remaining euro blanks" meant the ones scattered through
+   the rest of CLK's catalog. Thirteen of them turned out to be catalogued by
+   FRAMON rather than Ilco or JMA -- which is precisely why they fill gaps:
+   Framon carries profiles Ilco does not. Filing a Framon number in the Ilco
+   column would have been a lie that a counter acts on, so the field exists
+   now. */
+const framonRows = B.filter(b => b.framon && b.framon !== '—');
+check('the Framon-catalogued blanks are present', framonRows.length >= 12,
+  framonRows.length + ' rows carry a Framon number');
+check('and no Framon number was filed as an Ilco or JMA one',
+  framonRows.every(b => !/^BD\d+/.test(String(b.ilco || '')) && !/^BD\d+/.test(String(b.jma || ''))),
+  framonRows.filter(b => /^BD\d+/.test(String(b.ilco || b.jma || ''))).map(b => b.id).join(', '));
+check('every Framon row says the number is Framon\u2019s, not Ilco\u2019s',
+  framonRows.every(b => /Framon/.test(b.notes || '')));
+
+['BD173', 'BD234', 'BD225', 'BD124', 'BD15C', 'BD143', 'BD68', 'BD226', 'BD20', 'BD41']
+  .forEach(d => check(`Framon ${d} is findable`, blankSearch(d).length >= 1));
+
+/* The European method rows described families and named no blank at all.
+   Now the ones Framon covers point at a number. */
+[['scandi-oval', 'BD173'], ['brit-lever', 'BD225'], ['lockwood-anz', 'BD124'],
+ ['dimple-french', 'BD20'], ['miwa-goal', 'BD41'], ['euro-furniture-makers', 'BD143'],
+ ['abloy', 'ABL-1']].forEach(([id, num]) => {
+  const r = B.find(b => b.id === id);
+  check(`the ${id} row now names a blank (${num})`, r && r.notes.includes(num),
+    r ? r.notes.slice(-70) : 'row missing');
+});
+
+/* Two listings give the lock brand as Silca, which makes blanks rather than
+   locks. Recorded as CLK states it, flagged rather than quietly reinterpreted. */
+const silcaOdd = B.filter(b => /^euro-bd18[69]-silca$/.test(b.id));
+check('the two Silca-branded listings are flagged as unconfirmed fitment',
+  silcaOdd.length === 2 && silcaOdd.every(b => /unconfirmed/.test(b.notes)));
+
+/* A field the UI shows but the editor drops is a field that loses your work
+   the first time you edit a row. */
+check('app.js renders the Framon number', /<dt>Framon<\/dt>/.test(appSrc));
+check('the blank editor offers it', /F\('framon', 'Framon', b\.framon\)/.test(appSrc));
+check('and the editor writes it back rather than dropping it',
+  /framon: f\.framon/.test(appSrc));
+check('the blank search reads it', /b\.strattec, b\.framon/.test(appSrc));
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
