@@ -214,6 +214,15 @@ impossible. Fitment is deliberately *not* in that file — the FCC certifies a r
 model year, so the "fits 2012-2017 Camry" line on a lookup site is a marketplace listing
 and lives on the vehicle record where the bench can correct it.
 
+Search is indexed rather than recomputed. The merged vehicle and blank lists, each record's
+search haystack, and the Lishi cross-references are all cached against a revision counter that
+every write bumps — including a write from another tab, via a `storage` listener, so caching
+never costs you a sibling tab's edits. The indexes are built at idle after boot, so the first
+keystroke does not pay for them. On a CPU throttled to roughly a mid-range phone, typing in the
+Lishi box went from 170ms a keystroke to about 4ms, and the blank directory from 24ms to 7ms.
+`tests/integrity.test.js` tests the invalidation rather than the speed, because memoisation is
+exactly the change that silently starts showing people yesterday's data.
+
 The one network call in the whole app is the optional NHTSA vPIC lookup on the VIN screen, behind
 its own button. It times out after 12 seconds, because "needs signal" is not "no signal" — one bar
 gives you a socket that connects and never answers, and an un-aborted `fetch` waits on that forever.

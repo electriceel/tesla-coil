@@ -166,8 +166,13 @@ function loadStore() {
     removeItem: k => mem.delete(k),
     clear: () => mem.clear()
   };
+  /* store.js reads SEED_VEHICLES / SEED_BLANKS as globals that data.js
+     provides in the browser, so the harness has to supply them. They are
+     passed by reference and never written to. */
+  const { SEED_VEHICLES, SEED_BLANKS } = require('../assets/js/data.js');
   const src = read('assets/js/store.js') + '\n;return Store;';
-  const Store = new Function('localStorage', 'console', src)(localStorage, { warn() {} });
+  const Store = new Function('localStorage', 'console', 'SEED_VEHICLES', 'SEED_BLANKS', src)(
+    localStorage, { warn() {} }, SEED_VEHICLES, SEED_BLANKS);
   return { Store, mem };
 }
 
@@ -262,6 +267,67 @@ check('with a timeout short enough to be useful in the field', (() => {
 const vinRaw = read('assets/js/vin.js');
 check('an abort is reported as a timeout, not a mystery',
   /AbortError/.test(vinRaw) && /no answer in/.test(vinRaw));
+
+/* ============ the caches, and the edit that must still show ============
+   Typing on the Lishi screen cost 170ms a keystroke because RENDER_lishi
+   asked the same question up to ninety-six times, each answer rebuilding all
+   835 merged records. The fix is memoisation, and memoisation is exactly the
+   change that silently starts showing people yesterday's data -- so the
+   invalidation is tested, not the speed. */
+{
+  const { Store } = loadStore();
+  const a = Store.vehicles();
+  check('repeat reads reuse the same array rather than rebuilding',
+    Store.vehicles() === a && Store.blanks() === Store.blanks());
+  const rev0 = Store.rev;
+  Store.saveVehicle({ id: 'zz-1', make: 'Testmake', model: 'Rig', yearStart: 2020, yearEnd: 2021 });
+  check('a write bumps the revision', Store.rev === rev0 + 1, `${rev0} -> ${Store.rev}`);
+  const bFreshArr = Store.vehicles();
+  check('and the cache is rebuilt after it', bFreshArr !== a
+    && bFreshArr.length === a.length + 1 && bFreshArr.some(v => v.id === 'zz-1'));
+  Store.deleteVehicle('zz-1');
+  check('a delete invalidates it too', !Store.vehicles().some(v => v.id === 'zz-1')
+    && Store.vehicles().length === a.length);
+
+  const seedId = require('../assets/js/data.js').SEED_VEHICLES[0].id;
+  const seedModel = Store.vehicles().find(v => v.id === seedId).model;
+  Store.saveVehicle({ id: seedId, make: 'X', model: 'EDITED' });
+  check('editing a seed record shows the edit at once',
+    Store.vehicles().find(v => v.id === seedId).model === 'EDITED');
+  Store.deleteVehicle(seedId);
+  check('and removing the override restores the seed value',
+    Store.vehicles().find(v => v.id === seedId).model === seedModel);
+}
+
+/* A cached array handed to every caller is shared, so one in-place sort would
+   corrupt the list for everybody. Every call site must stay non-mutating. */
+const MUTATORS = ['sort', 'reverse', 'push', 'pop', 'splice', 'shift', 'unshift', 'fill'];
+const mutated = [];
+appRaw.split('\n').forEach((line, i) => {
+  if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+  MUTATORS.forEach(m => {
+    if (new RegExp('Store\\.(vehicles|blanks)\\(\\)\\s*\\.' + m + '\\b').test(line)) {
+      mutated.push((i + 1) + ': ' + line.trim().slice(0, 80));
+    }
+  });
+});
+check('no caller mutates the shared vehicle or blank list in place', !mutated.length,
+  mutated.join('\n     '));
+
+/* Another tab's write never runs this tab's write(), so without the listener
+   the caches would serve data that is already stale. Before caching the app
+   re-read storage every call and picked up a sibling tab for free; the
+   optimisation must not quietly take that away. */
+check('a write in another tab invalidates the cache here',
+  /addEventListener\('storage'/.test(storeRaw) && /rev\+\+/.test(store));
+
+/* The indexes are built at idle so the first keystroke does not pay for them,
+   and warming must never be able to break boot. */
+check('the search indexes are warmed off the critical path',
+  /function warmCaches/.test(app)
+  && /requestIdleCallback\(warmCaches/.test(app)
+  && /setTimeout\(warmCaches/.test(app));
+check('and warming cannot throw into boot', /function warmCaches\(\)[\s\S]{0,400}catch/.test(app));
 
 /* ============ keys that are not keys ============
    JSON.parse turns "__proto__" into a real own property, and

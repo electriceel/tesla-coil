@@ -39,8 +39,14 @@ const hasOwn = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
    vanish with a confirmation on screen. The boolean is now carried all the way
    out to the UI, and lastError says what to tell the person. */
 let lastError = '';
+/* Bumped on every successful write. Anything derived from stored data is
+   cached against it, so the cache cannot outlive the data it was built from.
+   A write from ANOTHER TAB does not run this code, which is what the storage
+   listener at the bottom of the file is for. */
+let rev = 0;
+
 function write(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); lastError = ''; return true; }
+  try { localStorage.setItem(key, JSON.stringify(val)); lastError = ''; rev++; return true; }
   catch (e) {
     const full = e && (e.name === 'QuotaExceededError'
       || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
@@ -54,21 +60,37 @@ function write(key, val) {
   }
 }
 
+/* rev of -1 so the first read always builds. */
+let vehCache = { rev: -1, list: [] };
+let blankCache = { rev: -1, list: [] };
+
 const Store = {
   /* Why the last write failed, for the UI to show. Empty when the last one
      worked. */
   get lastError() { return lastError; },
 
+  /* Increments whenever stored data changes, here or in another tab. Callers
+     that cache something derived from the store key the cache on this. */
+  get rev() { return rev; },
+
   /* ---- vehicles ---- */
   overrides() { return read(K.vehicles, {}); },
   /* Seed records merged with user edits. A user record with the same id wins
      outright; a user record with a new id is appended. */
+  /* Rebuilding 835 records cost little on its own, but it was being done up
+     to ninety-six times for a single keystroke on the Lishi screen. Cached
+     against rev: the same array comes back until something is written. Every
+     caller reads it with filter/map/find, none mutates it, and the tests
+     assert that stays true. */
   vehicles() {
-    const ov = Store.overrides();
-    const merged = SEED_VEHICLES.map(v => (ov[v.id] ? { ...v, ...ov[v.id], id: v.id, custom: true } : v));
-    const seedIds = new Set(SEED_VEHICLES.map(v => v.id));
-    Object.keys(ov).forEach(id => { if (!seedIds.has(id)) merged.push({ ...ov[id], id, custom: true }); });
-    return merged;
+    if (vehCache.rev !== rev) {
+      const ov = Store.overrides();
+      const merged = SEED_VEHICLES.map(v => (ov[v.id] ? { ...v, ...ov[v.id], id: v.id, custom: true } : v));
+      const seedIds = new Set(SEED_VEHICLES.map(v => v.id));
+      Object.keys(ov).forEach(id => { if (!seedIds.has(id)) merged.push({ ...ov[id], id, custom: true }); });
+      vehCache = { rev, list: merged };
+    }
+    return vehCache.list;
   },
   saveVehicle(rec) {
     const ov = Store.overrides();
@@ -84,11 +106,14 @@ const Store = {
   /* ---- blanks ---- */
   blankOverrides() { return read(K.blanks, {}); },
   blanks() {
-    const ov = Store.blankOverrides();
-    const merged = SEED_BLANKS.map(b => (ov[b.id] ? { ...b, ...ov[b.id], id: b.id, custom: true } : b));
-    const seedIds = new Set(SEED_BLANKS.map(b => b.id));
-    Object.keys(ov).forEach(id => { if (!seedIds.has(id)) merged.push({ ...ov[id], id, custom: true }); });
-    return merged;
+    if (blankCache.rev !== rev) {
+      const ov = Store.blankOverrides();
+      const merged = SEED_BLANKS.map(b => (ov[b.id] ? { ...b, ...ov[b.id], id: b.id, custom: true } : b));
+      const seedIds = new Set(SEED_BLANKS.map(b => b.id));
+      Object.keys(ov).forEach(id => { if (!seedIds.has(id)) merged.push({ ...ov[id], id, custom: true }); });
+      blankCache = { rev, list: merged };
+    }
+    return blankCache.list;
   },
   saveBlank(rec) {
     const ov = Store.blankOverrides();
@@ -250,3 +275,13 @@ const Store = {
     return ok;
   }
 };
+
+/* Another tab's write does not run write() here, so without this the caches
+   above would serve data that is already stale -- the app previously re-read
+   storage on every call and picked up a sibling tab's edits for free, and
+   caching must not quietly take that away. */
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('storage', (e) => {
+    if (!e.key || e.key.indexOf(NS) === 0) rev++;
+  });
+}
