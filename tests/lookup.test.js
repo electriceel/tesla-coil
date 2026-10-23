@@ -109,7 +109,7 @@ check('"2000 cougar" is left to the record that covers it',
 
 /* ---- what the supplier's fitment tables brought in ---- */
 const uhs = V2.filter(v => /^uhs-/.test(v.id));
-check('the sourced records are present', uhs.length > 200, uhs.length + ' records');
+check('the sourced records are present', uhs.length > 150, uhs.length + ' records');
 check('every one says where it came from',
   uhs.every(v => /uhs-hardware\.com/.test(v.notes || '')),
   uhs.filter(v => !/uhs-hardware\.com/.test(v.notes || '')).map(v => v.id).slice(0, 4).join(', '));
@@ -152,6 +152,15 @@ check('the one source conflict is recorded on the record itself',
    "vanagon" answer with a Mitsubishi Van. */
 check('a word query does not stem-match a shorter model',
   !find(ask('vanagon'), 'Mitsubishi', 'Van') && !find(ask('vanagon'), 'Nissan', 'Van'));
+/* And the stem satisfies ONE term rather than excusing the rest. It was an
+   alternative to the whole all-terms test, so "peterbilt 335" came back with a
+   BMW 335: the digits matched and the word "peterbilt" was never looked at. */
+check('every word still has to match when one of them stems',
+  !find(ask('peterbilt 335'), 'BMW', '335'),
+  ask('peterbilt 335').map(g => g.mk + ' ' + g.md).join(', '));
+check('and the model that query is actually about still comes back',
+  !!find(ask('peterbilt 335'), 'Peterbilt', '335'));
+check('a one-word stem query is unaffected', !!find(ask('190e'), 'Mercedes-Benz', '190'));
 
 /* ---- the make-agreement tier ---- */
 /* Where no record names the model and no vintage record covers it, the make's

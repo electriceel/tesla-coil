@@ -544,6 +544,11 @@ function indexGaps() {
   const { years, terms } = parseQuery(filter.q);
   const dropdownYear = parseInt(filter.year, 10);
   const wanted = years.concat(dropdownYear ? [dropdownYear] : []);
+  /* Squash each term once, not once per term per model: the scan walks 2,356
+     models and this was redoing the same string work 2,356 times over. */
+  const tight = terms.map(t => squash(t));
+  const w0all = wanted.length ? Math.min(...wanted) : 0;
+  const w1all = wanted.length ? Math.max(...wanted) : 0;
   const byMake = vehiclesByMake();
   const out = [];
   Object.entries(VPIC_MODELS).forEach(([mk, models]) => {
@@ -553,20 +558,30 @@ function indexGaps() {
       const [y0, y1] = yrs;
       if (wanted.some(y => y < y0 || y > y1)) return;
       /* The years the question is actually about. */
-      const w0 = wanted.length ? Math.max(y0, Math.min(...wanted)) : y0;
-      const w1 = wanted.length ? Math.min(y1, Math.max(...wanted)) : y1;
+      const w0 = wanted.length ? Math.max(y0, w0all) : y0;
+      const w1 = wanted.length ? Math.min(y1, w1all) : y1;
       if (terms.length) {
         const hay = (mk + ' ' + md + ' ' + (MAKE_NICKNAMES[mk] || '')).toLowerCase();
-        const tight = squash(hay);
+        const hayTight = squash(hay);
         /* Chassis designations get typed with the engine letter on the end --
            190E, 300D, 240TD -- and the index calls them 190, 300, 240. A model
            that starts with a digit and runs to three characters or more counts
-           as a match when it starts the term. Numbers only, because the first
-           version of this let "vanagon" answer with a Mitsubishi Van, and three
-           characters at least, or "3" would answer for every BMW ever built. */
+           as a match for a term that starts with it. Numbers only, because the
+           first version let "vanagon" answer with a Mitsubishi Van, and three
+           characters at least, or "3" would answer for every BMW ever built.
+
+           It satisfies one term. It does not excuse the others: the first
+           version made the stem an alternative to the whole all-terms test, so
+           "peterbilt 335" came back with a BMW 335 -- the digits matched and
+           the word "peterbilt" was never looked at. */
         const mdt = squash(md);
-        const stem = /^\d/.test(mdt) && mdt.length >= 3 && terms.some(t => squash(t).startsWith(mdt));
-        if (!stem && !terms.every(t => hay.includes(t) || tight.includes(squash(t)))) return;
+        const stems = mdt.length >= 3 && mdt.charCodeAt(0) >= 48 && mdt.charCodeAt(0) <= 57;
+        let all = true;
+        for (let i = 0; i < terms.length && all; i++) {
+          const st = tight[i];
+          all = hay.includes(terms[i]) || hayTight.includes(st) || (stems && st.startsWith(mdt));
+        }
+        if (!all) return;
       }
       const n = squash(md);
       const covered = recs.some(r => {
