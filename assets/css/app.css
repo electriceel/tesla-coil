@@ -17,12 +17,13 @@
 
   /* space — one scale, used everywhere */
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
-  --r1:8px; --r2:12px; --r3:18px; --pill:999px;
+  --r1:9px; --r2:14px; --r3:20px; --pill:999px;
   --tap:52px;
   --shadow:none;
   --ring:0 0 0 3px var(--acc-soft);
+  --edge:rgba(255,255,255,.035);
   --safe-b:env(safe-area-inset-bottom,0px);
-  --header-h:57px;
+  --header-h:49px;
   color-scheme:dark;
 }
 [data-theme="light"]{
@@ -32,6 +33,7 @@
   --acc:#a25f06; --acc-fg:#ffffff; --acc-soft:#a25f0614; --acc-line:#a25f0644;
   --ok:#0b7a41; --warn:#8f5504; --err:#c0342c; --info:#0a5fb4;
   --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.04);
+  --edge:transparent;
   color-scheme:light;
 }
 
@@ -57,48 +59,57 @@ a{color:var(--info)}
 .tiny{font-size:12.5px;line-height:1.5}
 /* section eyebrow — small, quiet, and never competing with the content */
 h2{
-  font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;
-  color:var(--fg3);margin:var(--s5) 0 var(--s2);
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:1.4px;
+  color:var(--fg3);margin:var(--s4) 0 var(--s2);
 }
 h2:first-child{margin-top:var(--s1)}
 .tabbody>h2:first-child{margin-top:0}
 
 /* ============================ shell ============================ */
+/* The header earns its height once, when you open the app. After that it is
+   56px of the screen on every view, so it is as short as it can be while the
+   two icon buttons stay thumb-sized. */
 .top{
-  position:sticky;top:0;z-index:20;background:var(--bg);
+  position:sticky;top:0;z-index:20;
+  background:color-mix(in srgb,var(--bg) 85%,transparent);
+  backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
   border-bottom:1px solid var(--line);
-  padding:var(--s2) var(--s4);display:flex;align-items:center;gap:var(--s3);
+  padding:var(--s1) var(--s4);display:flex;align-items:center;gap:var(--s3);
 }
 .top h1{
   font-size:15px;font-weight:700;letter-spacing:.2px;flex:1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .top h1 small{
-  display:block;font-size:9.5px;font-weight:600;color:var(--fg3);
-  letter-spacing:1.6px;text-transform:uppercase;margin-top:1px;
+  display:block;font-size:9px;font-weight:600;color:var(--fg3);
+  letter-spacing:1.5px;text-transform:uppercase;margin-top:0;
 }
 /* The brand mark is a photographic square; a corner radius and a hairline
    keep it from looking pasted onto the header in either theme. */
 .logo{width:28px;height:28px;flex:none;border-radius:7px;object-fit:cover;
   box-shadow:0 0 0 1px color-mix(in srgb,var(--line) 70%,transparent)}
 .icon-btn{
-  width:38px;height:38px;flex:none;border:1px solid var(--line);background:var(--surface);
+  width:40px;height:40px;flex:none;border:1px solid var(--line);background:var(--surface);
   border-radius:var(--r2);display:grid;place-items:center;color:var(--fg2);cursor:pointer;
   transition:color .12s,border-color .12s;
 }
 .icon-btn:active{color:var(--acc);border-color:var(--acc-line)}
 
-main{padding:var(--s3) var(--s4) var(--s5);max-width:760px;margin:0 auto}
+main{padding:var(--s3) var(--s4) var(--s6);max-width:760px;margin:0 auto}
 .view{display:none}
 .view.active{display:block}
 
 /* ============================ surfaces ============================ */
+/* A hairline of light along the top edge is what separates a surface from a
+   hole on a dark screen; without it the cards read as cut-outs. The light
+   theme has real shadows instead and does not want it. */
 .card{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
-  padding:var(--s4);margin-bottom:var(--s2);box-shadow:var(--shadow);
+  padding:var(--s4);margin-bottom:var(--s2);
+  box-shadow:var(--shadow),inset 0 1px 0 var(--edge);
 }
-.card.tap{cursor:pointer;transition:border-color .12s,background .12s}
-.card.tap:active{background:var(--surface2);border-color:var(--line-strong)}
+.card.tap{cursor:pointer;transition:border-color .12s,background .12s,transform .08s}
+.card.tap:active{background:var(--surface2);border-color:var(--line-strong);transform:scale(.995)}
 .stack>*+*{margin-top:var(--s2)}
 .empty{
   text-align:center;color:var(--fg3);padding:var(--s6) var(--s4);font-size:14px;
@@ -121,13 +132,18 @@ textarea{min-height:88px;resize:vertical;line-height:1.5}
 input:focus,select:focus,textarea:focus{border-color:var(--acc);box-shadow:var(--ring)}
 input::placeholder,textarea::placeholder{color:var(--fg3)}
 /* A select styled flat reads as a text field and nobody taps it, so the
-   chevron is drawn back on by hand. */
+   chevron is drawn back on. Two stacked gradient triangles made a hard little
+   wedge with stair-stepped edges; one stroked SVG chevron is the same idea
+   drawn properly, and it inherits the text colour through currentColor so it
+   follows the theme without a second rule. */
 select{
-  appearance:none;padding-right:34px;
-  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),
-                   linear-gradient(135deg,currentColor 50%,transparent 50%);
-  background-position:calc(100% - 18px) calc(50% + 2px),calc(100% - 13px) calc(50% + 2px);
-  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+  appearance:none;padding-right:36px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239aa6b6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5l5-5'/%3E%3C/svg%3E");
+  background-position:calc(100% - 14px) center;
+  background-size:12px 8px;background-repeat:no-repeat;
+}
+[data-theme="light"] select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%234e5a6b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5l5-5'/%3E%3C/svg%3E");
 }
 .row{display:flex;gap:var(--s2)}
 .row>*{flex:1;min-width:0}
@@ -149,9 +165,10 @@ select{
 /* Going back is navigation, not an action — it should not carry the weight of a
    button you are meant to press. */
 .back{
-  display:inline-flex;align-items:center;gap:var(--s1);min-height:34px;
-  padding:var(--s1) var(--s2) var(--s1) 0;border:0;background:none;cursor:pointer;
-  color:var(--fg2);font-size:13px;font-weight:650;margin-bottom:var(--s1);
+  display:inline-flex;align-items:center;gap:var(--s1);min-height:38px;
+  padding:var(--s1) var(--s3) var(--s1) 0;border:0;background:none;cursor:pointer;
+  color:var(--fg3);font-size:12.5px;font-weight:650;margin-bottom:0;
+  letter-spacing:.2px;
 }
 .back:active{color:var(--acc)}
 
@@ -161,7 +178,8 @@ select{
   padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;
   transition:background .12s,border-color .12s,color .12s;
 }
-.chip.on{background:var(--acc);border-color:var(--acc);color:var(--acc-fg);font-weight:750}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--acc-fg);font-weight:750;
+  box-shadow:0 1px 8px color-mix(in srgb,var(--acc) 22%,transparent)}
 .chip.sm{min-width:40px;padding:8px 0;text-align:center}
 /* A segmented filter row belongs on one line — wrapping four options onto two
    rows makes them read as two groups instead of one choice. */
@@ -188,11 +206,27 @@ select{
   border:1px solid;margin-bottom:var(--s2);
 }
 .notice.warn{background:var(--acc-soft);border-color:var(--acc-line);color:var(--warn)}
+/* A warning that repeats on nearly every record has to be a line, not a
+   paragraph. The long version ran four lines of amber above the data on every
+   unverified vehicle -- which is most of them -- and the badge beside the
+   title said the same thing again.
+
+   It is also quieter than a real alarm: a filled box, an amber border and
+   amber body text are three signals for one message, and a message you see on
+   every screen stops being read. The rule down the left keeps it noticed
+   without shouting, and .notice.err is untouched so a genuine stop still
+   looks like one. */
+.notice.slim{
+  padding:9px 12px 9px 13px;font-size:12.5px;line-height:1.45;
+  border:0;border-left:3px solid var(--acc);border-radius:0 var(--r1) var(--r1) 0;
+  color:var(--fg2);background:var(--acc-soft);
+}
+.notice.slim strong{color:var(--acc);font-weight:700}
 .notice.err{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 35%,transparent);color:var(--err)}
 .notice.ok{background:color-mix(in srgb,var(--ok) 8%,transparent);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
 .notice.info{background:color-mix(in srgb,var(--info) 8%,transparent);border-color:color-mix(in srgb,var(--info) 30%,transparent);color:var(--info)}
 
-.spec{display:grid;grid-template-columns:106px 1fr;gap:var(--s2) var(--s3);font-size:14px}
+.spec{display:grid;grid-template-columns:98px 1fr;gap:10px var(--s3);font-size:14px}
 .spec dt{
   color:var(--fg3);font-size:10.5px;font-weight:700;text-transform:uppercase;
   letter-spacing:1px;padding-top:3px;
@@ -208,9 +242,20 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .nav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;
   grid-template-columns:repeat(6,1fr);
-  background:color-mix(in srgb,var(--surface) 92%,transparent);
-  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  /* 92% and a blur let a list read straight through the bar: on a dark screen
+     the rows behind it stayed perfectly legible and the whole thing looked
+     broken rather than frosted. Solid instead -- at the opacity it needed to
+     be readable the blur was doing nothing you could see, and backdrop-filter
+     on a fixed element is one of the more expensive things you can ask an old
+     phone to composite on every scroll frame. */
+  background:var(--surface);
   border-top:1px solid var(--line);padding-bottom:var(--safe-b);
+}
+/* A short fade above it, so a long list dissolves into the bar instead of
+   being sliced off by its edge. */
+.nav::before{
+  content:'';position:absolute;left:0;right:0;bottom:100%;height:28px;pointer-events:none;
+  background:linear-gradient(to top,var(--bg),color-mix(in srgb,var(--bg) 0%,transparent));
 }
 .nav button{
   background:none;border:0;padding:9px 2px 10px;color:var(--fg3);
@@ -246,9 +291,14 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .tile.wide .tile-go{color:var(--fg3);font-size:20px}
 
 /* ============================ lookup ============================ */
+/* The filter block is the run-up, not the content. Before this it was a
+   bordered card inside a padded main inside a header, and the first result on
+   a 390x844 phone started 327px down -- 39% of the screen spent before the
+   first answer. Dropping the card chrome and tightening the gaps gets that
+   back without shrinking a single tap target. */
 .toolbar{
-  background:var(--surface);border:1px solid var(--line);border-radius:var(--r2);
-  padding:var(--s3);margin-bottom:var(--s3);box-shadow:var(--shadow);
+  background:transparent;border:0;border-radius:0;
+  padding:0;margin-bottom:var(--s3);box-shadow:none;
 }
 .toolbar .row{margin-bottom:var(--s2)}
 .toolbar input[type="search"]{min-height:46px}
@@ -256,6 +306,45 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .countline{
   font-size:11.5px;color:var(--fg3);letter-spacing:.4px;
   margin:0 0 var(--s2) 2px;font-weight:600;
+}
+.countline:empty{display:none}
+/* Clearing a filter is an undo, not a thing you came here to do. As a
+   full-width button under the search box it took a whole row of the screen
+   above the results and read as the primary action on the view; on the count
+   line it is where you look when you want it and nowhere otherwise. */
+/* The count wraps to two lines on a narrow screen once the button shares the
+   row, so the button aligns to the first line rather than floating against
+   the middle of a paragraph. */
+.countrow{display:flex;align-items:flex-start;gap:var(--s3);margin-bottom:var(--s2)}
+.countrow .countline{margin:0;flex:1;min-width:0;padding-top:9px}
+.clearlink{
+  flex:none;border:0;background:none;cursor:pointer;color:var(--fg2);
+  font-size:12px;font-weight:650;letter-spacing:.2px;
+  padding:var(--s2) 0 var(--s2) var(--s3);min-height:38px;
+}
+.clearlink:active{color:var(--acc)}
+
+/* A result list is one list, not seven boxes. Each result renders as its own
+   .card, and eight pixels of gap between seven rounded bordered rectangles is
+   most of what made the screen look busy -- the eye counts containers before
+   it reads any of them. A run of adjacent cards closes up into a single
+   grouped surface with hairline dividers, the way the make index already
+   looked.
+
+   Only runs: the row also holds a back button, a notice and a "show all"
+   button, and those keep their own spacing. :has() picks out the last card of
+   a run; where it is unsupported the list simply stays as separate cards,
+   which is what it was. */
+#lookupResults .card + .card,
+#motoResults .card + .card,
+#blankDir .card + .card{
+  margin-top:calc(-1 * var(--s2) - 1px);
+  border-top-left-radius:0;border-top-right-radius:0;
+}
+#lookupResults .card:has(+ .card),
+#motoResults .card:has(+ .card),
+#blankDir .card:has(+ .card){
+  border-bottom-left-radius:0;border-bottom-right-radius:0;
 }
 
 /* The lookup list is scanned, not read, so its rows are tighter than a card
@@ -267,7 +356,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .vres .nm{font-weight:700;font-size:15px}
 .vres .sub{font-size:12px;color:var(--fg2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vres .yr+.nm{margin-top:1px}
-.vres .go{color:var(--fg3);font-size:20px}
+.vres .go{color:var(--line-strong);font-size:20px}
 
 /* ============================ grouped rows ============================ */
 .grp{
@@ -309,12 +398,12 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
   position:sticky;top:var(--header-h);z-index:15;background:var(--bg);
   margin:0 calc(var(--s4) * -1);padding:0 var(--s4);
 }
-.vhead{display:flex;align-items:center;gap:var(--s3);padding:var(--s1) 0 var(--s2)}
+.vhead{display:flex;align-items:center;gap:var(--s3);padding:0 0 var(--s2)}
 .vhead-name{flex:1;min-width:0;font-size:20px;font-weight:750;line-height:1.15;letter-spacing:-.2px}
 .vgen{width:auto;min-width:116px;min-height:40px;padding:6px 12px;font-weight:700;font-size:13.5px;border-radius:var(--r1)}
 .vgen.static{display:grid;place-items:center;border:1px solid var(--line);background:var(--surface2)}
 .tabs{
-  display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:var(--s4);
+  display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:var(--s3);
   overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
 }
 .tabs::-webkit-scrollbar{display:none}
@@ -405,9 +494,12 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 }
 .mkrow:last-child{border-bottom:0}
 .mkrow:active{background:var(--surface2)}
-.mkrow-nm{flex:1;font-weight:650;font-size:15px}
-.mkrow-n{font-size:11px;color:var(--fg3);white-space:nowrap}
-.mkrow-go{color:var(--fg3);font-size:18px;line-height:1}
+.mkrow-nm{flex:1;font-weight:650;font-size:15px;letter-spacing:-.1px}
+/* The counts are reference, not the thing you are looking for: at 11px grey
+   they sat level with the make name and the eye had to pick between them. */
+.mkrow-n{font-size:10.5px;color:var(--fg3);white-space:nowrap;
+  font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.mkrow-go{color:var(--line-strong);font-size:18px;line-height:1}
 
 /* ---- dealer-only reference ----
    Two lines of evidence under each name, because the whole point of the screen

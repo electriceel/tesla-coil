@@ -18,7 +18,7 @@
 <body>
 
 <header class="top">
-  <img class="logo" src="assets/icons/icon-96.png" alt="SLO Car &amp; Key" width="96" height="96">
+  <img class="logo" src="assets/icons/icon-192.png" alt="SLO Car &amp; Key" width="192" height="192">
   <h1>KeyPro Field<small>Locksmith reference</small></h1>
   <button class="icon-btn" id="themeBtn" title="Light / dark" aria-label="Toggle light or dark"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 2a8 8 0 000 16z" fill="currentColor"/></svg></button>
   <button class="icon-btn" id="gearBtn" title="Settings" aria-label="Settings"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 5.5h14M3 10h14M3 14.5h14"/><circle cx="7" cy="5.5" r="2" fill="var(--bg2)"/><circle cx="13" cy="10" r="2" fill="var(--bg2)"/><circle cx="7" cy="14.5" r="2" fill="var(--bg2)"/></svg></button>
@@ -34,9 +34,11 @@
         <select id="yearSel" aria-label="Year"><option value="">Any year</option></select>
       </div>
       <input id="lookupQ" type="search" placeholder="Search model, blank, chip or FCC ID" aria-label="Search">
-      <button class="btn ghost btn-sm" id="lookupClear" style="width:100%;margin-top:8px" hidden>Clear filters</button>
     </div>
-    <div class="countline" id="lookupCount"></div>
+    <div class="countrow">
+      <div class="countline" id="lookupCount"></div>
+      <button class="clearlink" id="lookupClear" hidden>Clear filters</button>
+    </div>
     <div id="lookupResults"></div>
     <button class="btn ghost" id="addVehBtn" style="margin-top:12px">+ Add a vehicle to your database</button>
   </section>
@@ -49,9 +51,11 @@
         <select id="motoYearSel" aria-label="Year"><option value="">Any year</option></select>
       </div>
       <input id="motoQ" type="search" placeholder="Search model, blank, chip or system" aria-label="Search">
-      <button class="btn ghost btn-sm" id="motoClear" style="width:100%;margin-top:8px" hidden>Clear filters</button>
     </div>
-    <div class="countline" id="motoCount"></div>
+    <div class="countrow">
+      <div class="countline" id="motoCount"></div>
+      <button class="clearlink" id="motoClear" hidden>Clear filters</button>
+    </div>
     <div id="motoResults"></div>
     <button class="btn ghost" id="addMotoBtn" style="margin-top:12px">+ Add a machine to your database</button>
   </section>
