@@ -64,8 +64,18 @@ KEYWAY_ROWS.forEach(b => words(b.keyway).forEach(w => {
   if (!byWord.has(w)) byWord.set(w, []);
   byWord.get(w).push(b);
 }));
+/* One real disagreement between two sources, recorded rather than resolved --
+   the same call as the S22 row, which keeps the edition 13 number and says so.
+   The directory's Mazda row puts MAZ12 and MZ13 on one blank; UHS's fitment
+   table gives the 1991-94 Mercury Capri, an Australian-built Mazda 323
+   underneath, as MAZ12 with Ilco X178. Both cannot be the same blank. Nothing
+   here can tell which is wrong, and guessing picks the wrong key half the
+   time, so the record keeps what its source said and this names the conflict
+   so a new one still fails the run. */
+const KNOWN_SOURCE_CONFLICTS = ['uhs-mercury-capri-1991-1994'];
 const ilcoClash = [];
 V.forEach(v => {
+  if (KNOWN_SOURCE_CONFLICTS.includes(v.id)) return;
   const vb = v.blanks || {};
   const mine = parts(vb.ilco);
   if (!mine.length) return;
@@ -82,6 +92,13 @@ V.forEach(v => {
 });
 check('vehicle Ilco numbers match the blank row family', !ilcoClash.length,
   ilcoClash.slice(0, 6).join('\n     '));
+/* And a recorded conflict has to say so on the record itself, or the reader
+   sees a number with nothing telling them it is disputed. */
+KNOWN_SOURCE_CONFLICTS.forEach(id => {
+  const v = V.find(x => x.id === id);
+  check(`${id} still exists and says its sources disagree`,
+    !!v && /SOURCES DISAGREE/.test(v.notes || ''), v && (v.notes || '').slice(0, 80));
+});
 
 console.log(fail ? `\n${fail} FAILED` : `\nall cross-reference checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);

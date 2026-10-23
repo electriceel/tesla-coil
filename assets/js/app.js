@@ -474,6 +474,64 @@ function vehiclesByMake() {
   return map;
 }
 
+/* Where no vintage record covers an index model, the make's own records may
+   still agree with each other. Every International record on file names the
+   same keyway; so does every current BMW. "Every record this directory holds
+   for this make and these years uses this keyway" is a true statement about
+   the data, and it is the right answer far more often than not -- but it is
+   not a verified fact about THAT model, and the row says so rather than
+   passing it off as one.
+
+   Three conditions, each put there by a wrong answer the looser version gave:
+     - two records at least. One is not an agreement, and a single Aston Martin
+       record was answering for a 1981 Lagonda.
+     - none of them hedging. "Ford-era HU101 on many, Mercedes-era HU64 on the
+       newest" is a note saying it depends, not a keyway.
+     - all of them naming one. A blank field is not agreement.
+
+   It still cannot know about a badge-engineered import: a Chrysler Conquest is
+   a Mitsubishi Starion and takes the Mitsubishi key, not the Chrysler one. The
+   label is what protects against that -- it points at the record it reasoned
+   from, so the make and years it actually covers are one tap away. */
+/* BMW name a car by its series and its engine: the 328i, the 330i and the
+   335i are all 3 Series, and the leading digit says which. vPIC lists every
+   one of those names separately -- 94 of them with no record of their own --
+   while the directory holds BMW by series and generation, so without this the
+   catalogue looks like it knows nothing about most BMWs ever sold. The digit
+   decides the series; the years still decide the generation, which is the part
+   that carries the key.
+
+   Only BMW. Mercedes' 190, 300 and 420 are chassis and engine codes that do
+   not map to a class this way, and Audi's A4 and Q5 are already the model
+   name. A rule that reads a number the maker did not put there is a guess. */
+const SERIES_RULES = {
+  BMW: (md) => {
+    const m = /^M?([1-8])(?:\d{2}|\d?)[a-zA-Z]{0,3}(?:\b|\/|$)/.exec(String(md).trim());
+    return m ? m[1] + ' Series' : null;
+  }
+};
+function seriesCovering(mk, md, y0, y1, recs) {
+  const rule = SERIES_RULES[mk];
+  if (!rule) return null;
+  const series = rule(md);
+  if (!series) return null;
+  const want = squash(series);
+  return recs.find(r => r.yearEnd >= y0 && r.yearStart <= y1
+    && recordNames(r).some(t => t === want)) || null;
+}
+
+const AGREE_HEDGE = /\b(then|by year|varies|on many|on most|some|early|late|depends|unknown|not recorded)\b/i;
+function makeAgreement(recs, y0, y1) {
+  const over = recs.filter(r => r.yearEnd >= y0 && r.yearStart <= y1);
+  if (over.length < 2) return null;
+  const kws = over.map(r => String((r.blanks || {}).keyway || '').trim());
+  if (kws.some(k => !k)) return null;
+  const set = new Set(kws);
+  if (set.size !== 1) return null;
+  if (AGREE_HEDGE.test([...set][0])) return null;
+  return { keyway: [...set][0], n: over.length, rec: over[0] };
+}
+
 /* Index models the current filter matches that no record of their own covers.
    Coverage is judged at the year asked for, not across the whole production
    run, because that is the difference between an answer and a shrug: there is a
@@ -515,7 +573,9 @@ function indexGaps() {
         if (r.yearEnd < w0 || r.yearStart > w1) return false;
         return recordNames(r).some(t => nameFits(n, t));
       });
-      if (!covered) out.push({ mk, md, y0, y1, via: vintageCovering(mk, w0, w1) });
+      if (covered) return;
+      const via = seriesCovering(mk, md, w0, w1, recs) || vintageCovering(mk, w0, w1);
+      out.push({ mk, md, y0, y1, via, agree: via ? null : makeAgreement(recs, w0, w1) });
     });
   });
   return out.sort((a, b) => (a.mk + a.md).localeCompare(b.mk + b.md));
@@ -526,17 +586,22 @@ function indexGapsHtml(gaps, hadRecords) {
   const shown = indexShowAll ? gaps : gaps.slice(0, INDEX_CAP);
   return `<div class="notice info" style="margin-top:14px">${gaps.length}${hadRecords ? ' more' : ''}
       model${gaps.length === 1 ? '' : 's'} in the NHTSA index with no key record of their own.
-      The ones a vintage record covers say so; the rest are real vehicles waiting
-      for your notes.</div>`
+      ${gaps.filter(g => g.via || g.agree).length} of them can be answered from what the
+      directory already holds &mdash; shown below and flagged, because an inference is not a
+      record. The rest are real vehicles waiting for your notes.</div>`
     + shown.map(h => `
-      <div class="card tap vres" data-${h.via ? `vid="${esc(h.via.id)}"` : `vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}"`}>
+      <div class="card tap vres" data-${h.via ? `vid="${esc(h.via.id)}"`
+        : h.agree ? `vid="${esc(h.agree.rec.id)}"`
+        : `vpic="${esc(h.mk)}|${esc(h.md)}|${h.y0}|${h.y1}"`}>
         <div style="flex:1;min-width:0">
           <div class="yr">${h.y0}${h.y1 !== h.y0 ? '&ndash;' + h.y1 : ''} &middot; INDEX</div>
           <div class="nm">${esc(filter.make ? h.md : h.mk + ' ' + h.md)}</div>
           <div class="sub">${h.via
             ? esc(nz(h.via.blanks && h.via.blanks.keyway)) + ' &middot; via ' + esc(h.via.model)
-            : 'No key record yet &mdash; tap to add'}</div>
-        </div><div class="go">${h.via ? '&rsaquo;' : '+'}</div>
+            : h.agree
+              ? esc(h.agree.keyway) + ' &middot; what every other ' + esc(h.mk) + ' of these years takes'
+              : 'No key record yet &mdash; tap to add'}</div>
+        </div><div class="go">${h.via || h.agree ? '&rsaquo;' : '+'}</div>
       </div>`).join('')
     + (gaps.length > shown.length
         ? `<button class="btn ghost" data-indexall="1">Show all ${gaps.length} index models</button>` : '');

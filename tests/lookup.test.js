@@ -90,18 +90,52 @@ const ask = (q, make) => {
 };
 const find = (gaps, mk, md) => gaps.find(g => g.mk === mk && g.md === md);
 
-/* The Mercury record naming the Cougar starts in 1995. Before this the lookup
-   judged coverage across the whole production run, so "1987 cougar" came back
-   "no match in your database" while the Ford vintage record had the answer. */
-const cougar87 = find(ask('1987 cougar'), 'Mercury', 'Cougar');
-check('"1987 cougar" reaches the index', !!cougar87);
-check('and is answered by the Ford vintage record',
-  cougar87 && cougar87.via && cougar87.via.id === 'ford-vintage-1981-1995',
-  cougar87 && cougar87.via && cougar87.via.id);
-/* The same model in a year the Mercury record does cover must NOT be offered
-   as an index gap, or every real record would be shadowed by a second row. */
+/* "1987 cougar" was the case that started this: the Mercury record naming the
+   Cougar begins in 1995, coverage was judged across the whole production run,
+   and the lookup said "no match in your database". It has a record of its own
+   now, read out of a supplier's fitment table, so it is no longer an index row
+   at all -- which is the better outcome and worth pinning down. */
+const V2 = require('../assets/js/data.js').SEED_VEHICLES;
+const cougar87 = V2.filter(v => v.make === 'Mercury' && /cougar/i.test(v.model)
+  && v.yearStart <= 1987 && v.yearEnd >= 1987);
+check('"1987 cougar" has a record of its own', cougar87.length === 1,
+  cougar87.map(v => v.id).join(', '));
+check('and it names a blank, not a maker', cougar87.length === 1
+  && /^H5\d$/.test(cougar87[0].blanks.keyway), cougar87[0] && cougar87[0].blanks.keyway);
+check('"1987 cougar" is therefore not offered as an index gap',
+  !find(ask('1987 cougar'), 'Mercury', 'Cougar'));
 check('"2000 cougar" is left to the record that covers it',
   !find(ask('2000 cougar'), 'Mercury', 'Cougar'));
+
+/* ---- what the supplier's fitment tables brought in ---- */
+const uhs = V2.filter(v => /^uhs-/.test(v.id));
+check('the sourced records are present', uhs.length > 200, uhs.length + ' records');
+check('every one says where it came from',
+  uhs.every(v => /uhs-hardware\.com/.test(v.notes || '')),
+  uhs.filter(v => !/uhs-hardware\.com/.test(v.notes || '')).map(v => v.id).slice(0, 4).join(', '));
+/* The listing carries no chip, no remote and no programming route. Saying
+   nothing there is honest; saying nothing about WHY is how a reader concludes
+   the car has no transponder. */
+check('and every one admits what its source did not carry',
+  uhs.every(v => /Mechanical key only/.test(v.programming.notes || '')),
+  uhs.filter(v => !/Mechanical key only/.test(v.programming.notes || '')).map(v => v.id).slice(0, 4).join(', '));
+check('and none of them invents a chip or a remote',
+  uhs.every(v => !v.transponder.chip && !(v.remotes || []).length),
+  uhs.filter(v => v.transponder.chip || (v.remotes || []).length).map(v => v.id).slice(0, 4).join(', '));
+check('and each names a blank', uhs.every(v => (v.blanks.keyway || '').trim()));
+/* The years were checked against the model index before the record was kept.
+   Nothing should sit outside what the index says the model was built. */
+const IDX2 = new Function(read('assets/js/models.js') + '\n;return VPIC_MODELS;')();
+const outside = uhs.filter(v => {
+  const yrs = (IDX2[v.make] || {})[v.model];
+  return yrs && (v.yearStart < yrs[0] || v.yearEnd > yrs[1]);
+});
+check('and no record runs outside the years the index gives its model',
+  !outside.length, outside.map(v => `${v.id} vs ${(IDX2[v.make] || {})[v.model]}`).slice(0, 4).join(', '));
+/* The one place the two sources cannot both be right says so on the record. */
+const capri = V2.find(v => v.id === 'uhs-mercury-capri-1991-1994');
+check('the one source conflict is recorded on the record itself',
+  !!capri && /SOURCES DISAGREE/.test(capri.notes), capri && capri.notes.slice(0, 60));
 
 [['190e', 'Mercedes-Benz', '190', 'mercedes-vintage-1981-1994'],
  ['vanagon', 'Volkswagen', 'Vanagon', 'vw-audi-vintage-1981-1994'],
@@ -118,6 +152,45 @@ check('"2000 cougar" is left to the record that covers it',
    "vanagon" answer with a Mitsubishi Van. */
 check('a word query does not stem-match a shorter model',
   !find(ask('vanagon'), 'Mitsubishi', 'Van') && !find(ask('vanagon'), 'Nissan', 'Van'));
+
+/* ---- the make-agreement tier ---- */
+/* Where no record names the model and no vintage record covers it, the make's
+   own records may still agree. That is a statement about this directory's
+   data, not a verified fact about the model, and the row has to say which. */
+const agreed = ask('').filter(g => !g.via && g.agree);
+check('some gaps are answered by the make agreeing with itself', agreed.length > 50,
+  agreed.length + ' models');
+check('an agreement always rests on at least two records',
+  agreed.every(g => g.agree.n >= 2), agreed.filter(g => g.agree.n < 2).map(g => g.mk + ' ' + g.md).slice(0, 4).join(', '));
+/* "Ford-era HU101 on many, Mercedes-era HU64 on the newest" is a note saying
+   it depends. A lone hedged record was answering for a 1981 Aston Martin. */
+check('and never on a keyway that hedges',
+  agreed.every(g => !/\b(then|by year|varies|on many|on most|depends)\b/i.test(g.agree.keyway)),
+  agreed.filter(g => /\b(then|by year|varies)\b/i.test(g.agree.keyway)).map(g => g.mk + ' ' + g.md).slice(0, 4).join(', '));
+check('and it points at the record it reasoned from',
+  agreed.every(g => g.agree.rec && g.agree.rec.id));
+/* A placeholder is not a keyway. Three International records say
+   "International / Navistar", which names the maker and no blank at all; once
+   the sourced records gave real numbers the make stopped agreeing, and that is
+   the rule working rather than failing. */
+const intl = ask('', 'International').filter(g => g.agree);
+check('a make whose records disagree offers no agreement',
+  intl.every(g => g.agree.n >= 2));
+
+/* The BMW series rule: 328i, 330i and 335i are all 3 Series, and the leading
+   digit says which. 94 BMW index models had no answer before this. */
+const bmw328 = find(ask('328i'), 'BMW', '328i');
+check('"328i" is answered by a 3 Series record',
+  !!bmw328 && !!bmw328.via && /3 Series/.test(bmw328.via.model), bmw328 && bmw328.via && bmw328.via.model);
+const bmw530 = find(ask('530i'), 'BMW', '530i');
+check('"530i" is answered by a 5 Series record',
+  !!bmw530 && !!bmw530.via && /5 Series/.test(bmw530.via.model), bmw530 && bmw530.via && bmw530.via.model);
+/* The rule reads a number BMW put there. It must not be let loose on a make
+   that numbers its cars some other way -- Mercedes' 190 and 420 are chassis
+   and engine codes, not a "1 Series" and a "4 Series". */
+const mb190 = find(ask('', 'Mercedes-Benz'), 'Mercedes-Benz', '190');
+check('the series rule is not applied to Mercedes',
+  !mb190 || !mb190.via || !/Series/.test(mb190.via.model), mb190 && mb190.via && mb190.via.model);
 
 /* ---- the index obeys the filters, and short names do not get swallowed ---- */
 /* A plain substring test let records swallow models they have nothing to do
