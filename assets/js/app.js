@@ -773,11 +773,18 @@ function RENDER_vehicle(id) {
             `<option value="${esc(g.id)}"${g.id === v.id ? ' selected' : ''}>${yearSpan(g)}</option>`).join('')}</select>`
         : `<span class="vgen static">${yearSpan(v)}</span>`}
     </div>
-    <div class="chips" style="margin:0 0 10px">
-      ${v.custom ? '<span class="badge info">Your record</span>' : ''}
-      <span class="badge ${v.verified ? 'ok' : 'warn'}">${v.verified ? 'Verified by you' : 'Unverified seed data'}</span>
-      ${p.pinRequired && /yes/i.test(p.pinRequired) ? '<span class="badge err">PIN required</span>' : ''}
-    </div>
+    ${(() => {
+      /* "Unverified seed data" used to sit here as an amber badge directly
+         above an amber notice that said the same thing and what to do about
+         it. One of them had to go, and the notice is the one that tells you
+         something. Verified stays, because nothing else says it. */
+      const chips = [
+        v.custom ? '<span class="badge info">Your record</span>' : '',
+        v.verified ? '<span class="badge ok">Verified by you</span>' : '',
+        p.pinRequired && /yes/i.test(p.pinRequired) ? '<span class="badge err">PIN required</span>' : ''
+      ].filter(Boolean);
+      return chips.length ? `<div class="chips" style="margin:0 0 10px">${chips.join('')}</div>` : '';
+    })()}
     <div class="tabs" role="tablist">${VEH_TABS.map(([k, label]) =>
       `<button class="tab${vehTab === k ? ' on' : ''}" role="tab" data-vtab="${k}">${label}</button>`).join('')}</div>
     </div>`;
@@ -815,9 +822,8 @@ function vehOverviewHtml(v) {
   const missing = [!ser0.ignition && 'ignition retainer', !ser0.macs && 'MACS'].filter(Boolean);
 
   return `
-    ${v.verified ? '' : `<div class="notice warn"><strong>Verify before you cut.</strong>
-      This came with the app as starter data. Confirm the blank and chip against the vehicle or
-      your machine's database, then mark it verified in Edit so it stops nagging you.</div>`}
+    ${v.verified ? '' : `<div class="notice warn slim"><strong>Verify before you cut.</strong>
+      Seed data &mdash; check the blank and chip, then mark it verified in Edit.</div>`}
 
     ${(v.aliases || []).length ? `<div class="card muted tiny">Also called
       ${v.aliases.map(a => `<span class="mono">${esc(a)}</span>`).join(', ')} &mdash; the badge or
