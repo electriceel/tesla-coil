@@ -1617,7 +1617,7 @@ const SEED_VEHICLES = [
       sp: 10, dp: 4, cut: 'Laser / sidewinder', dec: 'Lishi HON66',
       obd: 'Yes', on: 'No', akl: 'OBD', pin: 'Sometimes', entry: 'Lishi HON66',
       note: 'Hitag3 needs current Honda coverage; the older add-key routine does not reach it. Some trims want a PIN from the dealer, so confirm the car before you commit to all-keys-lost on site.',
-      vnote: 'TWO RECORDS DISAGREE on the 2022-2024 RDX: this record and the other Acura record covering those years name different blanks. Nothing in this app settles which is right, so read the lock before you cut. ' }),
+      vnote: 'TWO RECORDS DISAGREE on the 2022-2024 RDX: this record and the other Acura record covering those years name different blanks. Nothing in this app settles which is right, so read the lock before you cut.' }),
 
   /* ===== NISSAN / INFINITI ===== */
   V({ id: 'nissan-altima-2002-2006', mk: 'Nissan', md: 'Altima', y0: 2002, y1: 2006,
@@ -3813,7 +3813,7 @@ const SEED_VEHICLES = [
       pin: 'Sometimes',
       note: 'Acura skipped the 2021 model year on the MDX entirely — the 2020 is the last third-generation car and the 2022 is the first fourth-generation one. That one-year hole in the coverage here is real, not missing data. The emergency blade opens the driver door only; the cylinder is behind a cap on the handle.',
       entry: 'Cap off the driver handle, then Lishi HON66',
-      vnote: 'TWO RECORDS DISAGREE on the 2022-2024 RDX: this record and the other Acura record covering those years name different blanks. Nothing in this app settles which is right, so read the lock before you cut. ' }),
+      vnote: 'TWO RECORDS DISAGREE on the 2022-2024 RDX: this record and the other Acura record covering those years name different blanks. Nothing in this app settles which is right, so read the lock before you cut.' }),
   V({ id: 'subaru-legacy-2015-2025', mk: 'Subaru', md: 'Legacy', y0: 2015, y1: 2025, b: 'car',
       kw: 'SUB4 / DAT17 (emergency blade)', il: '', chip: 'Subaru / Denso G',
       sys: 'Subaru immobilizer', clone: 'No on the G chip',

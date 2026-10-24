@@ -9,7 +9,7 @@
   /* neutrals — a real ramp rather than three greys, so surfaces can stack */
   --bg:#0b0e13;  --surface:#141922; --surface2:#1c2230; --surface3:#242c3a;
   --line:#262e3b; --line-strong:#3a4557;
-  --fg:#e9eef5;   --fg2:#9aa6b6;    --fg3:#6b7787;
+  --fg:#e9eef5;   --fg2:#9aa6b6;    --fg3:#828e9e;  --hint:#667286;
 
   /* brass, because that is what the job is */
   --acc:#ffb224; --acc-fg:#1a1206; --acc-soft:#ffb2241f; --acc-line:#ffb22455;
@@ -20,7 +20,7 @@
   --r1:9px; --r2:14px; --r3:20px; --pill:999px;
   --tap:52px;
   --shadow:none;
-  --ring:0 0 0 3px var(--acc-soft);
+  --ring:0 0 0 2px var(--acc);
   --edge:rgba(255,255,255,.035);
   --safe-b:env(safe-area-inset-bottom,0px);
   --header-h:49px;
@@ -29,7 +29,7 @@
 [data-theme="light"]{
   --bg:#f5f7fa;  --surface:#ffffff; --surface2:#eef1f6; --surface3:#e3e8ef;
   --line:#e1e6ee; --line-strong:#c3ccd9;
-  --fg:#101620;   --fg2:#4e5a6b;    --fg3:#78838f;
+  --fg:#101620;   --fg2:#4e5a6b;    --fg3:#616c78;  --hint:#7e8896;
   --acc:#a25f06; --acc-fg:#ffffff; --acc-soft:#a25f0614; --acc-line:#a25f0644;
   --ok:#0b7a41; --warn:#8f5504; --err:#c0342c; --info:#0a5fb4;
   --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.04);
@@ -67,10 +67,11 @@ h2:first-child{margin-top:var(--s1)}
 
 /* ============================ shell ============================ */
 /* The header earns its height once, when you open the app. After that it is
-   56px of the screen on every view, so it is as short as it can be while the
+   49px of the screen on every view, so it is as short as it can be while the
    two icon buttons stay thumb-sized. */
 .top{
   position:sticky;top:0;z-index:20;
+  background:var(--bg);
   background:color-mix(in srgb,var(--bg) 85%,transparent);
   backdrop-filter:blur(14px) saturate(140%);-webkit-backdrop-filter:blur(14px) saturate(140%);
   border-bottom:1px solid var(--line);
@@ -222,9 +223,9 @@ select{
   color:var(--fg2);background:var(--acc-soft);
 }
 .notice.slim strong{color:var(--acc);font-weight:700}
-.notice.err{background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 35%,transparent);color:var(--err)}
-.notice.ok{background:color-mix(in srgb,var(--ok) 8%,transparent);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
-.notice.info{background:color-mix(in srgb,var(--info) 8%,transparent);border-color:color-mix(in srgb,var(--info) 30%,transparent);color:var(--info)}
+.notice.err{background:transparent;background:color-mix(in srgb,var(--err) 8%,transparent);border-color:color-mix(in srgb,var(--err) 35%,transparent);color:var(--err)}
+.notice.ok{background:transparent;background:color-mix(in srgb,var(--ok) 8%,transparent);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}
+.notice.info{background:transparent;background:color-mix(in srgb,var(--info) 8%,transparent);border-color:color-mix(in srgb,var(--info) 30%,transparent);color:var(--info)}
 
 .spec{display:grid;grid-template-columns:98px 1fr;gap:10px var(--s3);font-size:14px}
 .spec dt{
@@ -255,7 +256,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
    being sliced off by its edge. */
 .nav::before{
   content:'';position:absolute;left:0;right:0;bottom:100%;height:28px;pointer-events:none;
-  background:linear-gradient(to top,var(--bg),color-mix(in srgb,var(--bg) 0%,transparent));
+  background:linear-gradient(to top,var(--bg),transparent);
 }
 .nav button{
   background:none;border:0;padding:9px 2px 10px;color:var(--fg3);
@@ -356,7 +357,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 .vres .nm{font-weight:700;font-size:15px}
 .vres .sub{font-size:12px;color:var(--fg2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vres .yr+.nm{margin-top:1px}
-.vres .go{color:var(--line-strong);font-size:20px}
+.vres .go{color:var(--hint);font-size:20px}
 
 /* ============================ grouped rows ============================ */
 .grp{
@@ -374,7 +375,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
   border-radius:var(--pill);padding:3px 9px;
 }
 .grp-x{color:var(--fg3);font-size:17px;width:14px;text-align:center}
-.grp-body{border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface2) 45%,transparent)}
+.grp-body{border-top:1px solid var(--line);background:var(--surface);background:color-mix(in srgb,var(--surface2) 45%,transparent)}
 .brow{
   width:100%;display:grid;grid-template-columns:1fr auto;gap:2px var(--s3);
   background:none;border:0;border-bottom:1px solid var(--line);
@@ -476,8 +477,8 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 }
 .iconbtn.danger{color:var(--err);border-color:color-mix(in srgb,var(--err) 35%,transparent)}
 .iconbtn:active{background:var(--surface2)}
-.pinchart td.ctl{background:color-mix(in srgb,var(--info) 18%,transparent);color:var(--info)}
-.pinchart td.topp{background:color-mix(in srgb,var(--fg3) 14%,transparent)}
+.pinchart td.ctl{background:var(--surface2);background:color-mix(in srgb,var(--info) 18%,transparent);color:var(--info)}
+.pinchart td.topp{background:var(--surface2);background:color-mix(in srgb,var(--fg3) 14%,transparent)}
 .allocrow{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s2)}
 .allocname{
   flex:0 0 92px;font-size:10.5px;font-weight:700;color:var(--fg2);
@@ -499,7 +500,7 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
    they sat level with the make name and the eye had to pick between them. */
 .mkrow-n{font-size:10.5px;color:var(--fg3);white-space:nowrap;
   font-variant-numeric:tabular-nums;letter-spacing:.2px}
-.mkrow-go{color:var(--line-strong);font-size:18px;line-height:1}
+.mkrow-go{color:var(--hint);font-size:18px;line-height:1}
 
 /* ---- dealer-only reference ----
    Two lines of evidence under each name, because the whole point of the screen
@@ -529,3 +530,26 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
 /* Marks a directory row that is indexed by its Ilco number rather than by a
    confirmed keyway, so scanning the list never reads the label as a keyway. */
 .kwq{color:var(--warn);font-weight:700;margin-left:3px;vertical-align:super;font-size:.72em}
+
+/* ============================ print ============================ */
+/* Printing is how a quote reaches a customer, and the screen layout does not
+   survive the trip: the title is near-white so it vanishes on paper, and the
+   fixed nav prints as a stray row of tab labels under the content. Flatten to
+   ink on white, drop the furniture that only means something on a screen. */
+@media print{
+  :root,[data-theme="light"],[data-theme="dark"]{
+    --bg:#fff; --surface:#fff; --surface2:#fff; --surface3:#fff;
+    --line:#bbb; --line-strong:#888;
+    --fg:#000; --fg2:#333; --fg3:#555; --hint:#888;
+    --acc:#000; --acc-fg:#000; --acc-soft:transparent; --acc-line:#888;
+    --ok:#000; --warn:#000; --err:#000; --info:#000;
+    --shadow:none; --edge:transparent;
+  }
+  .nav,.top .icon-btn,.back,.tabs,.toolbar,.clearlink{display:none!important}
+  .top{position:static;backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:1px solid #bbb}
+  body{padding-bottom:0;background:#fff;color:#000}
+  main{max-width:none;padding:0}
+  .card{border:1px solid #bbb;break-inside:avoid;page-break-inside:avoid}
+  .btn.primary,.btn{background:none;border:1px solid #888;color:#000}
+  a[href]{color:#000;text-decoration:underline}
+}
