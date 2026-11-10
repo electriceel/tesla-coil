@@ -1001,5 +1001,73 @@ check('but the full brand survives where it cannot cause a false link',
   check(`"${q}" still lands tightly (<= ${ceiling} rows)`,
     blankSearch(q).length <= ceiling, blankSearch(q).length + ' rows'));
 
+
+/* ===================== the powersports / aircraft batch =====================
+   American Key Supply's motorcycle and RV pages were read for the Ilco, Silca
+   and JMA numbers the Blue Dog rows were missing, plus six blanks with no row
+   at all. Three things nearly went wrong, and each has a check here. */
+
+const aks = B.filter(b => /^aks-/.test(b.id));
+const air = B.filter(b => /^air-/.test(b.id));
+
+check('the powersports batch is present', aks.length === 6, aks.length + ' rows');
+check('the aircraft rows are present', air.length === 2, air.length + ' rows');
+
+/* 1. The near-miss. Deciding what was already in the file meant tokenising
+   both sides, and the first pass split on "/" and "," only -- which misses
+   every Blue Dog keyway, because they read "1665 — RV & Camper". Seven
+   Trimark numbers already in the file looked new and would have shipped as a
+   second row each. Any designation reachable from two rows is that mistake
+   coming back, so the Ilco column may not repeat a number another row already
+   carries in its keyway. */
+const AKS_TOK = v => String(v || '').toUpperCase().split(/[^A-Z0-9.]+/).filter(t => /\d/.test(t) && t.length > 1);
+const aksKeywayTokens = new Map();
+B.forEach(b => AKS_TOK(b.keyway).forEach(t => {
+  if (!aksKeywayTokens.has(t)) aksKeywayTokens.set(t, []);
+  aksKeywayTokens.get(t).push(b.id);
+}));
+const aksDupes = [...aks, ...air].filter(b => AKS_TOK(b.ilco).some(t =>
+  (aksKeywayTokens.get(t) || []).some(id => id !== b.id)));
+check('no row in the batch repeats a designation another row is filed under',
+  !aksDupes.length,
+  aksDupes.map(b => `${b.id} ilco=${b.ilco} also in ${(aksKeywayTokens.get(AKS_TOK(b.ilco)[0]) || []).join(', ')}`).join('\n     '));
+
+/* 2. One orderable number per column, the same rule the Blue Dog import
+   follows: a value with a slash in it is two numbers and buys nothing at the
+   counter. The first draft of this batch wrote "TM7 / 1607". */
+const aksSliced = [...aks, ...air].filter(b =>
+  ['ilco', 'ilcoChip', 'silca', 'jma', 'strattec'].some(f => b[f] && /\//.test(b[f])));
+check('every number in the batch is a single orderable number', !aksSliced.length,
+  aksSliced.map(b => b.id).join(', '));
+
+/* 3. A shared Ilco number is not a shared product. Ilco 1608 and 1610 are
+   Freightliner ignition blanks AND Trimark RV blanks, so matching on the
+   number alone would have stamped a Trimark part number onto a Class 8 truck
+   record. The truck row keeps its own marques and no RV part number. */
+const fr = B.find(b => b.id === 'truck-fr');
+check('the Freightliner row did not collect a Trimark part number',
+  fr && !/TRM-/i.test([fr.jma, fr.silca, fr.notes].join(' ')),
+  fr ? `jma=${fr.jma}` : 'row missing');
+
+/* The aircraft rows exist to say there is nothing to cut, so they carry no
+   catalog number on purpose -- and must not be flagged kwUnknown, which means
+   "look this up by its number" and would send someone hunting for one. */
+check('the aircraft rows claim no blank to order',
+  air.every(b => !b.ilco && !b.silca && !b.jma && !b.kwUnknown),
+  air.filter(b => b.ilco || b.kwUnknown).map(b => b.id).join(', '));
+check('the ACS row says why, not just no',
+  air.some(b => /FAA approval/.test(b.notes) && /precut/i.test(b.notes)));
+
+/* A directory with aircraft keys in it that answers nothing to "aircraft" is
+   the state this batch found. Blue Dog's type is the only make those rows
+   carry, so the trade's own word has to be an alias on them. */
+[['aircraft', 5], ['marine', 100], ['powersports', 300]].forEach(([q, least]) =>
+  check(`"${q}" reaches the rows filed under another word (>= ${least})`,
+    blankSearch(q).length >= least, blankSearch(q).length + ' rows'));
+
+/* The numbers the batch was imported for. */
+['HD75', 'HD109', 'YH46', 'HYD17', 'TMC3', 'SUZ18', 'KYM2', 'YA18', 'N7A']
+  .forEach(n => check(`"${n}" now returns something`, blankSearch(n).length >= 1));
+
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
