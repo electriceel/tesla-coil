@@ -709,11 +709,25 @@ const BEST_PAIRS = {
   '1A1WA1':'A1114WA', '1A1WC1':'A1114WC', '1A1WD1':'A1114WD', '1A1WE1':'A1114WE',
   '1A1WG1':'A1114WG', '1A1WH1':'A1114WH', '1A1WY1':'A1114WY'
 };
+/* The directory's haystack, read out of app.js rather than restated here.
+
+   It was restated, and it drifted: the app searched b.framon and b.taylor and
+   this copy did not, so a test asking "can you find this Taylor number" was
+   answered by a search that never looked at the Taylor column. A helper that
+   quietly disagrees with the thing it is testing is worse than no helper. */
+const HAY_FIELDS = (() => {
+  const m = /const hay = \[([^\]]*)\]/.exec(appSrc);
+  if (!m) throw new Error('cannot find the blank-directory haystack in app.js');
+  return m[1].split(',').map(x => x.trim().replace(/^b\./, '')).filter(Boolean);
+})();
+check('the test reads the same columns the app searches',
+  HAY_FIELDS.includes('taylor') && HAY_FIELDS.includes('framon') && HAY_FIELDS.includes('ilco'),
+  HAY_FIELDS.join(', '));
+
 const blankSearch = (q) => {
   const terms = String(q).toLowerCase().split(/\s+/).filter(Boolean);
   return B.filter(b => {
-    const hay = [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.cut, b.cat, b.notes]
-      .concat(b.makes || []).join(' ').toLowerCase();
+    const hay = HAY_FIELDS.map(f => b[f]).concat(b.makes || []).join(' ').toLowerCase();
     const flat = squash(hay);
     return terms.every(t => hay.includes(t) || flat.includes(squash(t)));
   });
@@ -1086,7 +1100,7 @@ check('the ACS row says why, not just no',
    of it shipped and the structured column was used instead. */
 
 const aksc = B.filter(b => /^aksc-/.test(b.id));
-check('the commercial batch is present', aksc.length === 67, aksc.length + ' rows');
+check('the commercial batch is present', aksc.length === 84, aksc.length + ' rows');
 
 /* Every row is anchored on the supplier's EZ number, which is both the row's
    keyway and its Ilco number -- if those ever drift apart the anchor is gone. */
@@ -1094,15 +1108,23 @@ check('every commercial row is filed under its own Ilco number',
   aksc.every(b => b.ilco && b.keyway === b.ilco),
   aksc.filter(b => b.keyway !== b.ilco).map(b => `${b.id} keyway=${b.keyway} ilco=${b.ilco}`).join('\n     '));
 
-/* Same duplicate guard as the powersports batch: a designation reachable from
-   two rows means the overlap check missed one. */
-const CTOK = v => String(v || '').toUpperCase().split(/[^A-Z0-9.]+/).filter(t => /\d/.test(t) && t.length > 1);
-const cKeyway = new Map();
-B.forEach(b => CTOK(b.keyway).forEach(t => {
-  if (!cKeyway.has(t)) cKeyway.set(t, []);
-  cKeyway.get(t).push(b.id);
+/* Same duplicate guard as the powersports batch, but comparing WHOLE
+   designations rather than the fragments a tokeniser leaves behind. Splitting
+   on punctuation got this wrong in both directions: "EA-2" and "DK-P-9" break
+   into nothing a digit-bearing filter keeps, so EA-2 was imported twice and
+   the check did not see it; and "1011-K13" breaks into 1011 and K13, so every
+   Corbin Russwin 1011 section keyway collided with every other one and the
+   check cried duplicate on eleven rows that are all different keys. */
+const CNORM = v => String(v || '').toUpperCase().replace(/[-.\/ ]/g, '').trim();
+const cDesig = new Map();
+B.forEach(b => [b.keyway, b.ilco].forEach(x => {
+  const k = CNORM(x);
+  if (!k || k === '—') return;
+  if (!cDesig.has(k)) cDesig.set(k, new Set());
+  cDesig.get(k).add(b.id);
 }));
-const cDupes = aksc.filter(b => CTOK(b.ilco).some(t => (cKeyway.get(t) || []).some(id => id !== b.id)));
+const cDupes = aksc.filter(b => [b.keyway, b.ilco]
+  .some(x => [...(cDesig.get(CNORM(x)) || [])].some(id => id !== b.id)));
 check('no commercial row repeats a designation another row is filed under', !cDupes.length,
   cDupes.map(b => `${b.id} (${b.ilco})`).join(', '));
 
@@ -1138,6 +1160,39 @@ check('the Volkswagen blank on the commercial page was filed as automotive',
     check(`${id} now carries its ${col} number`, row && row[col] === val,
       row ? `${col}=${row[col]}` : 'row missing');
   });
+
+
+/* ===================== the Taylor column ====================================
+   Taylor is the other number a US commercial locksmith reads off a blank, and
+   the directory had nowhere to put it: 409 Blue Dog rows mention a Taylor
+   number in their prose and not one of them could be searched for it.
+
+   The column only earns its place where Taylor's number DIFFERS from Ilco's.
+   Taylor has adopted Ilco's numbering for most modern blanks -- their KW1 is
+   TAY-KW1-NP, which is Ilco's KW1 in a nickel finish, not a reference. */
+const taylorRows = B.filter(b => b.taylor);
+check('the Taylor column is populated', taylorRows.length >= 18, taylorRows.length + ' rows');
+
+const sameAsIlco = taylorRows.filter(b => {
+  const bare = x => String(x || '').toUpperCase().replace(/[-. ]/g, '').replace(/(NP|BR|PLAIN|BRASS|NICKEL)+$/, '');
+  return b.ilco && b.ilco !== '—' && bare(b.taylor) === bare(b.ilco);
+});
+check('no Taylor number just restates the Ilco number', !sameAsIlco.length,
+  sameAsIlco.map(b => `${b.id}: ilco=${b.ilco} taylor=${b.taylor}`).join(', '));
+
+/* A column the detail view does not print, the editor cannot set, or the
+   search does not read is a column nobody will ever meet. */
+
+check('the detail view prints the Taylor number', /<dt>Taylor<\/dt>/.test(appSrc));
+check('the blank editor can set it', /F\('taylor',\s*'Taylor'/.test(appSrc));
+check('saving a blank keeps it', /taylor:\s*f\.taylor/.test(appSrc));
+check('the directory search reads it', /b\.jma,\s*b\.taylor/.test(appSrc));
+
+/* Searching a Taylor number has to reach the row carrying it. */
+[['43CA', 'S12'], ['57-3K', '73K'], ['K54AX', 'EL13']].forEach(([tn, ez]) =>
+  check(`searching Taylor "${tn}" reaches ${ez}`,
+    blankSearch(tn).some(b => String(b.taylor || '').toUpperCase() === tn),
+    blankSearch(tn).slice(0, 3).map(b => b.id).join(', ') || 'no hits'));
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
