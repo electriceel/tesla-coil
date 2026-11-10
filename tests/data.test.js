@@ -967,12 +967,18 @@ check('and the rest are blank rather than guessed',
     blankSearch(num).some(b => String(b[col] || '').toUpperCase() === num.toUpperCase()),
     blankSearch(num).slice(0, 3).map(b => b.id).join(', ') || 'no hits'));
 
-/* A catalog number with no digit in it is a description that landed in a
-   number column. One listing puts the number in the brand slot and the
-   description where the number usually goes, and it got through the first
-   pass looking like a Strattec number called "GM OEM". */
+/* A catalog number that is really a description landed in a number column.
+   One listing puts the number in the brand slot and the description where the
+   number usually goes, and it got through the first pass looking like a
+   Strattec number called "GM OEM".
+
+   "Has no digit" was the first test for that, and it was too blunt: Silca
+   file the Yale 999G profiles as GYB, GYC, GYD, GYE, GYH and GYK, which are
+   real references with no digit in them. What marks a description is being
+   words -- a space, or more letters than any reference uses. */
 const digitless = B.filter(b => ['ilco', 'ilcoChip', 'silca', 'jma', 'strattec', 'framon']
-  .some(f => b[f] && b[f] !== '—' && !/[0-9]/.test(String(b[f]))));
+  .some(f => b[f] && b[f] !== '—' && !/[0-9]/.test(String(b[f]))
+    && (/\s/.test(String(b[f])) || String(b[f]).length > 4)));
 check('no catalog number is a description with no digit in it', !digitless.length,
   digitless.map(b => b.id).slice(0, 6).join(', '));
 
@@ -1068,6 +1074,70 @@ check('the ACS row says why, not just no',
 /* The numbers the batch was imported for. */
 ['HD75', 'HD109', 'YH46', 'HYD17', 'TMC3', 'SUZ18', 'KYM2', 'YA18', 'N7A']
   .forEach(n => check(`"${n}" now returns something`, blankSearch(n).length >= 1));
+
+
+/* ===================== the commercial batch =================================
+   American Key Supply's commercial pages carry an explicit "EZ #" column --
+   Ilco's own number -- so unlike the motorcycle pass the blank number did not
+   have to be read out of prose. That matters: the first attempt at this batch
+   mined the Blue Dog rows' own note text for "<number> <brand>" pairs, and
+   measured against the rows that already had a parsed Ilco number it was
+   wrong 1 time in 40. A wrong Ilco number is a wrong blank ordered, so none
+   of it shipped and the structured column was used instead. */
+
+const aksc = B.filter(b => /^aksc-/.test(b.id));
+check('the commercial batch is present', aksc.length === 67, aksc.length + ' rows');
+
+/* Every row is anchored on the supplier's EZ number, which is both the row's
+   keyway and its Ilco number -- if those ever drift apart the anchor is gone. */
+check('every commercial row is filed under its own Ilco number',
+  aksc.every(b => b.ilco && b.keyway === b.ilco),
+  aksc.filter(b => b.keyway !== b.ilco).map(b => `${b.id} keyway=${b.keyway} ilco=${b.ilco}`).join('\n     '));
+
+/* Same duplicate guard as the powersports batch: a designation reachable from
+   two rows means the overlap check missed one. */
+const CTOK = v => String(v || '').toUpperCase().split(/[^A-Z0-9.]+/).filter(t => /\d/.test(t) && t.length > 1);
+const cKeyway = new Map();
+B.forEach(b => CTOK(b.keyway).forEach(t => {
+  if (!cKeyway.has(t)) cKeyway.set(t, []);
+  cKeyway.get(t).push(b.id);
+}));
+const cDupes = aksc.filter(b => CTOK(b.ilco).some(t => (cKeyway.get(t) || []).some(id => id !== b.id)));
+check('no commercial row repeats a designation another row is filed under', !cDupes.length,
+  cDupes.map(b => `${b.id} (${b.ilco})`).join(', '));
+
+/* Pin and wafer counts are quoted from the listing, so they have to be a
+   plausible count rather than something scraped out of a product code. */
+const badSpaces = aksc.filter(b => b.spaces !== undefined && !(b.spaces >= 2 && b.spaces <= 8));
+check('every quoted pin or wafer count is a plausible one', !badSpaces.length,
+  badSpaces.map(b => `${b.id}=${b.spaces}`).join(', '));
+
+/* A Best core key marked duplication-prohibited is one the locksmith can be
+   asked to account for afterwards. The listing says so; the record must too,
+   or the warning was dropped on import and the row looks like any other. */
+const bestDnd = aksc.filter(b => /^A1114/.test(b.ilco || ''));
+check('the Best IC core rows carry their duplication-prohibited warning',
+  bestDnd.length >= 6 && bestDnd.every(b => /DUPLICATION PROHIBITED/.test(b.notes || '')),
+  `${bestDnd.length} Best rows, ${bestDnd.filter(b => !/DUPLICATION PROHIBITED/.test(b.notes || '')).length} without the warning`);
+
+/* The batch came off pages titled commercial, but one of them was carrying a
+   Volkswagen blank. Category has to follow what the key opens. */
+const vw = B.find(b => b.id === 'aksc-o79jb');
+check('the Volkswagen blank on the commercial page was filed as automotive',
+  vw && vw.cat === 'Automotive', vw ? vw.cat : 'row missing');
+
+/* The numbers this batch exists to answer. */
+['A1114TC', 'CO91', 'IN8', 'S4', 'FA3', 'AR5', 'RU19', 'CG4', 'IL17', 'Y14']
+  .forEach(n => check(`"${n}" now returns something`, blankSearch(n).length >= 1));
+
+/* And the cross-references written onto rows that had none. */
+[['best-a2-we', 'jma', 'BES-30S'], ['cat13-chicago-1041tr', 'silca', 'CH20R'],
+ ['cat13-best-a1114r', 'silca', 'BES17']]
+  .forEach(([id, col, val]) => {
+    const row = B.find(b => b.id === id);
+    check(`${id} now carries its ${col} number`, row && row[col] === val,
+      row ? `${col}=${row[col]}` : 'row missing');
+  });
 
 console.log(fail ? `\n${fail} FAILED` : `\nall data checks passed  (${V.length} vehicles, ${B.length} blanks)`);
 process.exit(fail ? 1 : 0);
