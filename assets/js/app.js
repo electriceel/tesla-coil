@@ -1284,7 +1284,7 @@ function blankHaystacks() {
     blankHayCache = {
       rev: Store.rev,
       rows: Store.blanks().map(b => {
-        const hay = [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.strattec, b.framon, b.cut, b.cat, b.notes]
+        const hay = [b.keyway, b.ilco, b.ilcoChip, b.silca, b.jma, b.taylor, b.strattec, b.framon, b.cut, b.cat, b.notes]
           .concat(b.makes || []).join(' ').toLowerCase();
         return { b, hay, flat: squash(hay) };
       })
@@ -1412,6 +1412,7 @@ function renderBlankDetail(id) {
       <dt>Ilco chip</dt><dd class="mono">${dash(b.ilcoChip)}</dd>
       <dt>Silca</dt><dd class="mono">${dash(b.silca)}</dd>
       <dt>JMA</dt><dd class="mono">${dash(b.jma)}</dd>
+      <dt>Taylor</dt><dd class="mono">${dash(b.taylor)}</dd>
       <dt>Strattec</dt><dd class="mono">${dash(b.strattec)}</dd>
       <dt>Framon</dt><dd class="mono">${dash(b.framon)}</dd>
     </dl></div>
@@ -1451,7 +1452,8 @@ function editBlank(id) {
         ${F('keyway', 'Keyway', b.keyway, 'TOY48')}
         <div class="row">${F('ilco', 'Ilco', b.ilco)}${F('ilcoChip', 'Ilco chip version', b.ilcoChip)}</div>
         <div class="row">${F('silca', 'Silca', b.silca)}${F('jma', 'JMA', b.jma)}</div>
-        <div class="row">${F('strattec', 'Strattec', b.strattec)}${F('framon', 'Framon', b.framon)}</div>
+        <div class="row">${F('taylor', 'Taylor', b.taylor)}${F('strattec', 'Strattec', b.strattec)}</div>
+        <div class="row">${F('framon', 'Framon', b.framon)}</div>
       </div>
       <div class="card">
         <div class="row">
@@ -1478,7 +1480,7 @@ function editBlank(id) {
     const rec = {
       id: id || f.keyway.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       keyway: f.keyway.trim(), ilco: f.ilco, ilcoChip: f.ilcoChip, silca: f.silca,
-      jma: f.jma, strattec: f.strattec, framon: f.framon, cut: f.cut, cat: f.cat || 'Automotive',
+      jma: f.jma, taylor: f.taylor, strattec: f.strattec, framon: f.framon, cut: f.cut, cat: f.cat || 'Automotive',
       spaces: parseInt(f.spaces, 10) || '', depths: parseInt(f.depths, 10) || '',
       makes: f.makes.split(',').map(s => s.trim()).filter(Boolean),
       notes: f.notes

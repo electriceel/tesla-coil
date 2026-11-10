@@ -5713,7 +5713,7 @@ const SEED_VEHICLES = [
 const BDK_TYPES = ["","Airplane","Antique Auto","Antique Auto Ilco","Barrel","Barrel Double Bit","Bit","Bit Double Bit","Blue Dog Originals","Boat","Boat - Ilco","Cabinet/Office Furniture","Cabinet/Office Furniture Ilco","Cash Register","Clock","Cruciform","Cylinder","Cylinder Ilco","Dimple","Disc Tumbler","Dispenser","Electric Switch / Panel","Electric Switch / Panel Ilco","Equipment / Machinery","Equipment / Machinery Ilco","Flat Steel","Flat Steel Ilco","Freezer / Refrigerator","Gaming Machine","Golf Cart","HD","Interchangeable Core","JMA","Key Tool / Radiator / Misc Ilco","Large Truck","Luggage","Mailbox","Motorcycle / Moped / Scooter - BDK","Motorcycle / Moped / Scooter - Ilco","New Addition","On Special!","Padlock","Padlock Ilco","Panel / Cap / Hitch Lock","RV & Camper","Restricted","Safe / Locking Cabinet","Safe / Locking Cabinet Ilco","Safe Deposit","Safe Deposit Ilco","Sliding/Rolling/Shutter Doors","Traffic Control","Transponder","Tubular","Vehicle","Vehicle Ilco"];
 const BDK_CAT = {"":"Utility","Airplane":"Fleet & equipment","Antique Auto":"Automotive","Antique Auto Ilco":"Automotive","Barrel":"Utility","Barrel Double Bit":"Utility","Bit":"Utility","Bit Double Bit":"Utility","Blue Dog Originals":"Utility","Boat":"Fleet & equipment","Boat - Ilco":"Fleet & equipment","Cabinet/Office Furniture":"Commercial","Cabinet/Office Furniture Ilco":"Commercial","Cash Register":"Commercial","Clock":"Utility","Cruciform":"Import & uncommon","Cylinder":"Commercial","Cylinder Ilco":"Commercial","Dimple":"Import & uncommon","Disc Tumbler":"Utility","Dispenser":"Commercial","Electric Switch / Panel":"Utility","Electric Switch / Panel Ilco":"Utility","Equipment / Machinery":"Fleet & equipment","Equipment / Machinery Ilco":"Fleet & equipment","Flat Steel":"Utility","Flat Steel Ilco":"Utility","Freezer / Refrigerator":"Commercial","Gaming Machine":"Utility","Golf Cart":"Powersports","HD":"Utility","Interchangeable Core":"Commercial","JMA":"Commercial","Key Machine":"Utility","Key Tool / Radiator / Misc Ilco":"Utility","Large Truck":"Fleet & equipment","Luggage":"Utility","Mailbox":"Residential","Motorcycle / Moped / Scooter - BDK":"Powersports","Motorcycle / Moped / Scooter - Ilco":"Powersports","New Addition":"Utility","On Special!":"Utility","Padlock":"Utility","Padlock Ilco":"Utility","Panel / Cap / Hitch Lock":"Fleet & equipment","RV & Camper":"Fleet & equipment","Restricted":"Utility","Safe / Locking Cabinet":"Safe & vault","Safe / Locking Cabinet Ilco":"Safe & vault","Safe Deposit":"Safe & vault","Safe Deposit Ilco":"Safe & vault","Sliding/Rolling/Shutter Doors":"Commercial","Traffic Control":"Utility","Transponder":"Automotive","Tubular":"Utility","Vehicle":"Automotive","Vehicle Ilco":"Automotive"};
 const BDK_CUT = {"Barrel":"Bit / barrel","Barrel Double Bit":"Bit / barrel","Bit":"Bit / barrel","Bit Double Bit":"Bit / barrel","Clock":"Bit / barrel","Cruciform":"Cruciform","Dimple":"Dimple","Disc Tumbler":"Disc detainer","Flat Steel":"Flat steel","Flat Steel Ilco":"Flat steel","Tubular":"Tubular"};
-const BDK_NUMCOL = { i: 'ilco', s: 'silca', j: 'jma', t: 'strattec' };
+const BDK_NUMCOL = { i: 'ilco', s: 'silca', j: 'jma', t: 'strattec', y: 'taylor' };
 /* Words the trade uses for a type Blue Dog files under another name. */
 const BDK_MAKE_ALSO = {
   'Airplane': ['Aircraft'],
@@ -7613,7 +7613,7 @@ const BDK_ROWS = [
 ['O1017NX',16,'A72NL Taylor O1017NX Ilco','i:O1017NX'],
 ['O1017NL',16,'O72NL Taylor O1017NL Ilco','i:O1017NL'],
 ['O1017N',16,'O1017N Old Ilco','i:O1017N'],
-['O1017ML',16,'O72ML Taylor 126ML Keil O1017ML Ilco','i:O1017ML'],
+['O1017ML',16,'O72ML Taylor 126ML Keil O1017ML Ilco','i:O1017ML;y:072ML'],
 ['O1017M',16,'N 16 Curtis 126M Keil O1017M Ilco','i:O1017M'],
 ['O1017BX',16,'O1017BX Old Ilco 7 Pin','i:O1017BX'],
 ['O1017BL',16,'O1017BL Old Ilco 6 Pin','i:O1017BL'],
@@ -9694,7 +9694,7 @@ const BDK_ROWS = [
 ['63Y',55,'old ilco BM1..Taylor R63Y B1161SX Old Ilco'],
 ['63W Ilco Taylor',54,'Not Dom63W MB14 Ilco MB13 Old Ilco M61ST Ilco ME 15D JMA M1161ST Old Ilco','j:ME-15D;i:63W'],
 ['63VS',55,'VW-V72B-VW64'],
-['63VR',55,'23. Taylor V70E FTA2 Old Ilco T61VR Ilco'],
+['63VR',55,'23. Taylor V70E FTA2 Old Ilco T61VR Ilco','y:V70E'],
 ['63VO',55,'P70C Taylor S62DW Ilco','i:S62DW'],
 ['63VN',55,'Volkswagen VW63 pretipped'],
 ['63V',55,'VE1 Ilco .V61R/V61F Ilco Vespa Scooter','i:VE1'],
@@ -10054,7 +10054,7 @@ const BDK_ROWS = [
 ['1154ES',17,'X1054JA Ilco K1054AX Old Ilco EB1096K Ilco 155D Keil'],
 ['1154D',12,'1154D 4 pin'],
 ['1154A',12,'1154A Old Ilco','i:1154A'],
-['1141W',12,'111W Taylor 1141W Ilco','i:1141W'],
+['1141W',12,'111W Taylor 1141W Ilco','i:1141W;y:111W'],
 ['1141K',12,'111B Taylor 1141K Ilco','i:1141K'],
 ['1141H',12,'1141H Ilco 111TS Taylor','i:1141H'],
 ['1141GE',17,'ColeNat T4 Taylor Lock'],
@@ -10564,7 +10564,7 @@ const BDK_ROWS = [
 ['1170M',17,'CHL 6 JMA 170M Taylor 1170M Ilco','j:170M;i:1170M'],
 ['1170D',17,'S121 Fuki 170D Dominion 1170D Ilco','i:1170D'],
 ['1170CB',17,'1170CB Made Up #'],
-['1170BD',17,'CHL 3 JMA 170B Dominion 170B HD 170CB Taylor 1170BD Ilco','j:170B;i:1170BD'],
+['1170BD',17,'CHL 3 JMA 170B Dominion 170B HD 170CB Taylor 1170BD Ilco','j:170B;i:1170BD;y:170BD'],
 ['1155B',12,'155B Taylor 1155B Old Ilco','i:1155B'],
 ['1154L',12,'1154L'],
 ['1154GR',17,'997ER Ilco','i:997ER'],
@@ -10767,7 +10767,7 @@ const BDK_ROWS = [
 ['1011MK',17,'H81 6 Corbin/Russwin 1011MK Ilco','i:1011MK'],
 ['1011MA',17,'1011MA Ilco A1X12M 6 Corbin/Russwin','i:1011MA'],
 ['1011KA',17,'Discontinued 87VCC Keil 1011KA Old Ilco','i:1011KA'],
-['1011K1',17,'51K Russwin RU15'],
+['1011K1',17,'51K Russwin RU15','y:551K'],
 ['1011JR',17,'Discontinued 87VV Keil 1011JR Old Ilco','i:1011JR'],
 ['1011GJ',17,'57MK Taylor 1011GJ Ilco','i:1011GJ'],
 ['1011E',17,'Keil 1011E Old Ilco'],
@@ -10921,8 +10921,8 @@ const BDK_ROWS = [
 ['1202',26,'1202 Old Ilco 1202H Old Ilco 385 Flat Steel'],
 ['1182',36,'XL2 Dominion XL17 Taylor 1182 Ilco','i:1182'],
 ['1177',17,'177 Ilco 1177N Ilco 1119S Ilco'],
-['1172',17,'172 Taylor 1172 Ilco 1171B Ilco'],
-['1171',17,'171 Taylor 1171 Ilco','i:1171'],
+['1172',17,'172 Taylor 1172 Ilco 1171B Ilco','y:172'],
+['1171',17,'171 Taylor 1171 Ilco','i:1171;y:171'],
 ['1155',12,'1155 Old Ilco','i:1155'],
 ['1148',20,'Indak Polaris'],
 ['1146',17,'R2 Ilco 146 Taylor','i:R2'],
@@ -13892,7 +13892,7 @@ const SEED_BLANKS = [
   { id:'cat-y11', cat:'Residential', keyway:'Y11', ilco:'O1122', jma:'YA-44D', cut:'Edge', makes:['Yale / Hudson'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y11.' },
   { id:'cat-y13', cat:'Residential', keyway:'Y13', ilco:'O1122R', jma:'YA-44', cut:'Edge', makes:['Yale / Hudson'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y13.' },
   { id:'cat-y12', cat:'Residential', keyway:'Y12', ilco:'O1122A', jma:'YA-45D', cut:'Edge', makes:['Yale / Hudson'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y12.' },
-  { id:'cat-y103', cat:'Residential', keyway:'Y103', ilco:'O1122B', jma:'YA-54D', cut:'Edge', makes:['Yale / Hudson'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y103.' },
+  { id:'cat-y103', cat:'Residential', keyway:'Y103', ilco:'O1122B', jma:'YA-54D', cut:'Edge', makes:['Yale / Hudson'], taylor:'K1122B', notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y103.' },
   { id:'cat-y101', cat:'Residential', keyway:'Y101', ilco:'L1122A', cut:'Edge', makes:['Yale'], notes:'Ilco Key Blank Directory, edition 13, section 2; EZ reference Y101.' },
   { id:'cat-y5', cat:'Residential', keyway:'Y5', ilco:'997EB', jma:'YA-63D', cut:'Edge', makes:['Yale'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y5.' },
   { id:'cat-y52', cat:'Residential', keyway:'Y52', ilco:'997E', jma:'YA-13D', cut:'Edge', makes:['Yale'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference Y52.' },
@@ -13932,7 +13932,7 @@ const SEED_BLANKS = [
   { id:'cat-s2', cat:'Commercial', keyway:'S2', ilco:'O1009', cut:'Edge', makes:['Sargent'], notes:'Ilco Key Blank Directory, edition 13, section 2; EZ reference S2.' },
   { id:'cat-s3', cat:'Commercial', keyway:'S3', ilco:'1010', jma:'KEI-1', cut:'Edge', makes:['Sargent'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference S3.' },
   { id:'cat-s5', cat:'Commercial', keyway:'S5', ilco:'1009A', cut:'Edge', makes:['Sargent'], notes:'Ilco Key Blank Directory, edition 13, section 2; EZ reference S5.' },
-  { id:'cat-s10', cat:'Commercial', keyway:'S10', ilco:'1010B', jma:'SAR-4D', image:'assets/key-blanks/cat-s10.png', imageAlt:'JMA SAR-4D key blank', imageSource:'https://ecatalogo.jma.es/en/SAR-4D/1/imprimir_jma/', cut:'Edge', makes:['Sargent'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference S10.' },
+  { id:'cat-s10', cat:'Commercial', keyway:'S10', ilco:'1010B', jma:'SAR-4D', image:'assets/key-blanks/cat-s10.png', imageAlt:'JMA SAR-4D key blank', imageSource:'https://ecatalogo.jma.es/en/SAR-4D/1/imprimir_jma/', cut:'Edge', makes:['Sargent'], taylor:'52', notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference S10.' },
   { id:'cat-s22', cat:'Commercial', keyway:'S22', ilco:'O1007CA', jma:'SAR-29', cut:'Edge', makes:['Sargent'], notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference S22. SOURCES DISAGREE on this one. A CLK Supplies listing sells S22 as O1007LA; the edition 13 pass above has O1007CA, and that fits \u2014 the whole O1007C series runs SAR-29 through SAR-41 in order, while 1007LA is SAR-8 in a different series. The directory keeps O1007CA and flags it. A second CLK listing, S22-NS, pairs S22 with O1007LA as well, so the supplier is at least consistent with itself. It still does not outweigh a series that runs in order. Read the blank off the key or the catalogue before you buy either.' },
   { id:'cat-s68', cat:'Commercial', keyway:'S68', ilco:'1010N', jma:'SAR-2D', cut:'Edge', makes:['Sargent'], silca:'N-275S', notes:'Ilco Key Blank Directory, edition 13; JMA Keys Catalogue MX C13 competitor equivalence; section 2; EZ reference S68.' },
   { id:'cat-co1', cat:'Commercial', keyway:'CO1', ilco:'1000', cut:'Edge', makes:['Corbin'], notes:'Ilco Key Blank Directory, edition 13, section 2; EZ reference CO1.' },
@@ -14156,7 +14156,7 @@ const SEED_BLANKS = [
   { id:'cat13-ccl-1003cd', cat:'Commercial', keyway:'CCL 1003CD', ilco:'1003CD', jma:'CCL-19', kwUnknown:true, cut:'Edge', makes:['CCL'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-ccl-s1003m', cat:'Commercial', keyway:'CCL S1003M', ilco:'S1003M', jma:'CCL-42', kwUnknown:true, cut:'Edge', makes:['CCL'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-ccl-l1003m', cat:'Commercial', keyway:'CCL L1003M', ilco:'L1003M', jma:'CCL-10', kwUnknown:true, cut:'Edge', makes:['CCL'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
-  { id:'cat13-corbin-cb1', cat:'Commercial', keyway:'Corbin CB1', ilco:'CB1', kwUnknown:true, cut:'Edge', makes:['Corbin'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
+  { id:'cat13-corbin-cb1', cat:'Commercial', keyway:'Corbin CB1', ilco:'CB1', kwUnknown:true, cut:'Edge', makes:['Corbin'], taylor:'96FS', notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-corbin-cb2', cat:'Commercial', keyway:'Corbin CB2', ilco:'CB2', kwUnknown:true, cut:'Edge', makes:['Corbin'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-corbin-cb3', cat:'Commercial', keyway:'Corbin CB3', ilco:'CB3', kwUnknown:true, cut:'Edge', makes:['Corbin'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-corbin-cb7', cat:'Commercial', keyway:'Corbin CB7', ilco:'CB7', kwUnknown:true, cut:'Edge', makes:['Corbin'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
@@ -14327,7 +14327,7 @@ const SEED_BLANKS = [
   { id:'cat13-falcon-1054wn', cat:'Commercial', keyway:'Falcon 1054WN', ilco:'1054WN', jma:'FAL-17D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-falcon-1054wp', cat:'Commercial', keyway:'Falcon 1054WP', ilco:'1054WP', jma:'FAL-18D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-falcon-a1054wd', cat:'Commercial', keyway:'Falcon A1054WD', ilco:'A1054WD', jma:'FAL-1D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
-  { id:'cat13-falcon-a1054wh', cat:'Commercial', keyway:'Falcon A1054WH', ilco:'A1054WH', jma:'FAL-3D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
+  { id:'cat13-falcon-a1054wh', cat:'Commercial', keyway:'Falcon A1054WH', ilco:'A1054WH', jma:'FAL-3D', kwUnknown:true, cut:'Edge', makes:['Falcon'], taylor:'F54HA', notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-falcon-a1054wk', cat:'Commercial', keyway:'Falcon A1054WK', ilco:'A1054WK', jma:'FAL-4D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-falcon-a1054wl', cat:'Commercial', keyway:'Falcon A1054WL', ilco:'A1054WL', jma:'FAL-5D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-falcon-a1054wn', cat:'Commercial', keyway:'Falcon A1054WN', ilco:'A1054WN', jma:'FAL-6D', kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
@@ -14487,7 +14487,7 @@ const SEED_BLANKS = [
   { id:'cat13-national-cabinet-n1069c', cat:'Commercial', keyway:'National Cabinet N1069C', ilco:'N1069C', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-national-cabinet-n1069e', cat:'Commercial', keyway:'National Cabinet N1069E', ilco:'N1069E', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-national-cabinet-n1069g', cat:'Commercial', keyway:'National Cabinet N1069G', ilco:'N1069G', jma:'NTC-24D', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
-  { id:'cat13-national-cabinet-n1069j', cat:'Commercial', keyway:'National Cabinet N1069J', ilco:'N1069J', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
+  { id:'cat13-national-cabinet-n1069j', cat:'Commercial', keyway:'National Cabinet N1069J', ilco:'N1069J', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], taylor:'S174L', notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-national-cabinet-1544', cat:'Commercial', keyway:'National Cabinet 1544', ilco:'1544', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-national-cabinet-1545', cat:'Commercial', keyway:'National Cabinet 1545', ilco:'1545', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
   { id:'cat13-national-cabinet-1064d', cat:'Commercial', keyway:'National Cabinet 1064D', ilco:'1064D', jma:'NTL-2', kwUnknown:true, cut:'Edge', makes:['National Cabinet'], notes:'Ilco blank number, with the JMA equivalent from the public JMA catalogue. The keyway designation is not confirmed — identify this blank by the number stamped on it, not by this label.' },
@@ -14842,15 +14842,15 @@ const SEED_BLANKS = [
   { id:'aksc-l1054wj', cat:'Commercial', keyway:'L1054WJ', ilco:'L1054WJ', spaces:7, kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'A 7-wafer lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-el5', cat:'Commercial', keyway:'EL5', ilco:'EL5', spaces:6, kwUnknown:true, cut:'Edge', makes:['Cabinet'], notes:'Also catalogued as K1054JA. A 6-wafer lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-1015ca', cat:'Commercial', keyway:'1015CA', ilco:'1015CA', spaces:5, kwUnknown:true, cut:'Edge', makes:['Yale'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
-  { id:'aksc-1170ce', cat:'Commercial', keyway:'1170CE', ilco:'1170CE', spaces:5, kwUnknown:true, cut:'Edge', makes:['Yale'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1170ce', cat:'Commercial', keyway:'1170CE', ilco:'1170CE', spaces:5, kwUnknown:true, cut:'Edge', makes:['Yale'], taylor:'170CE', notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-a1170cg', cat:'Commercial', keyway:'A1170CG', ilco:'A1170CG', spaces:6, kwUnknown:true, cut:'Edge', makes:['Yale'], notes:'A 6-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-1170cf', cat:'Commercial', keyway:'1170CF', ilco:'1170CF', spaces:5, kwUnknown:true, cut:'Edge', makes:['Yale'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-a1170cf', cat:'Commercial', keyway:'A1170CF', ilco:'A1170CF', spaces:6, kwUnknown:true, cut:'Edge', makes:['Yale'], notes:'A 6-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-1170cg', cat:'Commercial', keyway:'1170CG', ilco:'1170CG', spaces:5, kwUnknown:true, cut:'Edge', makes:['Yale'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-in29', cat:'Commercial', keyway:'IN29', ilco:'IN29', jma:'ILC-3', kwUnknown:true, cut:'Edge', makes:['Cabinet'], notes:'Also catalogued as 1054UN. Source: American Key Supply product listing (Ilco EZ number).' },
-  { id:'aksc-el13', cat:'Commercial', keyway:'EL13', ilco:'EL13', spaces:6, kwUnknown:true, cut:'Edge', makes:['Cabinet'], notes:'Also catalogued as K1054AX. A 6-wafer lock. Source: American Key Supply product listing (Ilco EZ number).' },
-  { id:'aksc-il17', cat:'Commercial', keyway:'IL17', ilco:'IL17', kwUnknown:true, cut:'Edge', makes:['Illinois'], notes:'Also catalogued as 1043E. Source: American Key Supply product listing (Ilco EZ number).' },
-  { id:'aksc-el9', cat:'Commercial', keyway:'EL9', ilco:'EL9', kwUnknown:true, cut:'Edge', makes:['Elgin','Craftsman'], notes:'Also catalogued as 1054C. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-el13', cat:'Commercial', keyway:'EL13', ilco:'EL13', spaces:6, kwUnknown:true, cut:'Edge', makes:['Cabinet'], taylor:'K54AX', notes:'Also catalogued as K1054AX. A 6-wafer lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-il17', cat:'Commercial', keyway:'IL17', ilco:'IL17', kwUnknown:true, cut:'Edge', makes:['Illinois'], taylor:'41LB', notes:'Also catalogued as 1043E. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-el9', cat:'Commercial', keyway:'EL9', ilco:'EL9', kwUnknown:true, cut:'Edge', makes:['Elgin','Craftsman'], taylor:'E54C', notes:'Also catalogued as 1054C. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-in34', cat:'Commercial', keyway:'IN34', ilco:'IN34', kwUnknown:true, cut:'Edge', makes:['Cabinet'], notes:'Also catalogued as 1054TW. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-s174k', cat:'Commercial', keyway:'S174K', ilco:'S174K', silca:'S1069G', spaces:4, kwUnknown:true, cut:'Edge', makes:['National'], notes:'Also catalogued as S1069G. A 4-wafer lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-in28', cat:'Commercial', keyway:'IN28', ilco:'IN28', kwUnknown:true, cut:'Edge', makes:[], notes:'Also catalogued as EL20. Source: American Key Supply product listing (Ilco EZ number).' },
@@ -14859,7 +14859,7 @@ const SEED_BLANKS = [
   { id:'aksc-s4', cat:'Commercial', keyway:'S4', ilco:'S4', jma:'SAR-5D', spaces:5, kwUnknown:true, cut:'Edge', makes:['Sargent'], notes:'Also catalogued as 1010U. A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-hr2', cat:'Commercial', keyway:'HR2', ilco:'HR2', kwUnknown:true, cut:'Edge', makes:['HARLOC'], notes:'Also catalogued as TE3. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-184b', cat:'Commercial', keyway:'184B', ilco:'184B', kwUnknown:true, cut:'Edge', makes:[], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
-  { id:'aksc-s12', cat:'Commercial', keyway:'S12', ilco:'S12', spaces:5, kwUnknown:true, cut:'Edge', makes:['Sargent'], notes:'Also catalogued as 1007C. A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-s12', cat:'Commercial', keyway:'S12', ilco:'S12', spaces:5, kwUnknown:true, cut:'Edge', makes:['Sargent'], taylor:'43CA', notes:'Also catalogued as 1007C. A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-s49', cat:'Commercial', keyway:'S49', ilco:'S49', spaces:5, kwUnknown:true, cut:'Edge', makes:['Sargent'], notes:'Also catalogued as 1010M. A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-l1054wg', cat:'Commercial', keyway:'L1054WG', ilco:'L1054WG', spaces:7, kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'A 7-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-st4', cat:'Commercial', keyway:'ST4', ilco:'ST4', kwUnknown:true, cut:'Edge', makes:[], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
@@ -14867,9 +14867,37 @@ const SEED_BLANKS = [
   { id:'aksc-l1054wn', cat:'Commercial', keyway:'L1054WN', ilco:'L1054WN', spaces:7, kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'A 7-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-ar5', cat:'Commercial', keyway:'AR5', ilco:'AR5', spaces:5, kwUnknown:true, cut:'Edge', makes:['Arrow'], notes:'Also catalogued as N1179. A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-ru19', cat:'Commercial', keyway:'RU19', ilco:'RU19', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'Also catalogued as 1011-D41. A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
-  { id:'aksc-73k', cat:'Commercial', keyway:'73K', ilco:'73K', spaces:7, kwUnknown:true, cut:'Edge', makes:['Russwin'], notes:'Also catalogued as 57-3K. A 7-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-73k', cat:'Commercial', keyway:'73K', ilco:'73K', spaces:7, kwUnknown:true, cut:'Edge', makes:['Russwin'], taylor:'57-3K', notes:'Also catalogued as 57-3K. A 7-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-fa3', cat:'Commercial', keyway:'FA3', ilco:'FA3', jma:'FAL-1DE', spaces:6, kwUnknown:true, cut:'Edge', makes:['Falcon'], notes:'Also catalogued as A1054WD. A 6-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
   { id:'aksc-o79jb', cat:'Automotive', keyway:'O79JB', ilco:'O79JB', kwUnknown:true, cut:'Edge', makes:['Volkswagen'], notes:'Also catalogued as OP19. Source: American Key Supply product listing (Ilco EZ number).' },
+
+  /* A second pass over the same supplier, this time the blank makers' own
+     brand pages (Taylor, Jet, ESP, Howard, Olympus, CCL/Eberhard) and the
+     colour variants. Mostly it confirmed what was already here -- 226 of the
+     293 EZ numbers were already complete -- but it turned up the Corbin
+     Russwin 1011 section keyways, which a commercial locksmith meets all the
+     time, and a handful of car keys sitting on commercial pages.
+
+     The EZ column strips punctuation the number actually has: it reads
+     1011K13 where the title, the catalogue and the counter all read
+     1011-K13. These are filed the way they are written. */
+  { id:'aksc-mz3', cat:'Automotive', keyway:'MZ3', ilco:'MZ3', taylor:'MZ4', kwUnknown:true, cut:'Edge', makes:['Mazda'], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-tr23', cat:'Automotive', keyway:'TR23', ilco:'TR23', kwUnknown:true, cut:'Edge', makes:['Toyota'], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-mz5', cat:'Automotive', keyway:'MZ5', ilco:'MZ5', kwUnknown:true, cut:'Edge', makes:['Mazda'], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-tr37', cat:'Automotive', keyway:'TR37', ilco:'TR37', kwUnknown:true, cut:'Edge', makes:['Toyota'], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-1n', cat:'Commercial', keyway:'1011-1N', ilco:'1011-1N', taylor:'55PK', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-aa3', cat:'Automotive', keyway:'AA3', ilco:'AA3', taylor:'X50', kwUnknown:true, cut:'Edge', makes:['Isuzu'], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-dk-p-9', cat:'Commercial', keyway:'DK-P-9', ilco:'DK-P-9', kwUnknown:true, cut:'Edge', makes:['CompX'], notes:'Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k13', cat:'Commercial', keyway:'1011-K13', ilco:'1011-K13', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k12', cat:'Commercial', keyway:'1011-K12', ilco:'1011-K12', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k10', cat:'Commercial', keyway:'1011-K10', ilco:'1011-K10', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k5', cat:'Commercial', keyway:'1011-K5', ilco:'1011-K5', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k4', cat:'Commercial', keyway:'1011-K4', ilco:'1011-K4', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k3', cat:'Commercial', keyway:'1011-K3', ilco:'1011-K3', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-k2', cat:'Commercial', keyway:'1011-K2', ilco:'1011-K2', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-6a', cat:'Commercial', keyway:'1011-6A', ilco:'1011-6A', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-3a', cat:'Commercial', keyway:'1011-3A', ilco:'1011-3A', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
+  { id:'aksc-1011-9a', cat:'Commercial', keyway:'1011-9A', ilco:'1011-9A', spaces:5, kwUnknown:true, cut:'Edge', makes:['Corbin Russwin'], notes:'A 5-pin lock. Source: American Key Supply product listing (Ilco EZ number).' },
 ].concat(BDK_ROWS);
 
 /* --- VIN: World Manufacturer Identifier prefixes -------------------------- */
