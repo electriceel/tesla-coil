@@ -531,6 +531,38 @@ th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;co
    confirmed keyway, so scanning the list never reads the label as a keyway. */
 .kwq{color:var(--warn);font-weight:700;margin-left:3px;vertical-align:super;font-size:.72em}
 
+/* ============================ lock screen ============================ */
+/* Covers everything, including the header and the tab bar, so there is no
+   edge of the app visible to tap at while it is up. */
+.lockscreen{
+  position:fixed;inset:0;z-index:100;
+  background:var(--bg);
+  display:grid;place-items:center;
+  padding:var(--s5) var(--s4);
+  padding-bottom:calc(var(--s5) + var(--safe-b));
+  overflow-y:auto;
+}
+.lockscreen[hidden]{display:none}
+.lockbox{width:100%;max-width:340px;display:flex;flex-direction:column;gap:var(--s3);text-align:center}
+.lockbox .logo{width:56px;height:56px;border-radius:13px;margin:0 auto}
+.lockbox h1{font-size:19px;font-weight:700;letter-spacing:.2px}
+.lockbox .field{text-align:left;margin-bottom:0}
+.lockbox input{text-align:center;letter-spacing:2px;font-size:17px}
+.lockbox .btn{width:100%}
+.lockbox .notice{text-align:left}
+/* The way out of a forgotten passcode erases everything, so it is a quiet
+   last resort rather than a second button competing with Unlock. */
+.lockforgot{
+  border:0;background:none;cursor:pointer;color:var(--fg3);
+  font-size:12.5px;font-weight:600;padding:var(--s2);min-height:38px;
+  text-decoration:underline;text-underline-offset:3px;
+}
+.lockforgot:active{color:var(--err)}
+/* The app must not be readable through a passcode prompt. */
+body:has(.lockscreen:not([hidden])) > main,
+body:has(.lockscreen:not([hidden])) > .top,
+body:has(.lockscreen:not([hidden])) > .nav{filter:blur(6px);pointer-events:none}
+
 /* ============================ print ============================ */
 /* Printing is how a quote reaches a customer, and the screen layout does not
    survive the trip: the title is near-white so it vanishes on paper, and the
