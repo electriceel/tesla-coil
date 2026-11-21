@@ -2545,6 +2545,7 @@ function jobsCsv() {
 
 /* ======================= settings ======================= */
 function RENDER_settings() {
+  RENDER_lockPanel();
   const p = Store.prefs();
   $('#setShop').value = p.shop || '';
   $('#setPhone').value = p.phone || '';
@@ -3046,10 +3047,186 @@ document.addEventListener('click', (e) => {
   if (t.dataset.canceljob) { $('#jobEditor').innerHTML = ''; $('#jobListWrap').hidden = false; return; }
 });
 
+/* ============================ passcode ============================ */
+/* The lock screen is the only thing on the page until it is satisfied. It is
+   markup rather than something built here so that it can be shown before any
+   of the app's own rendering runs. */
+
+function showLock(show) {
+  const el = $('#lockScreen');
+  if (!el) return;
+  el.hidden = !show;
+  if (show) setTimeout(() => { const i = $('#lockPass'); if (i) i.focus(); }, 60);
+}
+
+function lockError(msg) {
+  const e = $('#lockErr');
+  if (!e) return;
+  e.hidden = !msg;
+  e.textContent = msg || '';
+}
+
+/* Each wrong try costs a little more time than the last. The wait is spent
+   here rather than refusing outright, because the person who is locked out is
+   nearly always the owner who mistyped. */
+async function attemptUnlock(pass) {
+  const wait = Lock.penaltyMs();
+  if (wait) {
+    $('#lockGo').disabled = true;
+    lockError('Wrong passcode. Waiting ' + Math.round(wait / 1000) + 's before the next try.');
+    await new Promise(r => setTimeout(r, wait));
+    $('#lockGo').disabled = false;
+  }
+  let ok = false;
+  try { ok = await Lock.unlock(pass); }
+  catch (e) { lockError(e.message || String(e)); return false; }
+  if (!ok) { lockError('That is not the passcode.'); return false; }
+  lockError('');
+  return true;
+}
+
+function wireLockScreen() {
+  const form = $('#lockForm');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const inp = $('#lockPass');
+    const pass = inp.value;
+    if (!pass) return;
+    if (await attemptUnlock(pass)) {
+      inp.value = '';
+      showLock(false);
+      /* Everything on screen was rendered from an empty store, so rebuild. */
+      Object.values(DOMAINS).forEach(D => { const el = $(D.q); if (el) el.value = ''; });
+      rerenderCurrent();
+    }
+  });
+  $('#lockForgot').addEventListener('click', () => {
+    if (!confirm('There is no way to recover the passcode — the data is encrypted with it '
+      + 'and it is stored nowhere.\n\nThe only way back in is to erase everything on this device '
+      + 'and start again.\n\nErase it?')) return;
+    if (!confirm('Last chance. Every job, tip, BCM row, key system and edit on this device goes.')) return;
+    Lock.wipe();
+    showLock(false);
+    rerenderCurrent();
+  });
+}
+
+/* Redraw whatever view is on screen, without touching history: locking and
+   unlocking change what the store holds, not where you are. go() would work
+   but it is the router, and routing on an unlock would push an entry that the
+   Back button then has to account for. */
+function rerenderCurrent() {
+  const r = RENDER[current];
+  if (r) r(current === 'vehicle' ? vehShown : undefined);
+}
+
+/* Re-shown whenever the lock closes under us -- the auto-lock timer, or
+   another tab locking. */
+function watchLock() {
+  Lock.onChange(() => {
+    /* Both directions. Showing the screen on lock but leaving it to the form
+       to hide it meant every other way in -- the auto-lock timer releasing,
+       a passcode removed from Settings, another tab unlocking -- left the
+       overlay sitting on top of an app that was already open behind it. */
+    const locked = Lock.state() === 'locked';
+    showLock(locked);
+    if (locked) lockError('');
+    rerenderCurrent();
+    if ($('#view-settings').classList.contains('active')) RENDER_settings();
+  });
+}
+
+/* ---- the Settings panel ---- */
+function RENDER_lockPanel() {
+  const el = $('#lockPanel');
+  if (!el) return;
+  if (!Lock.available()) {
+    el.innerHTML = '<div class="notice warn">This browser has no Web Crypto, so a passcode '
+      + 'cannot be set here. That usually means the page is being served over plain http.</div>';
+    return;
+  }
+  const on = Lock.isOn();
+  el.innerHTML = on
+    ? `<div class="notice ok tiny">A passcode is set. Your jobs, BCM table, tips and edits are
+         encrypted on this device and unreadable without it.</div>
+       <div class="stack" style="margin-top:var(--s3)">
+         <button class="btn" id="lockChangeBtn">Change passcode</button>
+         <button class="btn" id="lockNowBtn">Lock now</button>
+         <button class="btn danger" id="lockOffBtn">Remove passcode</button>
+       </div>`
+    : `<div class="tiny muted">The app itself is public &mdash; anyone with the link can open it
+         and read the catalogue. What a passcode protects is the part that is yours: the job log,
+         the BCM&rarr;PIN table, your tips and your edits, which sit in this browser in plain text
+         until you set one.
+         <br><br><strong>There is no recovery.</strong> The key comes from the passcode and the
+         passcode is kept nowhere, so forgetting it means the data is gone. Export a backup first.
+       </div>
+       <div class="stack" style="margin-top:var(--s3)">
+         <button class="btn primary" id="lockOnBtn">Set a passcode</button>
+       </div>`;
+
+  const ask = (label) => {
+    const v = prompt(label);
+    return v == null ? null : v;
+  };
+
+  if (!on) {
+    $('#lockOnBtn').addEventListener('click', async () => {
+      const a = ask('Choose a passcode.\n\nThere is no way to recover it. Export a backup first '
+        + 'if you have not.');
+      if (a == null) return;
+      if (a.length < 4) { alert('Use at least 4 characters.'); return; }
+      const b = ask('Type it again.');
+      if (b == null) return;
+      if (a !== b) { alert('Those did not match. Nothing was changed.'); return; }
+      try { await Lock.setup(a); alert('Passcode set. Your saved work is now encrypted on this device.'); }
+      catch (e) { alert(e.message || String(e)); }
+      RENDER_settings();
+    });
+    return;
+  }
+
+  $('#lockChangeBtn').addEventListener('click', async () => {
+    const old = ask('Current passcode');
+    if (old == null) return;
+    const a = ask('New passcode');
+    if (a == null) return;
+    if (a.length < 4) { alert('Use at least 4 characters.'); return; }
+    const b = ask('Type the new one again.');
+    if (b == null) return;
+    if (a !== b) { alert('Those did not match. Nothing was changed.'); return; }
+    try {
+      if (!(await Lock.change(old, a))) { alert('That is not the current passcode.'); return; }
+      alert('Passcode changed.');
+    } catch (e) { alert(e.message || String(e)); }
+    RENDER_settings();
+  });
+
+  $('#lockNowBtn').addEventListener('click', () => { Lock.lock(); });
+
+  $('#lockOffBtn').addEventListener('click', async () => {
+    const p = ask('Enter the passcode to remove it.\n\nYour saved work goes back to plain text '
+      + 'on this device.');
+    if (p == null) return;
+    try {
+      if (!(await Lock.remove(p))) { alert('That is not the passcode.'); return; }
+      alert('Passcode removed.');
+    } catch (e) { alert(e.message || String(e)); }
+    RENDER_settings();
+  });
+}
+
 function boot() {
   /* theme */
   const savedTheme = localStorage.getItem('keypro:theme');
   if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+  /* Before anything else: if a passcode is set, the store reads as empty and
+     the app must not be usable until it is entered. Wiring the rest of boot
+     still happens, so the app behind the screen is ready the moment it opens. */
+  wireLockScreen();
+  watchLock();
+  if (Lock.state() === 'locked') showLock(true);
   $('#themeBtn').addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
     document.documentElement.dataset.theme = next;
@@ -3141,7 +3318,11 @@ function boot() {
   $('#wipeBtn').addEventListener('click', () => {
     if (!confirm('Erase every edit, tip, job, key system and BCM row on this device? Export a backup first.')) return;
     if (!confirm('Last chance. This cannot be undone.')) return;
-    ['vehicles', 'blanks', 'jobs', 'bcm', 'tips', 'mk', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
+    /* With a passcode set the data is ciphertext and the lock metadata has to
+       go with it, or the app comes back asking for a passcode to decrypt
+       nothing. */
+    if (Lock.isOn()) Lock.wipe();
+    else ['vehicles', 'blanks', 'jobs', 'bcm', 'tips', 'mk', 'prefs'].forEach(k => localStorage.removeItem('keypro:' + k));
     RENDER_settings();
   });
 

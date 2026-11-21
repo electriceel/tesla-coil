@@ -17,6 +17,25 @@
 </head>
 <body>
 
+<!-- Shown instead of the app when a passcode is set and not yet entered. It is
+     hidden by default so that a browser with JavaScript off, or a boot that
+     throws, shows the app rather than an empty page you cannot get past. -->
+<div class="lockscreen" id="lockScreen" hidden>
+  <form class="lockbox" id="lockForm">
+    <img class="logo" src="assets/icons/icon-192.png" alt="" width="192" height="192">
+    <h1>KeyPro Field</h1>
+    <p class="tiny muted" id="lockWhy">Enter your passcode to unlock this device's saved work.</p>
+    <div class="field">
+      <label for="lockPass">Passcode</label>
+      <input id="lockPass" type="password" inputmode="text" autocomplete="current-password"
+             autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    </div>
+    <div class="notice err" id="lockErr" hidden></div>
+    <button class="btn primary" type="submit" id="lockGo">Unlock</button>
+    <button class="lockforgot" type="button" id="lockForgot">I forgot my passcode</button>
+  </form>
+</div>
+
 <header class="top">
   <img class="logo" src="assets/icons/icon-192.png" alt="SLO Car &amp; Key" width="192" height="192">
   <h1>KeyPro Field<small>Locksmith reference</small></h1>
@@ -284,6 +303,9 @@
       <button class="btn primary" type="submit">Save</button>
     </form>
 
+    <h2>Passcode</h2>
+    <div class="card" id="lockPanel"></div>
+
     <h2>Data</h2>
     <div class="card" id="setStats"></div>
     <div class="stack">
@@ -321,6 +343,7 @@
 <script src="assets/js/dealer.js"></script>
 <script src="assets/js/master.js"></script>
 <script src="assets/js/sfic.js"></script>
+<script src="assets/js/lock.js"></script>
 <script src="assets/js/store.js"></script>
 <script src="assets/js/app.js"></script>
 </body>

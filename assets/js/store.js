@@ -18,8 +18,27 @@ const K = {
 const RESERVED = ['__proto__', 'constructor', 'prototype'];
 const dropProto = (k, v) => (RESERVED.includes(k) ? undefined : v);
 
+/* When a passcode is set, the stored values are ciphertext and the plain ones
+   live in Lock's memory for as long as the app is unlocked. Both paths return
+   the same thing to everything above, which is why none of the ~40 call sites
+   below had to learn about encryption. */
+const locked = () => (typeof Lock !== 'undefined' && Lock.isOn());
+
+function rawGet(key) {
+  if (locked()) return Lock.isUnlocked() ? Lock.readRaw(key) : null;
+  return localStorage.getItem(key);
+}
+function rawSet(key, text) {
+  if (locked()) {
+    if (!Lock.isUnlocked()) { lastError = 'The app is locked.'; return false; }
+    return Lock.writeRaw(key, text);
+  }
+  localStorage.setItem(key, text);
+  return true;
+}
+
 function read(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v, dropProto) : fallback; }
+  try { const v = rawGet(key); return v ? JSON.parse(v, dropProto) : fallback; }
   catch (e) { console.warn('read failed', key, e); return fallback; }
 }
 
@@ -46,7 +65,14 @@ let lastError = '';
 let rev = 0;
 
 function write(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); lastError = ''; rev++; return true; }
+  try {
+    if (!rawSet(key, JSON.stringify(val))) {
+      if (!lastError) lastError = "This device's storage is full, so nothing was saved. Export a "
+        + 'backup from Settings, then delete old jobs or the BCM table to make room.';
+      return false;
+    }
+    lastError = ''; rev++; return true;
+  }
   catch (e) {
     const full = e && (e.name === 'QuotaExceededError'
       || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
@@ -275,6 +301,16 @@ const Store = {
     return ok;
   }
 };
+
+/* Unlocking does not go through write(), but it changes every answer the
+   store gives -- so the caches above have to be invalidated by it exactly as
+   they are by a write. Without this, vehicles() and blanks() kept serving the
+   lists they built while the app was locked, which is to say the seed data
+   with none of the user's own records in it. Everything else reads storage on
+   every call and looked fine, so the symptom was that unlocking brought back
+   your jobs and your BCM table but silently dropped your vehicle and blank
+   edits until something else happened to write. */
+if (typeof Lock !== 'undefined' && Lock.onChange) Lock.onChange(() => { rev++; });
 
 /* Another tab's write does not run write() here, so without this the caches
    above would serve data that is already stale -- the app previously re-read
